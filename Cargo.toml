@@ -1,0 +1,58 @@
+[package]
+name = "graph_rl"
+version = "0.1.0"
+edition = "2021"
+authors = ["Travis Hammond <dashdeckers@gmail.com>"]
+repository = "https://github.com/dashdeckers/rl_toolkit"
+description = "A toolkit for reinforcement learning research."
+keywords = [
+    "reinforcement learning",
+    "machine-learning",
+    "actor-critic",
+    "graph",
+]
+license = "MIT"
+categories = ["research"]
+
+
+[dependencies]
+
+# Developer candy
+anyhow = "1.0.70"
+itertools = "0.11.0"
+auto_ops = "0.3.0"
+derive-getters = "0.3.0"
+ordered-float = { version = "4.1.1", features = ["serde"] }
+
+# Serialization
+serde = { version = "1.0.164", features = ["std", "derive"] }
+
+# GUI
+egui = "0.23.0"
+eframe = "0.23.0"
+
+# CLI
+clap = { version = "4.2.4", features = ["derive"] }
+
+# Logging
+tracing = "0.1.37"
+tracing-chrome = "0.7.1"
+tracing-subscriber = "0.3.17"
+
+# Random
+rand_distr = "0.4.3"
+rand = { version = "0.8.5", features = ["std"] }
+
+# Graph
+petgraph = "0.6.3"
+
+# Deep Learning
+candle-core = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
+candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
+intel-mkl-src = { version = "0.8.1", features = ["mkl-static-lp64-iomp"] }
+
+# Visualization
+plotly = "0.8.4"
+
+# Python
+pyo3 = { version = "0.20.0", features = ["auto-initialize"] }
