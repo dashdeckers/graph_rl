@@ -35,6 +35,7 @@ fn track(
     Ok(())
 }
 
+#[allow(dead_code)]
 struct Actor<'a> {
     varmap: VarMap,
     vb: VarBuilder<'a>,
@@ -112,6 +113,7 @@ impl Actor<'_> {
     }
 }
 
+#[allow(dead_code)]
 struct Critic<'a> {
     varmap: VarMap,
     vb: VarBuilder<'a>,
@@ -190,6 +192,7 @@ impl Critic<'_> {
     }
 }
 
+#[allow(dead_code)]
 #[allow(clippy::upper_case_acronyms)]
 pub struct DDPG<'a> {
     actor: Actor<'a>,
@@ -230,7 +233,7 @@ impl DDPG<'_> {
                 .collect::<Vec<Var>>()
         };
 
-        let actor = Actor::new(device, DType::F32, size_state, size_action)?;
+        let actor = Actor::new(device, DType::F64, size_state, size_action)?;
         let actor_optim = AdamW::new(
             filter_by_prefix(&actor.varmap, "actor"),
             ParamsAdamW {
@@ -239,7 +242,7 @@ impl DDPG<'_> {
             },
         )?;
 
-        let critic = Critic::new(device, DType::F32, size_state, size_action)?;
+        let critic = Critic::new(device, DType::F64, size_state, size_action)?;
         let critic_optim = AdamW::new(
             filter_by_prefix(&critic.varmap, "critic"),
             ParamsAdamW {
@@ -276,7 +279,7 @@ impl DDPG<'_> {
             .push(state, action, reward, next_state, terminated, truncated)
     }
 
-    pub fn actions(&mut self, state: &Tensor) -> Result<f32> {
+    pub fn actions(&mut self, state: &Tensor) -> Result<Vec<f64>> {
         let actions = self
             .actor
             .forward(&state.detach()?.unsqueeze(0)?)?
@@ -286,7 +289,7 @@ impl DDPG<'_> {
         } else {
             actions
         };
-        actions.squeeze(0)?.to_scalar::<f32>()
+        actions.to_vec1::<f64>()
     }
 
     pub fn train(&mut self, batch_size: usize) -> Result<()> {

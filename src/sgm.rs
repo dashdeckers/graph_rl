@@ -11,27 +11,6 @@ use candle_core::Tensor;
 use crate::replay_buffer::ReplayBuffer;
 
 
-#[derive(PartialEq, Eq, Hash, Clone, Copy, Debug)]
-pub struct State {
-    x: OrderedFloat<f32>,
-    y: OrderedFloat<f32>,
-}
-impl From<Tensor> for State {
-    fn from(value: Tensor) -> Self {
-        let values = value.squeeze(0).unwrap().to_vec1::<f32>().unwrap();
-        Self {
-            x: OrderedFloat(values[0]),
-            y: OrderedFloat(values[0]),
-        }
-    }
-}
-impl Display for State {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(f, "({}, {})", self.x, self.y)
-    }
-}
-
-
 impl ReplayBuffer {
     // pub fn dot(&self) -> String {
     //     format!("{}", Dot::new(&self.graph)).to_string()

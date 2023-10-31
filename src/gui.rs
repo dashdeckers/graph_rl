@@ -1,12 +1,13 @@
 use std::{thread, time};
 
-use crate::PointEnv::{
-    PointState,
-    PointLine,
+use crate::{
+    ddpg::DDPG,
+    envs::point_env::{
+        PointEnv,
+        PointState,
+        PointLine,
+    },
 };
-
-use tracing::{instrument, warn};
-use anyhow::Result;
 
 use eframe::egui;
 use egui::widgets::plot::PlotUi;
@@ -15,43 +16,36 @@ use egui::Color32;
 use egui::plot::PlotBounds;
 
 
-pub struct PointEnvReplayer {
-    width: usize,
-    height: usize,
-    start: PointState,
-    goal: PointState,
-    walls: Vec<PointLine>,
-    histories: Vec<Vec<PointState>>,
+
+pub struct GUI<'a> {
+    env: PointEnv,
+    #[allow(dead_code)]
+    agent: DDPG<'a>,
 }
-impl PointEnvReplayer {
+impl GUI<'static> {
     pub fn new(
-        width: usize,
-        height: usize,
-        start: PointState,
-        goal: PointState,
-        walls: Vec<PointLine>,
-        histories: Vec<Vec<PointState>>,
+        env: PointEnv,
+        agent: DDPG<'static>,
     ) -> Self {
-        Self {
-            width,
-            height,
-            start,
-            goal,
-            walls,
-            histories,
-        }
+        Self { env, agent }
+    }
+
+    pub fn show(gui: Self) {
+        eframe::run_native(
+            "Actor-Critic Graph-Learner",
+            eframe::NativeOptions::default(),
+            Box::new(|_| Box::new(gui)),
+        ).unwrap();
     }
 
     pub fn plot(
         &self,
         plot_ui: &mut PlotUi,
     ) {
-        Self::setup_plot(self.width, self.height, plot_ui);
-        Self::plot_walls(&self.walls, plot_ui);
-        Self::plot_start_and_goal(&self.start, &self.goal, plot_ui);
-        for history in self.histories.iter() {
-            Self::plot_path(history, plot_ui);
-        }
+        Self::setup_plot(*self.env.width(), *self.env.height(), plot_ui);
+        Self::plot_walls(self.env.walls(), plot_ui);
+        Self::plot_start_and_goal(self.env.start(), self.env.goal(), plot_ui);
+        Self::plot_path(self.env.history(), plot_ui);
     }
 
     fn setup_plot(
@@ -75,8 +69,8 @@ impl PointEnvReplayer {
             plot_ui.line(
                 egui::plot::Line::new(
                     vec![
-                        [wall.A.x() as f64, wall.A.y() as f64],
-                        [wall.B.x() as f64, wall.B.y() as f64],
+                        [wall.A.x(), wall.A.y()],
+                        [wall.B.x(), wall.B.y()],
                     ]
                 )
                 .width(2.0)
@@ -94,7 +88,7 @@ impl PointEnvReplayer {
                 history
                 .iter()
                 .map(|p| {
-                    [p.x() as f64, p.y() as f64]
+                    [p.x(), p.y()]
                 })
                 .collect::<Vec<_>>()
             )
@@ -109,7 +103,7 @@ impl PointEnvReplayer {
         plot_ui.points(
             egui::plot::Points::new(
                 vec![
-                    [start.x() as f64, start.y() as f64],
+                    [start.x(), start.y()],
                 ]
             )
             .radius(2.0)
@@ -118,7 +112,7 @@ impl PointEnvReplayer {
         plot_ui.points(
             egui::plot::Points::new(
                 vec![
-                    [goal.x() as f64, goal.y() as f64],
+                    [goal.x(), goal.y()],
                 ]
             )
             .radius(2.0)
@@ -126,23 +120,7 @@ impl PointEnvReplayer {
         );
     }
 }
-
-
-#[instrument(skip(player))]
-pub fn run_gui(
-    player: PointEnvReplayer,
-) -> Result<()> {
-    warn!("Running GUI");
-    eframe::run_native(
-        "Actor-Critic Graph-Learner",
-        eframe::NativeOptions::default(),
-        Box::new(|_| Box::new(player)),
-    ).unwrap();
-    Ok(())
-}
-
-
-impl eframe::App for PointEnvReplayer {
+impl eframe::App for GUI<'static> {
     fn update(
         &mut self,
         ctx: &egui::Context,
@@ -164,3 +142,16 @@ impl eframe::App for PointEnvReplayer {
     }
 }
 
+
+// #[instrument(skip(player))]
+// pub fn run_gui(
+//     player: GUI<'static>,
+// ) -> Result<()> {
+//     warn!("Running GUI");
+//     eframe::run_native(
+//         "Actor-Critic Graph-Learner",
+//         eframe::NativeOptions::default(),
+//         Box::new(|_| Box::new(player)),
+//     ).unwrap();
+//     Ok(())
+// }

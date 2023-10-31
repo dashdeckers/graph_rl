@@ -28,8 +28,8 @@ ordered-float = { version = "4.1.1", features = ["serde"] }
 serde = { version = "1.0.164", features = ["std", "derive"] }
 
 # GUI
-egui = "0.23.0"
-eframe = "0.23.0"
+egui = "0.22.0"
+eframe = "0.22.0"
 
 # CLI
 clap = { version = "4.2.4", features = ["derive"] }

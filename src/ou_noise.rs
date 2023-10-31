@@ -12,7 +12,7 @@ impl OuNoise {
             mu,
             theta,
             sigma,
-            state: Tensor::ones(size_action, DType::F32, &Device::Cpu)?,
+            state: Tensor::ones(size_action, DType::F64, &Device::Cpu)?,
         })
     }
 

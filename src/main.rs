@@ -1,14 +1,22 @@
 extern crate intel_mkl_src;
 
-use candle_core::{Device, Result, Tensor};
+use candle_core::{Device, Tensor};
 use clap::Parser;
 use rand::Rng;
+use anyhow::Result;
+use tracing::Level;
 
+#[allow(unused_imports)]
 use graph_rl::{
     ddpg::DDPG,
-    gym_env::GymEnv,
     ou_noise::OuNoise,
-    point_env::PointEnv,
+    envs::{
+        pendulum::PendulumEnv,
+        point_env::PointEnv,
+        Environment,
+    },
+    util::setup_logging,
+    gui::GUI,
 };
 
 // The impact of the q value of the next state on the current state's q value.
@@ -20,7 +28,7 @@ const REPLAY_BUFFER_CAPACITY: usize = 100_000;
 // The training batch size for each training iteration.
 const TRAINING_BATCH_SIZE: usize = 100;
 // The total number of episodes.
-const MAX_EPISODES: usize = 100;
+const MAX_EPISODES: usize = 20;// 100;
 // The maximum length of an episode.
 const EPISODE_LENGTH: usize = 200;
 // The number of training iterations after one episode finishes.
@@ -54,30 +62,35 @@ struct Args {
 // 1. Make PointEnv API compatible with (= the same as) Gymnasium (also cleanup)
 // 2. Run DDPG on PointEnv (observe learning?)
 // 3. Get the GUI back up and running
-// 4. Get SGM working, visualize it
+// 4. Get SGM working, visualize it (each env-type gets its own State struct!)
+
 
 
 
 
 fn main() -> Result<()> {
-    use tracing_chrome::ChromeLayerBuilder;
-    use tracing_subscriber::prelude::*;
+    // use tracing_chrome::ChromeLayerBuilder;
+    // use tracing_subscriber::prelude::*;
 
-    let args = Args::parse();
+    // let args = Args::parse();
 
-    let _guard = if args.tracing {
-        let (chrome_layer, guard) = ChromeLayerBuilder::new().build();
-        tracing_subscriber::registry().with(chrome_layer).init();
-        Some(guard)
-    } else {
-        None
-    };
+    // let _guard = if args.tracing {
+    //     let (chrome_layer, guard) = ChromeLayerBuilder::new().build();
+    //     tracing_subscriber::registry().with(chrome_layer).init();
+    //     Some(guard)
+    // } else {
+    //     None
+    // };
 
-    let _env = PointEnv::default();
 
-    let env = GymEnv::new("Pendulum-v1")?;
-    println!("action space: {}", env.action_space());
-    println!("observation space: {:?}", env.observation_space());
+    setup_logging(
+        "debug.log".into(),
+        Some(Level::INFO),
+        Some(Level::WARN),
+    )?;
+
+    let mut env = *PointEnv::new(Default::default())?;
+    // let env = *PendulumEnv::new(Default::default())?;
 
     let size_state = env.observation_space().iter().product::<usize>();
     let size_action = env.action_space();
@@ -95,28 +108,69 @@ fn main() -> Result<()> {
         OuNoise::new(MU, THETA, SIGMA, size_action)?,
     )?;
 
+    // let postprocess_action = |actions: &[f64]| {
+    //     actions
+    //         .iter()
+    //         .map(|a| (a * 2.0).clamp(-2.0, 2.0))
+    //         .collect::<Vec<f64>>()
+    // };
+    let postprocess_action = |actions: &[f64]| {
+        actions.to_vec()
+    };
+
+    run(
+        &mut env,
+        &mut agent,
+        MAX_EPISODES,
+        EPISODE_LENGTH,
+        true,
+        postprocess_action,
+    )?;
+
+    GUI::show(GUI::new(env, agent));
+
+    Ok(())
+}
+
+
+fn run<E: Environment>(
+    env: &mut E,
+    agent: &mut DDPG,
+    max_episodes: usize,
+    episode_length: usize,
+    train: bool,
+    postprocess_action: fn(&[f64]) -> Vec<f64>,
+) -> Result<()> {
+
+    println!("action space: {}", env.action_space());
+    println!("observation space: {:?}", env.observation_space());
+
+
     let mut rng = rand::thread_rng();
 
-    for episode in 0..MAX_EPISODES {
+    agent.train = train;
+    for episode in 0..max_episodes {
         // let mut state = env.reset(episode as u64)?;
         let mut state = env.reset(rng.gen::<u64>())?;
-
         let mut total_reward = 0.0;
-        for _ in 0..EPISODE_LENGTH {
-            let mut action = 2.0 * agent.actions(&state)?;
-            action = action.clamp(-2.0, 2.0);
 
-            let step = env.step(vec![action])?;
+        for _ in 0..episode_length {
+            let action = agent.actions(&state.clone().into())?;
+            let action = postprocess_action(&action);
+
+            let step = env.step(action.clone().into())?;
             total_reward += step.reward;
 
-            agent.remember(
-                &state,
-                &Tensor::new(vec![action], &Device::Cpu)?,
-                &Tensor::new(vec![step.reward as f32], &Device::Cpu)?,
-                &step.state,
-                step.terminated,
-                step.truncated,
-            );
+            if train {
+                agent.remember(
+                    &state.into(),
+                    &Tensor::new(action, &Device::Cpu)?,
+                    &Tensor::new(vec![step.reward], &Device::Cpu)?,
+                    &step.state.clone().into(),
+                    step.terminated,
+                    step.truncated,
+                );
+            }
 
             if step.terminated || step.truncated {
                 break;
@@ -126,30 +180,11 @@ fn main() -> Result<()> {
 
         println!("episode {episode} with total reward of {total_reward}");
 
-        for _ in 0..TRAINING_ITERATIONS {
-            agent.train(TRAINING_BATCH_SIZE)?;
-        }
-    }
-
-    println!("Testing...");
-    agent.train = false;
-    for episode in 0..10 {
-        // let mut state = env.reset(episode as u64)?;
-        let mut state = env.reset(rng.gen::<u64>())?;
-        let mut total_reward = 0.0;
-        for _ in 0..EPISODE_LENGTH {
-            let mut action = 2.0 * agent.actions(&state)?;
-            action = action.clamp(-2.0, 2.0);
-
-            let step = env.step(vec![action])?;
-            total_reward += step.reward;
-
-            if step.terminated || step.truncated {
-                break;
+        if train {
+            for _ in 0..TRAINING_ITERATIONS {
+                agent.train(TRAINING_BATCH_SIZE)?;
             }
-            state = step.state;
         }
-        println!("episode {episode} with total reward of {total_reward}");
     }
     Ok(())
 }

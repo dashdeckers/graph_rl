@@ -9,26 +9,32 @@ use derive_getters::Getters;
 use auto_ops::impl_op_ex;
 use tracing::{instrument, info, warn};
 use ordered_float::OrderedFloat;
-use rand::{RngCore, Rng};
+use rand::{RngCore, Rng, SeedableRng, rngs::StdRng};
+use pyo3::prelude::*;
+// use anyhow::{anyhow, Error};
+use anyhow::Result;
+use candle_core::Tensor;
+
+use super::{Environment, Step};
 
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PointAction {
-    dx: OrderedFloat<f32>,
-    dy: OrderedFloat<f32>,
+    dx: OrderedFloat<f64>,
+    dy: OrderedFloat<f64>,
 }
 impl PointAction {
-    pub fn dx(&self) -> f32 {
+    pub fn dx(&self) -> f64 {
         self.dx.into_inner()
     }
 
-    pub fn dy(&self) -> f32 {
+    pub fn dy(&self) -> f64 {
         self.dy.into_inner()
     }
 
-    pub fn sample(rng: &mut dyn RngCore, bounds: [Range<f32>; 1]) -> Self {
-        let r: f32 = bounds[0].end * f32::sqrt(rng.gen_range(0.0..=1.0));
-        let theta: f32 = rng.gen_range(0.0..=1.0) * 2.0 * std::f32::consts::PI;
+    pub fn sample(rng: &mut dyn RngCore, bounds: [Range<f64>; 1]) -> Self {
+        let r: f64 = bounds[0].end * f64::sqrt(rng.gen_range(0.0..=1.0));
+        let theta: f64 = rng.gen_range(0.0..=1.0) * 2.0 * std::f64::consts::PI;
 
         Self::from((
             r * theta.cos(),
@@ -36,7 +42,7 @@ impl PointAction {
         ))
     }
 
-    pub fn restrict(self, bounds: [Range<f32>; 1]) -> Self {
+    pub fn restrict(self, bounds: [Range<f64>; 1]) -> Self {
         let zero = PointState::from((0.0, 0.0));
         let step = PointState::from((self.dx(), self.dy()));
         let radius = bounds[0].end;
@@ -57,9 +63,9 @@ impl PointAction {
         }
     }
 
-    pub fn distance(&self, other: &Self) -> f32 {
-        let p1 = PointState::from(Into::<(f32, f32)>::into(*self));
-        let p2 = PointState::from(Into::<(f32, f32)>::into(*other));
+    pub fn distance(&self, other: &Self) -> f64 {
+        let p1 = PointState::from(Into::<(f64, f64)>::into(*self));
+        let p2 = PointState::from(Into::<(f64, f64)>::into(*other));
         p1.distance(&p2)
     }
 
@@ -69,23 +75,53 @@ impl PointAction {
 
     // // assumes tensor is of shape (1, 2), so a single action for example
     // pub fn from_tensor(tensor: &Tensor) -> Result<Self> {
-    //     let elements = tensor.to_vec2::<f32>()?;
+    //     let elements = tensor.to_vec2::<f64>()?;
     //     Ok(Self::from((elements[0][0], elements[0][1])))
     // }
 }
-// Convert (f32, f32) into PointAction
-impl From<(f32, f32)> for PointAction {
-    fn from(value: (f32, f32)) -> Self {
+// Convert (f64, f64) into PointAction
+impl From<(f64, f64)> for PointAction {
+    fn from(value: (f64, f64)) -> Self {
         Self {
             dx: OrderedFloat(value.0),
             dy: OrderedFloat(value.1),
         }
     }
 }
-// Convert PointAction into (f32, f32)
-impl From<PointAction> for (f32, f32) {
+// Convert Vec<f64> into PointAction
+impl From<Vec<f64>> for PointAction {
+    fn from(value: Vec<f64>) -> Self {
+        Self {
+            dx: OrderedFloat(value[0]),
+            dy: OrderedFloat(value[1]),
+        }
+    }
+}
+// Convert PointAction into (f64, f64)
+impl From<PointAction> for (f64, f64) {
     fn from(val: PointAction) -> Self {
         (val.dx(), val.dy())
+    }
+}
+// Convert Tensor into PointAction
+impl From<Tensor> for PointAction {
+    fn from(value: Tensor) -> Self {
+        let values = value
+            .squeeze(0).unwrap()
+            .to_vec1::<f64>().unwrap();
+        Self::from(values)
+    }
+}
+// Convert PointAction into Tensor
+impl From<PointAction> for Tensor {
+    fn from(value: PointAction) -> Self {
+        Self::new(&[*value.dx, *value.dy], &candle_core::Device::Cpu).unwrap()
+    }
+}
+// Convert PointAction into PyAny
+impl IntoPy<PyObject> for PointAction {
+    fn into_py(self, py: Python<'_>) -> PyObject {
+        (*self.dx, *self.dy).into_py(py)
     }
 }
 // Display
@@ -108,51 +144,51 @@ impl_op_ex!(+ |p1: &PointState, a: &PointAction| -> PointState {
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PointState {
-    x: OrderedFloat<f32>,
-    y: OrderedFloat<f32>,
+    x: OrderedFloat<f64>,
+    y: OrderedFloat<f64>,
 }
 impl PointState {
-    pub fn x(&self) -> f32 {
+    pub fn x(&self) -> f64 {
         self.x.into_inner()
     }
 
-    pub fn y(&self) -> f32 {
+    pub fn y(&self) -> f64 {
         self.y.into_inner()
     }
 
-    pub fn squared_distance_to(&self, other: &Self) -> f32 {
+    pub fn squared_distance_to(&self, other: &Self) -> f64 {
         let dx = self.x() - other.x();
         let dy = self.y() - other.y();
         dx.powi(2) + dy.powi(2)
     }
 
-    pub fn magnitude(&self) -> f32 {
+    pub fn magnitude(&self) -> f64 {
         self.squared_distance_to(&(0.0, 0.0).into()).sqrt()
     }
 
     pub fn in_radius_of(
         &self,
         other: &Self,
-        radius: f32,
+        radius: f64,
     ) -> bool {
         OrderedFloat(self.squared_distance_to(other)) <= OrderedFloat(radius.powi(2))
     }
 
-    pub fn sample(rng: &mut dyn RngCore, bounds: [Range<f32>; 2]) -> Self {
+    pub fn sample(rng: &mut dyn RngCore, bounds: [Range<f64>; 2]) -> Self {
         Self::from((
             rng.gen_range(bounds[0].start..bounds[0].end),
             rng.gen_range(bounds[1].start..bounds[1].end),
         ))
     }
 
-    pub fn restrict(self, bounds: [Range<f32>; 2]) -> Self {
+    pub fn restrict(self, bounds: [Range<f64>; 2]) -> Self {
         Self::from((
-            self.x().clamp(bounds[0].start, bounds[0].end - f32::EPSILON),
-            self.y().clamp(bounds[1].start, bounds[1].end - f32::EPSILON),
+            self.x().clamp(bounds[0].start, bounds[0].end - f64::EPSILON),
+            self.y().clamp(bounds[1].start, bounds[1].end - f64::EPSILON),
         ))
     }
 
-    pub fn distance(&self, other: &Self) -> f32 {
+    pub fn distance(&self, other: &Self) -> f64 {
         self.squared_distance_to(other).sqrt()
     }
 
@@ -162,23 +198,47 @@ impl PointState {
 
     // // assumes tensor is of shape (1, 2), so a single state for example
     // fn from_tensor(tensor: &Tensor) -> Result<Self> {
-    //     let elements = tensor.to_vec2::<f32>()?;
+    //     let elements = tensor.to_vec2::<f64>()?;
     //     Ok(Self::from((elements[0][0], elements[0][1])))
     // }
 }
-// Convert (f32, f32) into PointState
-impl From<(f32, f32)> for PointState {
-    fn from(value: (f32, f32)) -> Self {
+// Convert (f64, f64) into PointState
+impl From<(f64, f64)> for PointState {
+    fn from(value: (f64, f64)) -> Self {
         Self {
             x: OrderedFloat(value.0),
             y: OrderedFloat(value.1),
         }
     }
 }
-// Convert PointState into (f32, f32)
-impl From<PointState> for (f32, f32) {
+// Convert PointState into (f64, f64)
+impl From<PointState> for (f64, f64) {
     fn from(val: PointState) -> Self {
         (val.x(), val.y())
+    }
+}
+// Convert Vec<f64> into PointState
+impl From<Vec<f64>> for PointState {
+    fn from(value: Vec<f64>) -> Self {
+        Self {
+            x: OrderedFloat(value[0]),
+            y: OrderedFloat(value[1]),
+        }
+    }
+}
+// Convert Tensor into PointState
+impl From<Tensor> for PointState {
+    fn from(value: Tensor) -> Self {
+        let values = value
+            .squeeze(0).unwrap()
+            .to_vec1::<f64>().unwrap();
+        Self::from(values)
+    }
+}
+// Convert PointState into Tensor
+impl From<PointState> for Tensor {
+    fn from(value: PointState) -> Self {
+        Self::new(&[*value.x, *value.y], &candle_core::Device::Cpu).unwrap()
     }
 }
 // Display
@@ -187,10 +247,6 @@ impl Display for PointState {
         write!(f, "S({:.2}, {:.2})", self.x, self.y)
     }
 }
-
-// PointState and PointState addition:
-
-
 // PointState + PointState AND reference types
 impl_op_ex!(+ |p1: &PointState, p2: &PointState| -> PointState {
     PointState {
@@ -198,11 +254,6 @@ impl_op_ex!(+ |p1: &PointState, p2: &PointState| -> PointState {
         y: p1.y + p2.y,
     }
 });
-
-
-// PointState and PointState subtraction:
-
-
 // PointState - PointState AND reference types
 impl_op_ex!(- |p1: &PointState, p2: &PointState| -> PointState {
     PointState {
@@ -210,46 +261,36 @@ impl_op_ex!(- |p1: &PointState, p2: &PointState| -> PointState {
         y: p1.y - p2.y,
     }
 });
-
-
-// PointState and Scalar multiplication:
-
-
-// PointState * f32 AND reference types
-impl_op_ex!(* |p1: &PointState, s: &f32| -> PointState {
+// PointState * f64 AND reference types
+impl_op_ex!(* |p1: &PointState, s: &f64| -> PointState {
     PointState {
         x: p1.x * s,
         y: p1.y * s,
     }
 });
-// f32 * PointState AND reference types
-impl_op_ex!(* |s: &f32, p1: &PointState| -> PointState {
+// f64 * PointState AND reference types
+impl_op_ex!(* |s: &f64, p1: &PointState| -> PointState {
     PointState {
         x: p1.x * s,
         y: p1.y * s,
     }
 });
-// PointState * OrderedFloat(f32) AND reference types
-impl_op_ex!(* |p1: &PointState, s: &OrderedFloat<f32>| -> PointState {
+// PointState * OrderedFloat(f64) AND reference types
+impl_op_ex!(* |p1: &PointState, s: &OrderedFloat<f64>| -> PointState {
     PointState {
         x: p1.x * s,
         y: p1.y * s,
     }
 });
-// OrderedFloat(f32) * PointState AND reference types
-impl_op_ex!(* |s: &OrderedFloat<f32>, p1: &PointState| -> PointState {
+// OrderedFloat(f64) * PointState AND reference types
+impl_op_ex!(* |s: &OrderedFloat<f64>, p1: &PointState| -> PointState {
     PointState {
         x: p1.x * s,
         y: p1.y * s,
     }
 });
-
-
-// PointState and Scalar division:
-
-
-// PointState / f32 AND reference types
-impl_op_ex!(/ |p1: &PointState, s: &f32| -> PointState {
+// PointState / f64 AND reference types
+impl_op_ex!(/ |p1: &PointState, s: &f64| -> PointState {
     if OrderedFloat(*s) == OrderedFloat(0.0) {
         panic!("Division by zero is not allowed");
     }
@@ -258,8 +299,8 @@ impl_op_ex!(/ |p1: &PointState, s: &f32| -> PointState {
         y: p1.y / s,
     }
 });
-// PointState / OrderedFloat(f32) AND reference types
-impl_op_ex!(/ |p1: &PointState, s: &OrderedFloat<f32>| -> PointState {
+// PointState / OrderedFloat(f64) AND reference types
+impl_op_ex!(/ |p1: &PointState, s: &OrderedFloat<f64>| -> PointState {
     if *s == OrderedFloat(0.0) {
         panic!("Division by zero is not allowed");
     }
@@ -305,7 +346,7 @@ impl PointLine {
 
         // if the determinant is zero, we have parallel or collinear lines
         // parallel: have same slope, collinear: on same line
-        if determinant.abs() < f32::EPSILON {
+        if determinant.abs() < f64::EPSILON {
             match (self.contains(other.A), self.contains(other.B)) {
                 (true, true) => {
                     if self.A.squared_distance_to(&other.A) < self.A.squared_distance_to(&other.B) {
@@ -348,7 +389,7 @@ impl PointLine {
     pub fn bounce_from_obstacle(
         position: PointState,
         collision: PointState,
-        bounce_factor: OrderedFloat<f32>,
+        bounce_factor: OrderedFloat<f64>,
     ) -> PointState {
 
         // the vector pointing in the opposite direction to the agents movement
@@ -381,9 +422,9 @@ impl PointLine {
     }
 
 }
-// Convert ((f32, f32), (f32, f32)) into PointLine
-impl From<((f32, f32), (f32, f32))> for PointLine {
-    fn from(value: ((f32, f32), (f32, f32))) -> Self {
+// Convert ((f64, f64), (f64, f64)) into PointLine
+impl From<((f64, f64), (f64, f64))> for PointLine {
+    fn from(value: ((f64, f64), (f64, f64))) -> Self {
         Self {
             A: PointState::from(value.0),
             B: PointState::from(value.1),
@@ -426,7 +467,7 @@ impl PointReward {
         &self,
         state: &PointState,
         goal: &PointState,
-    ) -> f32 {
+    ) -> f64 {
         match self {
             PointReward::Euclidean => -state.distance(goal),
             PointReward::Sparse => if state == goal {1.0} else {0.0},
@@ -440,7 +481,6 @@ impl PointReward {
 //         write!(f, "R({:.2})", self.r())
 //     }
 // }
-
 
 
 
@@ -463,62 +503,45 @@ pub struct PointEnv {
     timelimit: usize,
     reset_count: usize,
 
-    step_radius: f32,
-    bounce_factor: f32,
+    step_radius: f64,
+    bounce_factor: f64,
     reward: PointReward,
 }
 impl PointEnv {
-    #[allow(clippy::too_many_arguments)]
-    #[instrument]
-    pub fn new(
+
+    fn generate_start_goal(
         width: usize,
         height: usize,
-        walls: Option<Vec<PointLine>>,
+        step_radius: f64,
+        walls: &[PointLine],
+        seed: u64,
+    ) -> (PointState, PointState) {
+        let mut rng = StdRng::seed_from_u64(seed);
+
+        loop {
+            let start = PointState::sample(&mut rng, [0.0..(width as f64), 0.0..(height as f64)]);
+            let goal = PointState::sample(&mut rng, [0.0..(width as f64), 0.0..(height as f64)]);
+
+            let wall_contains_state = walls.iter().any(|w| w.contains(start) || w.contains(goal));
+
+            if wall_contains_state || PointEnv::reachable(start, goal, step_radius, walls) {continue;}
+
+            // no wall collisions and the goal is not reachable within a single step? we have a valid pair!
+            break (start, goal);
+        }
+    }
+
+    fn reachable(
         start: PointState,
         goal: PointState,
-        timelimit: usize,
-        step_radius: f32,
-        bounce_factor: f32,
-        reward: PointReward,
-    ) -> Self {
-        // assertion guards for valid parameter values
-        debug_assert!(step_radius > 0.0 && step_radius <= 1.0);
-        debug_assert!(bounce_factor > 0.0 && bounce_factor <= 1.0);
-
-        // add walls for the borders around the map
-        let mut walls = walls.unwrap_or_default();
-        walls.extend([
-            PointLine::from(((0.0, 0.0), (width as f32, 0.0))),
-            PointLine::from(((0.0, 0.0), (0.0, height as f32))),
-
-            PointLine::from(((width as f32, 0.0), (width as f32, height as f32))),
-            PointLine::from(((0.0, height as f32), (width as f32, height as f32))),
-        ]);
-
-        warn!(
-            "New PointEnv with start {start:#?} and goal {goal:#?}",
-            start = start,
-            goal = goal,
-        );
-
-        PointEnv {
-            width,
-            height,
-            walls,
-
-            state: start,
-            start,
-            goal,
-            history: Vec::new(),
-
-            timestep: 0,
-            timelimit,
-            reset_count: 0,
-
-            step_radius: 1.0,
-            bounce_factor: 0.1,
-            reward,
-        }
+        step_radius: f64,
+        walls: &[PointLine],
+    ) -> bool {
+        return
+            // either start and goal are far enough apart, or...
+            !start.in_radius_of(&goal, step_radius)
+            // one of the walls prevent the goal from being reached in one step
+            || walls.iter().any(|w| w.collision_with(&PointLine::from((start, goal))).is_some());
     }
 
     #[instrument(skip(self))]
@@ -577,54 +600,128 @@ impl PointEnv {
         };
 
         // bounds on outgoing state
-        next_state.restrict([0.0..(self.width as f32), 0.0..(self.height as f32)])
+        next_state.restrict([0.0..(self.width as f64), 0.0..(self.height as f64)])
     }
 
-    pub fn random_action(
-        &self,
-        rng: &mut dyn RngCore,
-    ) -> PointAction {
-        PointAction::sample(rng, [0.0..*self.step_radius()])
-    }
 
-    pub fn random_state(
-        &self,
-        rng: &mut dyn RngCore,
-    ) -> PointState {
-        let width = self.width as u32 as f32;
-        let height = self.height as u32 as f32;
-        PointState::sample(rng, [0.0_f32..width, 0.0_f32..height])
-    }
-
-    pub fn reset(
+    pub fn override_start_goal(
         &mut self,
-        _rng: &mut dyn RngCore,
-    ) -> PointState {
+        start: PointState,
+        goal: PointState,
+    ) {
+        self.start = start;
+        self.goal = goal;
+    }
+}
+
+
+impl Environment for PointEnv {
+    type Config = PointEnvConfig;
+    type Action = PointAction;
+    type State = PointState;
+
+    #[instrument]
+    #[allow(clippy::too_many_arguments)]
+    fn new(
+        config: Self::Config,
+    ) -> Result<Box<Self>> {
+        // assertion guards for valid parameter values
+        debug_assert!(config.step_radius > 0.0 && config.step_radius <= 1.0);
+        debug_assert!(config.bounce_factor > 0.0 && config.bounce_factor <= 1.0);
+        debug_assert!(config.bounce_factor <= (config.step_radius / 10.0));
+        // assertion guards for minimum map-size compared to step_radius
+        debug_assert!(
+            config.step_radius < (4.0 * config.width as f64)
+            && config.step_radius < (4.0 * config.height as f64)
+        );
+
+        // add walls for the borders around the map
+        let mut walls = config.walls.unwrap_or_default();
+        walls.extend([
+            PointLine::from(((0.0, 0.0), (config.width as f64, 0.0))),
+            PointLine::from(((0.0, 0.0), (0.0, config.height as f64))),
+
+            PointLine::from(((config.width as f64, 0.0), (config.width as f64, config.height as f64))),
+            PointLine::from(((0.0, config.height as f64), (config.width as f64, config.height as f64))),
+        ]);
+
+        // compute random start and goal
+        let (start, goal) = PointEnv::generate_start_goal(
+            config.width,
+            config.height,
+            config.step_radius,
+            &walls,
+            config.seed,
+        );
+
+        warn!(
+            "New PointEnv ({width}, {height}) with start {start:#?} and goal {goal:#?}",
+            width = config.width,
+            height = config.height,
+            start = start,
+            goal = goal,
+        );
+
+        Ok(Box::new(PointEnv {
+            width: config.width,
+            height: config.height,
+            walls,
+
+            state: start,
+            start,
+            goal,
+            history: Vec::new(),
+
+            timestep: 0,
+            timelimit: config.timelimit,
+            reset_count: 0,
+
+            step_radius: 1.0,
+            bounce_factor: 0.1,
+            reward: config.reward,
+        }))
+    }
+
+    fn reset(
+        &mut self,
+        seed: u64,
+    ) -> Result<Self::State> {
         self.timestep = 0;
         self.reset_count += 1;
+        (self.start, self.goal) = PointEnv::generate_start_goal(
+            self.width,
+            self.height,
+            self.step_radius,
+            &self.walls,
+            seed,
+        );
         self.state = self.start;
         self.history = vec![self.state];
 
-        self.state
+        warn!(
+            "New PointEnv ({width}, {height}) with start {start:#?} and goal {goal:#?}",
+            width = self.width,
+            height = self.height,
+            start = self.start,
+            goal = self.goal,
+        );
+
+        Ok(self.state)
     }
 
-    #[instrument(skip(self, _rng))]
-    pub fn step(
+    #[instrument(skip(self))]
+    fn step(
         &mut self,
         action: PointAction,
-        _rng: &mut dyn RngCore,
-    ) -> Option<(PointState, f32, bool, bool)> {
+    ) -> Result<Step<PointState, PointAction>> {
         self.timestep += 1;
 
         self.state = self.compute_next_state(&action);
         self.history.push(self.state);
 
-        let (new_state, reward, terminated, truncated) = (
-            self.state,
-            self.reward.compute(&self.state, &self.goal),
-            self.state.in_radius_of(&self.goal, self.step_radius),
-            self.timestep == self.timelimit,
-        );
+        let reward = self.reward.compute(&self.state, &self.goal);
+        let terminated = PointEnv::reachable(self.state, self.goal, self.step_radius, &self.walls);
+        let truncated = !terminated && (self.timestep == self.timelimit);
 
         info!(
             concat!(
@@ -638,39 +735,101 @@ impl PointEnv {
             truncated = truncated,
         );
 
-        if terminated || truncated {
-            None
-        } else {
-            Some((new_state, reward, terminated, truncated))
+        Ok(Step {
+            state: self.state,
+            action,
+            reward,
+            terminated,
+            truncated,
+        })
+    }
+
+    /// Returns the number of allowed actions for this environment.
+    fn action_space(&self) -> usize {
+        2
+    }
+
+    /// Returns the shape of the observation tensors.
+    fn observation_space(&self) -> &[usize] {
+        &[2]
+    }
+}
+
+// impl Default for PointEnv {
+//     fn default() -> Self {
+//         let mut env = PointEnv::new(
+//             5,
+//             5,
+//             None,
+//             10,
+//             1.0,
+//             0.1,
+//             PointReward::Euclidean,
+//             42,
+//         );
+//         env.override_start_goal(
+//             PointState::from((1.0, 1.0)),
+//             PointState::from((4.0, 4.0)),
+//         );
+//         env
+//     }
+// }
+
+
+
+
+
+// use crate::gym_env::Environment;
+
+#[derive(Debug)]
+pub struct PointEnvConfig {
+    width: usize,
+    height: usize,
+    walls: Option<Vec<PointLine>>,
+    timelimit: usize,
+    step_radius: f64,
+    bounce_factor: f64,
+    reward: PointReward,
+    seed: u64,
+}
+impl Default for PointEnvConfig {
+    fn default() -> Self {
+        Self {
+            width: 5,
+            height: 5,
+            walls: None,
+            timelimit: 10,
+            step_radius: 1.0,
+            bounce_factor: 0.1,
+            reward: PointReward::Euclidean,
+            seed: StdRng::from_entropy().gen::<u64>(),
         }
     }
 }
-impl Default for PointEnv {
-    fn default() -> Self {
-        PointEnv::new(
-            5,
-            5,
-            None,
-            PointState::from((1.0, 1.0)),
-            PointState::from((4.0, 4.0)),
-            10,
-            1.0,
-            0.1,
-            PointReward::Euclidean,
-        )
+impl PointEnvConfig {
+    #[allow(clippy::too_many_arguments)]
+    pub fn new(
+        width: usize,
+        height: usize,
+        walls: Option<Vec<PointLine>>,
+        timelimit: usize,
+        step_radius: f64,
+        bounce_factor: f64,
+        reward: PointReward,
+        seed: u64,
+    ) -> Self {
+        Self {
+            width,
+            height,
+            walls,
+            timelimit,
+            step_radius,
+            bounce_factor,
+            reward,
+            seed,
+        }
     }
 }
-
-
-
-
-
-
-
-
-
-
-
 
 
 
