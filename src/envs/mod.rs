@@ -8,7 +8,6 @@ pub mod point_env;
 pub mod pendulum;
 
 
-
 #[derive(Debug)]
 pub struct Step<S, A> {
     pub state: S,
@@ -19,13 +18,15 @@ pub struct Step<S, A> {
 }
 pub trait Environment {
     type Config;
-    type Action: Debug + Clone + From<Tensor> + Into<Tensor> + From<Vec<f64>>;
-    type State: Debug + Clone + From<Tensor> + Into<Tensor>;
+    type Action: Debug + Clone + From<Tensor> + Into<Tensor> + From<Vec<f64>> + Into<Vec<f64>>;
+    type State: Debug + Clone + From<Tensor> + Into<Tensor> + From<Vec<f64>> + Into<Vec<f64>>;
 
     fn new(config: Self::Config) -> Result<Box<Self>>;
     fn reset(&mut self, seed: u64) -> Result<Self::State>;
     fn step(&mut self, action: Self::Action) -> Result<Step<Self::State, Self::Action>>;
     fn action_space(&self) -> usize;
     fn observation_space(&self) -> &[usize];
+    fn current_state(&self) -> Self::State;
+    fn current_goal(&self) -> Self::State;
 }
 

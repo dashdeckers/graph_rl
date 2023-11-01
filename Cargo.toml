@@ -19,24 +19,16 @@ categories = ["research"]
 
 # Developer candy
 anyhow = "1.0.70"
-itertools = "0.11.0"
 auto_ops = "0.3.0"
 derive-getters = "0.3.0"
 ordered-float = { version = "4.1.1", features = ["serde"] }
-
-# Serialization
-serde = { version = "1.0.164", features = ["std", "derive"] }
 
 # GUI
 egui = "0.22.0"
 eframe = "0.22.0"
 
-# CLI
-clap = { version = "4.2.4", features = ["derive"] }
-
 # Logging
 tracing = "0.1.37"
-tracing-chrome = "0.7.1"
 tracing-subscriber = "0.3.17"
 
 # Random
@@ -47,12 +39,24 @@ rand = { version = "0.8.5", features = ["std"] }
 petgraph = "0.6.3"
 
 # Deep Learning
-candle-core = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
-candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
+candle-core = { git = "https://github.com/huggingface/candle.git" }
+candle-nn = { git = "https://github.com/huggingface/candle.git" }
 intel-mkl-src = { version = "0.8.1", features = ["mkl-static-lp64-iomp"] }
 
-# Visualization
-plotly = "0.8.4"
-
-# Python
+# Python Interop
 pyo3 = { version = "0.20.0", features = ["auto-initialize"] }
+
+# CLI
+clap = { version = "4.2.4", features = ["derive"] }
+
+
+
+# Serialization
+#serde = { version = "1.0.164", features = ["std", "derive"] }
+
+
+# Visualization
+#plotly = "0.8.4"
+
+#itertools = "0.11.0"
+#tracing-chrome = "0.7.1"

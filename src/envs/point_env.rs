@@ -68,16 +68,6 @@ impl PointAction {
         let p2 = PointState::from(Into::<(f64, f64)>::into(*other));
         p1.distance(&p2)
     }
-
-    // pub fn to_tensor(self, device: &Device) -> Result<Tensor> {
-    //     Tensor::new(&[[self.dx(), self.dy()]], device)
-    // }
-
-    // // assumes tensor is of shape (1, 2), so a single action for example
-    // pub fn from_tensor(tensor: &Tensor) -> Result<Self> {
-    //     let elements = tensor.to_vec2::<f64>()?;
-    //     Ok(Self::from((elements[0][0], elements[0][1])))
-    // }
 }
 // Convert (f64, f64) into PointAction
 impl From<(f64, f64)> for PointAction {
@@ -88,19 +78,26 @@ impl From<(f64, f64)> for PointAction {
         }
     }
 }
+// Convert PointAction into (f64, f64)
+impl From<PointAction> for (f64, f64) {
+    fn from(val: PointAction) -> Self {
+        (val.dx(), val.dy())
+    }
+}
 // Convert Vec<f64> into PointAction
 impl From<Vec<f64>> for PointAction {
     fn from(value: Vec<f64>) -> Self {
+        assert!(value.len() == 2);
         Self {
             dx: OrderedFloat(value[0]),
             dy: OrderedFloat(value[1]),
         }
     }
 }
-// Convert PointAction into (f64, f64)
-impl From<PointAction> for (f64, f64) {
-    fn from(val: PointAction) -> Self {
-        (val.dx(), val.dy())
+// Convert Vec<f64> into PointAction
+impl From<PointAction> for Vec<f64> {
+    fn from(value: PointAction) -> Self {
+        vec![value.dx(), value.dy()]
     }
 }
 // Convert Tensor into PointAction
@@ -191,16 +188,6 @@ impl PointState {
     pub fn distance(&self, other: &Self) -> f64 {
         self.squared_distance_to(other).sqrt()
     }
-
-    // fn to_tensor(self, device: &Device) -> Result<Tensor> {
-    //     Tensor::new(&[[self.x(), self.y()]], device)
-    // }
-
-    // // assumes tensor is of shape (1, 2), so a single state for example
-    // fn from_tensor(tensor: &Tensor) -> Result<Self> {
-    //     let elements = tensor.to_vec2::<f64>()?;
-    //     Ok(Self::from((elements[0][0], elements[0][1])))
-    // }
 }
 // Convert (f64, f64) into PointState
 impl From<(f64, f64)> for PointState {
@@ -220,10 +207,17 @@ impl From<PointState> for (f64, f64) {
 // Convert Vec<f64> into PointState
 impl From<Vec<f64>> for PointState {
     fn from(value: Vec<f64>) -> Self {
+        assert!(value.len() == 2);
         Self {
             x: OrderedFloat(value[0]),
             y: OrderedFloat(value[1]),
         }
+    }
+}
+// Convert Vec<f64> into PointState
+impl From<PointState> for Vec<f64> {
+    fn from(value: PointState) -> Self {
+        vec![value.x(), value.y()]
     }
 }
 // Convert Tensor into PointState
@@ -524,10 +518,10 @@ impl PointEnv {
 
             let wall_contains_state = walls.iter().any(|w| w.contains(start) || w.contains(goal));
 
-            if wall_contains_state || PointEnv::reachable(start, goal, step_radius, walls) {continue;}
-
             // no wall collisions and the goal is not reachable within a single step? we have a valid pair!
-            break (start, goal);
+            if !wall_contains_state && !PointEnv::reachable(start, goal, step_radius, walls) {
+                break (start, goal);
+            }
         }
     }
 
@@ -537,11 +531,10 @@ impl PointEnv {
         step_radius: f64,
         walls: &[PointLine],
     ) -> bool {
+        // goal is reachable from start if they are within radius of each other and no wall is in the way
         return
-            // either start and goal are far enough apart, or...
-            !start.in_radius_of(&goal, step_radius)
-            // one of the walls prevent the goal from being reached in one step
-            || walls.iter().any(|w| w.collision_with(&PointLine::from((start, goal))).is_some());
+            start.in_radius_of(&goal, step_radius)
+            && !walls.iter().any(|w| w.collision_with(&PointLine::from((start, goal))).is_some());
     }
 
     #[instrument(skip(self))]
@@ -753,6 +746,14 @@ impl Environment for PointEnv {
     fn observation_space(&self) -> &[usize] {
         &[2]
     }
+
+    fn current_state(&self) -> Self::State {
+        self.state
+    }
+
+    fn current_goal(&self) -> Self::State {
+        self.goal
+    }
 }
 
 // impl Default for PointEnv {
@@ -798,7 +799,7 @@ impl Default for PointEnvConfig {
             width: 5,
             height: 5,
             walls: None,
-            timelimit: 10,
+            timelimit: 30,
             step_radius: 1.0,
             bounce_factor: 0.1,
             reward: PointReward::Euclidean,
