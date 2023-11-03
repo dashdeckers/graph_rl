@@ -46,7 +46,10 @@ pip install gymnasium
 
 
 
-
+# Misc
 
 # Watch GPU
 watch --differences=permanent -n 0.3 nvidia-smi
+
+# Check compute_cap
+nvidia-smi --query-gpu=compute_cap --format=csv,noheader
