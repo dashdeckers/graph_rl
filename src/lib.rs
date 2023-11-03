@@ -115,20 +115,23 @@ where
 
     agent.train = train;
     for episode in 0..config.max_episodes {
-        let mut observation = env.reset(rng.gen::<u64>())?;
         let mut total_reward = 0.0;
+        env.reset(rng.gen::<u64>())?;
 
         for _ in 0..config.episode_length {
-            let action = agent.actions(&<O>::to_tensor(observation.clone(), device)?)?;
+            let observation = env.current_observation();
+            let state = &<O>::to_tensor(observation, device)?;
+
+            let action = agent.actions(state)?;
             let step = env.step(<A>::from_vec(action.clone()))?;
             total_reward += step.reward;
 
             if train {
                 agent.remember(
-                    &<O>::to_tensor(observation.clone(), device)?,
+                    state,
                     &Tensor::new(action, device)?,
                     &Tensor::new(vec![step.reward], device)?,
-                    &<O>::to_tensor(step.observation.clone(), device)?,
+                    &<O>::to_tensor(step.observation, device)?,
                     step.terminated,
                     step.truncated,
                 );
@@ -137,7 +140,6 @@ where
             if step.terminated || step.truncated {
                 break;
             }
-            observation = step.observation;
         }
 
         println!("episode {episode} with total reward of {total_reward}");
