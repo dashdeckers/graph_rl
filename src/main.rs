@@ -47,19 +47,24 @@ struct Args {
 }
 
 
-// >- Make SGM work on PointEnv!
+
+
+// >- Render / Visualize SGM graphs
 //    `-> maybe get VNC going on server
+//    `-> egui graphs: https://github.com/blitzarx1/egui_graphs
+//    `-> clickable nodes --> show / render that observation!
+//    `-> plot the episodic returns as well in a bottom-plot
+
+
+
 
 // >- Add AntMaze / PointMaze as Goal-Aware Environments
 //    `-> these return a dict with 3 keys of Vec<64> instead of just a Vec<f64>
+//    `-> also implement PlottableEnvironment for Pendulum!
 
 // >- Add Cuda as a Device and get that working on the server
 // >- Put the Candle "cuda" feature behind a cfg() flag
 //    `-> https://doc.rust-lang.org/cargo/reference/features.html
-
-// >- Find a way to render single observations so we can debug / viz SGM graphs
-//    `-> egui graphs: https://github.com/blitzarx1/egui_graphs
-//    `-> clickable nodes --> show the observation!
 
 
 fn main() -> Result<()> {
