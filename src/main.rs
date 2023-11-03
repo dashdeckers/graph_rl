@@ -5,47 +5,25 @@ use anyhow::Result;
 use tracing::Level;
 use clap::{Parser, ValueEnum};
 
-#[allow(unused_imports)]
 use graph_rl::{
     ddpg::DDPG,
     ou_noise::OuNoise,
     envs::{
-        pendulum::PendulumEnv,
-        point_env::PointEnv,
+        PendulumEnv,
+        PointEnv,
         Environment,
     },
-    logging::setup_logging,
-    gui::GUI,
+    util::setup_logging,
     TrainingConfig,
     run,
+    // gui::GUI,
 };
-
-// A2C?
-
-
-// >- Add Cuda as a Device and get that working on the server
-// >- Put the Candle "cuda" feature behind a cfg() flag
-//    `-> https://doc.rust-lang.org/cargo/reference/features.html
-
-// >- Change STATE to OBSERVATION where appropriate
-//    `-> obs is what the env returns, state is a more complex thing
-//    `-> most things are observations that we deal with to be honest
-//    `-> that means we should rename all the ..State structs to ..Obs!
-
-// >- Integrate SGM (each env-type gets its own State struct!?)
-// >- Find a way to render single observations so we can debug / viz SGM graphs
-//    `-> egui graphs: https://github.com/blitzarx1/egui_graphs
-//    `-> clickable nodes --> show the observation!
-
-// >- Add Gym wrappers for the goal-aware environments!
-//    `-> these return a dict with 3 keys of Vec<64> instead of just a Vec<f64>
-//    `-> then we can add the Ant-maze and the Point-maze environments!
 
 
 #[derive(ValueEnum, Debug, Clone)]
 enum Env {
     Pendulum,
-    PointEnv,
+    Pointenv,
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -68,6 +46,22 @@ struct Args {
     gui: bool,
 }
 
+
+// >- Make SGM work on PointEnv!
+//    `-> maybe get VNC going on server
+
+// >- Add AntMaze / PointMaze as Goal-Aware Environments
+//    `-> these return a dict with 3 keys of Vec<64> instead of just a Vec<f64>
+
+// >- Add Cuda as a Device and get that working on the server
+// >- Put the Candle "cuda" feature behind a cfg() flag
+//    `-> https://doc.rust-lang.org/cargo/reference/features.html
+
+// >- Find a way to render single observations so we can debug / viz SGM graphs
+//    `-> egui graphs: https://github.com/blitzarx1/egui_graphs
+//    `-> clickable nodes --> show the observation!
+
+
 fn main() -> Result<()> {
     let args = Args::parse();
     if args.logging {
@@ -85,7 +79,7 @@ fn main() -> Result<()> {
             let config = TrainingConfig::pendulum();
 
             let size_state = env.observation_space().iter().product::<usize>();
-            let size_action = env.action_space();
+            let size_action = env.action_space().iter().product::<usize>();
 
             let mut agent = DDPG::new(
                 &device,
@@ -112,17 +106,18 @@ fn main() -> Result<()> {
                 )?;
             }
         },
-        Env::PointEnv => {
+
+        Env::Pointenv => {
             let mut env = *PointEnv::new(Default::default())?;
             let timelimit = *env.timelimit();
             let config = TrainingConfig::pointenv(timelimit);
 
             let size_state = env.observation_space().iter().product::<usize>();
-            let size_action = env.action_space();
+            let size_action = env.action_space().iter().product::<usize>();
 
             let mut agent = DDPG::new(
                 &device,
-                2 * size_state,
+                size_state,
                 size_action,
                 true,
                 config.actor_learning_rate,
@@ -134,18 +129,19 @@ fn main() -> Result<()> {
             )?;
 
             if args.gui {
-                GUI::open(env, agent, config, device);
+                panic!("Not implemented yet!")
+                // GUI::open(env, agent, config, device);
             } else {
                 run(
                     &mut env,
                     &mut agent,
-                    config.clone(),
+                    config,
                     true,
                     &device,
                 )?;
             }
         },
-    };
+    }
     Ok(())
 }
 

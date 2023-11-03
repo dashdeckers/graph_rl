@@ -1,16 +1,48 @@
-use std::fmt::Debug;
-use candle_core::Tensor;
+mod gym_wrappers;
+mod pointenv;
+mod gym_pendulum;
+
+pub use crate::envs::{
+    gym_pendulum::{
+        PendulumEnv,
+        PendulumConfig,
+    },
+    pointenv::{
+        config::PointEnvConfig,
+        point_env::PointEnv,
+    },
+};
+
+use candle_core::{Tensor, Device};
 use anyhow::Result;
 
+pub trait TensorConvertible: VectorConvertible {
+    fn from_tensor(value: Tensor) -> Self;
+    fn to_tensor(value: Self, device: &Device) -> candle_core::Result<Tensor>;
+}
 
-mod gym_wrappers;
-pub mod point_env;
-pub mod pendulum;
+pub trait VectorConvertible {
+    fn from_vec(value: Vec<f64>) -> Self;
+    fn to_vec(value: Self) -> Vec<f64>;
+}
+
+pub trait DistanceMeasure {
+    fn distance(s1: &Self, s2: &Self) -> f64;
+}
+
+// if cfg(feature=gui)
+// use egui::widgets::plot::PlotUi;
+// pub trait PlottableEnv {
+//     fn plot(
+//         &self,
+//         plot_ui: &mut PlotUi,
+//     );
+// }
 
 
 #[derive(Debug)]
-pub struct Step<S, A> {
-    pub state: S,
+pub struct Step<O, A> {
+    pub observation: O,
     pub action: A,
     pub reward: f64,
     pub terminated: bool,
@@ -18,15 +50,14 @@ pub struct Step<S, A> {
 }
 pub trait Environment {
     type Config;
-    type Action: Debug + Clone + From<Tensor> + Into<Tensor> + From<Vec<f64>> + Into<Vec<f64>>;
-    type State: Debug + Clone + From<Tensor> + Into<Tensor> + From<Vec<f64>> + Into<Vec<f64>>;
+    type Action;
+    type Observation;
 
     fn new(config: Self::Config) -> Result<Box<Self>>;
-    fn reset(&mut self, seed: u64) -> Result<Self::State>;
-    fn step(&mut self, action: Self::Action) -> Result<Step<Self::State, Self::Action>>;
-    fn action_space(&self) -> usize;
-    fn observation_space(&self) -> &[usize];
-    fn current_state(&self) -> Self::State;
-    fn current_goal(&self) -> Self::State;
+    fn reset(&mut self, seed: u64) -> Result<Self::Observation>;
+    fn step(&mut self, action: Self::Action) -> Result<Step<Self::Observation, Self::Action>>;
+    fn action_space(&self) -> Vec<usize>;
+    fn observation_space(&self) -> Vec<usize>;
+    fn current_observation(&self) -> Self::Observation;
 }
 

@@ -2,13 +2,13 @@ use std::{thread, time};
 
 use crate::{
     ddpg::DDPG,
-    envs::point_env::{
-        PointEnv,
-        PointState,
+    envs::{
+        PlottableEnv,
+        Environment,
     },
+    TrainingConfig,
     run,
     tick,
-    TrainingConfig,
 };
 use candle_core::Device;
 use ordered_float::OrderedFloat;
@@ -23,7 +23,7 @@ use egui::{Ui, Slider, Color32};
 
 
 pub struct GUI<'a> {
-    env: PointEnv,
+    env: dyn Environment + PlottableEnv,
     agent: DDPG<'a>,
     config: TrainingConfig,
     device: Device,
@@ -88,7 +88,7 @@ impl GUI<'static> {
             .radius(2.0)
             .color(Color32::WHITE)
         );
-        let goal = self.env.goal();
+        let goal = self.env.desired_goal();
         plot_ui.points(
             Points::new(
                 vec![
@@ -149,19 +149,19 @@ impl GUI<'static> {
         ui.add(Slider::new(&mut self.config.tau, 0.001..=1.0).logarithmic(true).text("Tau"));
         ui.add(Slider::new(&mut self.config.replay_buffer_capacity, 100..=100_000).logarithmic(true).text("Buffer size"));
         ui.add(Slider::new(&mut self.config.training_batch_size, 1..=200).text("Batch size"));
-        ui.add(Slider::new(&mut self.config.training_iterations, 1..=200).text("Training Iterations"));
+        ui.add(Slider::new(&mut self.config.training_iterations, 1..=200).text("Training iters"));
 
         ui.separator();
         ui.label("SGM Options");
-        // ui.add(Slider::new(&mut alg.sgm_freq, 1..=11).text("sgm_freq").step_by(1.0));
-        // ui.add(Slider::new(&mut alg.max_dist.0, 0.0..=1.0).text("max_dist").step_by(0.01));
-        // ui.add(Slider::new(&mut alg.tau.0, 0.0..=1.0).text("tau").step_by(0.01));
+        ui.add(Slider::new(&mut self.config.sgm_freq, 1..=20).text("Rebuilding freq").step_by(1.0));
+        ui.add(Slider::new(&mut self.config.sgm_maxdist, 0.0..=1.0).text("Max distance").step_by(0.01));
+        ui.add(Slider::new(&mut self.config.sgm_tau, 0.0..=1.0).text("Tau").step_by(0.01));
 
         ui.separator();
         ui.label("Run Options");
         ui.add(Slider::new(&mut self.config.max_episodes, 1..=101).text("n_episodes"));
         if ui.add(Button::new("Run Episodes")).clicked() {
-            run(
+            run_goal_conditioned_env(
                 &mut self.env,
                 &mut self.agent,
                 self.config.clone(),
@@ -178,7 +178,7 @@ impl GUI<'static> {
             };
         });
         if self.play {
-            tick(
+            tick_goal_conditioned_env(
                 &mut self.env,
                 &mut self.agent,
                 self.config.clone(),

@@ -1,4 +1,4 @@
-pub mod logging;
+pub mod util;
 
 pub mod envs;
 
@@ -7,14 +7,22 @@ pub mod sgm;
 pub mod ou_noise;
 pub mod ddpg;
 
-pub mod gui;
+// pub mod gui;
 
 
-use envs::Environment;
-use ddpg::DDPG;
+
+
 use anyhow::Result;
-use rand::Rng;
-use candle_core::{Tensor, Device};
+use rand::{Rng, thread_rng};
+use candle_core::{Device, Tensor};
+use crate::{
+    ddpg::DDPG,
+    envs::{
+        Environment,
+        VectorConvertible,
+        TensorConvertible,
+    },
+};
 
 
 #[derive(Clone)]
@@ -40,11 +48,10 @@ pub struct TrainingConfig {
     pub ou_mu: f64,
     pub ou_theta: f64,
     pub ou_sigma: f64,
-    // Any postprocessing applied to the actions before they are passed to the environment
-    pub postprocess_action: fn(&[f64]) -> Vec<f64>,
-    // Any preprocessing applied to the state or goal before they are passed to the agent.
-    // This function is used to combine the state and goal in goal conditioned learning.
-    pub preprocess_state_goal: fn(&[f64], &[f64]) -> Vec<f64>
+    // Sparse Graphical Memory parameters
+    pub sgm_freq: usize,
+    pub sgm_maxdist: f64,
+    pub sgm_tau: f64,
 }
 impl TrainingConfig {
     pub fn pendulum() -> Self {
@@ -55,17 +62,15 @@ impl TrainingConfig {
             tau: 0.005,
             replay_buffer_capacity: 100_000,
             training_batch_size: 100,
-            max_episodes: 20,
+            max_episodes: 100,
             episode_length: 200,
             training_iterations: 200,
             ou_mu: 0.0,
             ou_theta: 0.15,
             ou_sigma: 0.1,
-            postprocess_action: |actions: &[f64]| actions
-                .iter()
-                .map(|a| (a * 2.0).clamp(-2.0, 2.0))
-                .collect(),
-            preprocess_state_goal: |state: &[f64], _: &[f64]| state.to_vec(),
+            sgm_freq: 10,
+            sgm_maxdist: 1.0,
+            sgm_tau: 0.4,
         }
     }
 
@@ -76,84 +81,54 @@ impl TrainingConfig {
             gamma: 0.99,
             tau: 0.005,
             replay_buffer_capacity: 1000,
-            training_batch_size: 64,
+            training_batch_size: 100,
             max_episodes: 50,
             episode_length: timelimit,
             training_iterations: 200,
             ou_mu: 0.0,
             ou_theta: 0.15,
             ou_sigma: 0.1,
-            postprocess_action: |actions: &[f64]| actions.to_vec(),
-            preprocess_state_goal: |state: &[f64], goal: &[f64]| [state, goal].concat(),
-        }
-    }
-
-    pub fn gui(
-        timelimit: usize,
-        n_episodes: usize,
-    ) -> Self {
-        Self {
-            actor_learning_rate: 1e-4,
-            critic_learning_rate: 1e-3,
-            gamma: 0.99,
-            tau: 0.005,
-            replay_buffer_capacity: 1000,
-            training_batch_size: 64,
-            max_episodes: n_episodes,
-            episode_length: timelimit,
-            training_iterations: 0,
-            ou_mu: 0.0,
-            ou_theta: 0.15,
-            ou_sigma: 0.1,
-            postprocess_action: |actions: &[f64]| actions.to_vec(),
-            preprocess_state_goal: |state: &[f64], goal: &[f64]| [state, goal].concat(),
+            sgm_freq: 5,
+            sgm_maxdist: 1.0,
+            sgm_tau: 0.4,
         }
     }
 }
 
 
-#[allow(clippy::too_many_arguments)]
-pub fn run<E: Environment>(
+pub fn run<E, O, A>(
     env: &mut E,
     agent: &mut DDPG,
     config: TrainingConfig,
     train: bool,
     device: &Device,
-) -> Result<()> {
-
-    println!("action space: {}", env.action_space());
+) -> Result<()>
+where
+    E: Environment<Action = A, Observation = O>,
+    O: Clone + TensorConvertible,
+    A: Clone + VectorConvertible,
+{
+    println!("action space: {:?}", env.action_space());
     println!("observation space: {:?}", env.observation_space());
 
     let mut rng = rand::thread_rng();
 
     agent.train = train;
     for episode in 0..config.max_episodes {
-        // let mut state = env.reset(episode as u64)?;
-        let mut state = env.reset(rng.gen::<u64>())?;
-
+        let mut observation = env.reset(rng.gen::<u64>())?;
         let mut total_reward = 0.0;
+
         for _ in 0..config.episode_length {
-            let obs: Vec<f64> = state.clone().into();
-            let goal: Vec<f64> = env.current_goal().into();
-
-            let action = agent.actions(&Tensor::new((config.preprocess_state_goal)(&obs, &goal), device)?)?;
-            let action = (config.postprocess_action)(&action);
-
-            let step = env.step(action.clone().into())?;
-            let next_obs: Vec<f64> = step.state.clone().into();
-
+            let action = agent.actions(&<O>::to_tensor(observation.clone(), device)?)?;
+            let step = env.step(<A>::from_vec(action.clone()))?;
             total_reward += step.reward;
-            if train {
-                let state = &Tensor::new((config.preprocess_state_goal)(&obs, &goal), device)?;
-                let action = &Tensor::new(action, device)?;
-                let reward = &Tensor::new(vec![step.reward], device)?;
-                let next_state = &Tensor::new((config.preprocess_state_goal)(&next_obs, &goal), device)?;
 
+            if train {
                 agent.remember(
-                    state,
-                    action,
-                    reward,
-                    next_state,
+                    &<O>::to_tensor(observation.clone(), device)?,
+                    &Tensor::new(action, device)?,
+                    &Tensor::new(vec![step.reward], device)?,
+                    &<O>::to_tensor(step.observation.clone(), device)?,
                     step.terminated,
                     step.truncated,
                 );
@@ -162,7 +137,7 @@ pub fn run<E: Environment>(
             if step.terminated || step.truncated {
                 break;
             }
-            state = step.state;
+            observation = step.observation;
         }
 
         println!("episode {episode} with total reward of {total_reward}");
@@ -178,27 +153,20 @@ pub fn run<E: Environment>(
 }
 
 
-pub fn tick<E: Environment>(
+pub fn tick<E, O, A>(
     env: &mut E,
     agent: &mut DDPG,
-    config: TrainingConfig,
-    train: bool,
     device: &Device,
-) -> Result<()> {
-
-    agent.train = train;
-
-    let obs: Vec<f64> = env.current_state().into();
-    let goal: Vec<f64> = env.current_goal().into();
-
-    let action = agent.actions(&Tensor::new((config.preprocess_state_goal)(&obs, &goal), device)?)?;
-    let action = (config.postprocess_action)(&action);
-
-    let step = env.step(action.clone().into())?;
-
+) -> Result<()>
+where
+    E: Environment<Action = A, Observation = O>,
+    O: Clone + TensorConvertible,
+    A: Clone + VectorConvertible,
+{
+    let action = agent.actions(&<O>::to_tensor(env.current_observation().clone(), device)?)?;
+    let step = env.step(<A>::from_vec(action.clone()))?;
     if step.terminated || step.truncated {
-        env.reset(rand::thread_rng().gen::<u64>())?;
+        env.reset(thread_rng().gen::<u64>())?;
     }
-
     Ok(())
 }
