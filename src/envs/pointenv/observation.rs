@@ -28,22 +28,24 @@ impl VectorConvertible for PointObs {
     fn from_vec(value: Vec<f64>) -> Self {
         let state = PointState::from((value[0], value[1]));
         let goal = PointState::from((value[2], value[3]));
-        debug_assert!(value[4..].len() % 4 == 0);
-        let obs: Vec<PointLine> = value[4..]
-            .chunks(4)
-            .map(|c| {
-                PointLine::from((
-                    PointState::from((c[0], c[1])),
-                    PointState::from((c[2], c[3])),
-                ))
-            })
-            .collect();
+        // debug_assert!(value[4..].len() % 4 == 0);
+        // let obs: Vec<PointLine> = value[4..]
+        //     .chunks(4)
+        //     .map(|c| {
+        //         PointLine::from((
+        //             PointState::from((c[0], c[1])),
+        //             PointState::from((c[2], c[3])),
+        //         ))
+        //     })
+        //     .collect();
+        let obs = Vec::new();
         Self { state, goal, obs }
     }
     fn to_vec(value: Self) -> Vec<f64> {
-        let mut v = vec![value.state.x(), value.state.y(), value.goal.x(), value.goal.y()];
-        v.extend(value.obs.iter().flat_map(|l| vec![l.A.x(), l.A.y(), l.B.x(), l.B.y()]));
-        v
+        // let mut v = vec![value.state.x(), value.state.y(), value.goal.x(), value.goal.y()];
+        // v.extend(value.obs.iter().flat_map(|l| vec![l.A.x(), l.A.y(), l.B.x(), l.B.y()]));
+        // v
+        vec![value.state.x(), value.state.y(), value.goal.x(), value.goal.y()]
     }
 }
 

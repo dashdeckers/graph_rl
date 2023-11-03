@@ -271,7 +271,7 @@ impl Environment for PointEnv {
     }
 
     fn observation_space(&self) -> Vec<usize> {
-        vec![2 + 2 + 4 * self.walls.len()]
+        vec![2 + 2]// + 4 * self.walls.len()]
     }
 
     fn current_observation(&self) -> Self::Observation {
