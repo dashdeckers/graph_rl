@@ -7,9 +7,7 @@ pub mod sgm;
 pub mod ou_noise;
 pub mod ddpg;
 
-// pub mod gui;
-
-
+pub mod gui;
 
 
 use anyhow::Result;

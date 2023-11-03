@@ -3,36 +3,46 @@ use std::{thread, time};
 use crate::{
     ddpg::DDPG,
     envs::{
-        PlottableEnv,
+        PlottableEnvironment,
         Environment,
+        VectorConvertible,
+        TensorConvertible,
     },
     TrainingConfig,
     run,
     tick,
 };
 use candle_core::Device;
-use ordered_float::OrderedFloat;
-use petgraph::Graph;
-use petgraph::visit::EdgeRef;
+// use petgraph::Graph;
+// use petgraph::visit::EdgeRef;
 
 use eframe::egui;
-use egui::widgets::plot::PlotUi;
 use egui::widgets::Button;
-use egui::plot::{Plot, Line, Points, PlotBounds};
-use egui::{Ui, Slider, Color32};
+use egui::plot::Plot;
+use egui::{Ui, Slider};
 
 
-pub struct GUI<'a> {
-    env: dyn Environment + PlottableEnv,
+pub struct GUI<'a, E, O, A>
+where
+    E: Environment<Action = A, Observation = O> + PlottableEnvironment + 'static,
+    O: Clone + TensorConvertible + 'static,
+    A: Clone + VectorConvertible + 'static,
+{
+    env: E,
     agent: DDPG<'a>,
     config: TrainingConfig,
     device: Device,
 
     play: bool,
 }
-impl GUI<'static> {
+impl<E, O, A> GUI<'static, E, O, A>
+where
+    E: Environment<Action = A, Observation = O> + PlottableEnvironment + 'static,
+    O: Clone + TensorConvertible + 'static,
+    A: Clone + VectorConvertible + 'static,
+{
     pub fn open(
-        env: PointEnv,
+        env: E,
         agent: DDPG<'static>,
         config: TrainingConfig,
         device: Device,
@@ -51,89 +61,26 @@ impl GUI<'static> {
         ).unwrap();
     }
 
-    fn render_pointenv(
-        &self,
-        plot_ui: &mut PlotUi,
-        plot_path: bool,
-        plot_graph: bool,
-    ) {
-        // Setup plot bounds
-        plot_ui.set_plot_bounds(
-            PlotBounds::from_min_max(
-                [0.0, 0.0],
-                [*self.env.width() as f64, *self.env.height() as f64],
-            )
-        );
-        // Plot walls
-        for wall in self.env.walls().iter() {
-            plot_ui.line(
-                Line::new(
-                    vec![
-                        [wall.A.x(), wall.A.y()],
-                        [wall.B.x(), wall.B.y()],
-                    ]
-                )
-                .width(2.0)
-                .color(Color32::WHITE)
-            )
-        }
-        // Plot start and goal
-        let start = self.env.start();
-        plot_ui.points(
-            Points::new(
-                vec![
-                    [start.x(), start.y()],
-                ]
-            )
-            .radius(2.0)
-            .color(Color32::WHITE)
-        );
-        let goal = self.env.desired_goal();
-        plot_ui.points(
-            Points::new(
-                vec![
-                    [goal.x(), goal.y()],
-                ]
-            )
-            .radius(2.0)
-            .color(Color32::GREEN)
-        );
-        // Plot path
-        if plot_path {
-            plot_ui.line(
-                Line::new(
-                    self.env.history()
-                    .iter()
-                    .map(|p| {
-                        [p.x(), p.y()]
-                    })
-                    .collect::<Vec<_>>()
-                )
-            )
-        }
-    }
+    // fn plot_graph(
+    //     graph: &Graph<PointState, OrderedFloat<f32>>,
+    //     plot_ui: &mut PlotUi,
+    // ) {
+    //     for edge in graph.edge_references() {
+    //         let s1 = graph[edge.source()];
+    //         let s2 = graph[edge.target()];
 
-    #[allow(dead_code)]
-    fn plot_graph(
-        graph: &Graph<PointState, OrderedFloat<f32>>,
-        plot_ui: &mut PlotUi,
-    ) {
-        for edge in graph.edge_references() {
-            let s1 = graph[edge.source()];
-            let s2 = graph[edge.target()];
-
-            plot_ui.line(
-                Line::new(
-                    vec![
-                        [s1.x(), s1.y()],
-                        [s2.x(), s2.y()],
-                    ]
-                )
-                .width(1.0)
-                .color(Color32::LIGHT_BLUE)
-            )
-        }
-    }
+    //         plot_ui.line(
+    //             Line::new(
+    //                 vec![
+    //                     [s1.x(), s1.y()],
+    //                     [s2.x(), s2.y()],
+    //                 ]
+    //             )
+    //             .width(1.0)
+    //             .color(Color32::LIGHT_BLUE)
+    //         )
+    //     }
+    // }
 
     fn render_options(
         &mut self,
@@ -161,7 +108,7 @@ impl GUI<'static> {
         ui.label("Run Options");
         ui.add(Slider::new(&mut self.config.max_episodes, 1..=101).text("n_episodes"));
         if ui.add(Button::new("Run Episodes")).clicked() {
-            run_goal_conditioned_env(
+            run(
                 &mut self.env,
                 &mut self.agent,
                 self.config.clone(),
@@ -178,18 +125,21 @@ impl GUI<'static> {
             };
         });
         if self.play {
-            tick_goal_conditioned_env(
+            tick(
                 &mut self.env,
                 &mut self.agent,
-                self.config.clone(),
-                false,
                 &self.device,
             ).unwrap();
         }
     }
 }
 
-impl eframe::App for GUI<'static> {
+impl<E, O, A> eframe::App for GUI<'static, E, O, A>
+where
+    E: Environment<Action = A, Observation = O> + PlottableEnvironment + 'static,
+    O: Clone + TensorConvertible + 'static,
+    A: Clone + VectorConvertible + 'static,
+{
     fn update(
         &mut self,
         ctx: &egui::Context,
@@ -201,7 +151,7 @@ impl eframe::App for GUI<'static> {
         });
         egui::CentralPanel::default().show(ctx, |ui| {
             Plot::new("main_panel").show(ui, |plot_ui| { //.view_aspect(1.0)
-                self.render_pointenv(plot_ui, true, true);
+                self.env.plot(plot_ui);
             });
         });
 

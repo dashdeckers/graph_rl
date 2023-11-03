@@ -13,6 +13,7 @@ pub use crate::envs::{
     },
 };
 
+use egui::widgets::plot::PlotUi;
 use candle_core::{Tensor, Device};
 use anyhow::Result;
 
@@ -29,15 +30,6 @@ pub trait VectorConvertible {
 pub trait DistanceMeasure {
     fn distance(s1: &Self, s2: &Self) -> f64;
 }
-
-// if cfg(feature=gui)
-// use egui::widgets::plot::PlotUi;
-// pub trait PlottableEnv {
-//     fn plot(
-//         &self,
-//         plot_ui: &mut PlotUi,
-//     );
-// }
 
 
 #[derive(Debug)]
@@ -61,3 +53,9 @@ pub trait Environment {
     fn current_observation(&self) -> Self::Observation;
 }
 
+pub trait PlottableEnvironment {
+    fn plot(
+        &self,
+        plot_ui: &mut PlotUi,
+    );
+}

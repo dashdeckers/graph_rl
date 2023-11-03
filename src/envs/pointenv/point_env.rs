@@ -4,6 +4,10 @@ use rand::{SeedableRng, RngCore, rngs::StdRng};
 use anyhow::Result;
 use tracing::warn;
 
+use egui::widgets::plot::PlotUi;
+use egui::plot::{Line, Points, PlotBounds};
+use egui::Color32;
+
 use super::state::PointState;
 use super::action::PointAction;
 use super::observation::PointObs;
@@ -11,7 +15,7 @@ use super::line::PointLine;
 use super::reward::PointReward;
 use super::config::PointEnvConfig;
 
-use super::super::{Environment, Step};
+use super::super::{Environment, PlottableEnvironment, Step};
 
 
 /// Generate a valid pair of (start, goal). \
@@ -272,5 +276,66 @@ impl Environment for PointEnv {
 
     fn current_observation(&self) -> Self::Observation {
         PointObs::from((self.state, self.goal, self.walls.as_ref()))
+    }
+}
+
+
+impl PlottableEnvironment for PointEnv {
+    fn plot(
+            &self,
+            plot_ui: &mut PlotUi,
+        ) {
+        // Setup plot bounds
+        plot_ui.set_plot_bounds(
+            PlotBounds::from_min_max(
+                [0.0, 0.0],
+                [*self.width() as f64, *self.height() as f64],
+            )
+        );
+        // Plot walls
+        for wall in self.walls().iter() {
+            plot_ui.line(
+                Line::new(
+                    vec![
+                        [wall.A.x(), wall.A.y()],
+                        [wall.B.x(), wall.B.y()],
+                    ]
+                )
+                .width(2.0)
+                .color(Color32::WHITE)
+            )
+        }
+        // Plot start and goal
+        let start = self.start();
+        plot_ui.points(
+            Points::new(
+                vec![
+                    [start.x(), start.y()],
+                ]
+            )
+            .radius(2.0)
+            .color(Color32::WHITE)
+        );
+        let goal = self.goal();
+        plot_ui.points(
+            Points::new(
+                vec![
+                    [goal.x(), goal.y()],
+                ]
+            )
+            .radius(2.0)
+            .color(Color32::GREEN)
+        );
+        // Plot path
+        plot_ui.line(
+            Line::new(
+                self.history()
+                .iter()
+                .map(|p| {
+                    [p.x(), p.y()]
+                })
+                .collect::<Vec<_>>()
+            )
+        )
     }
 }

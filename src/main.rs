@@ -14,9 +14,9 @@ use graph_rl::{
         Environment,
     },
     util::setup_logging,
+    gui::GUI,
     TrainingConfig,
     run,
-    // gui::GUI,
 };
 
 
@@ -110,7 +110,7 @@ fn main() -> Result<()> {
         Env::Pointenv => {
             let mut env = *PointEnv::new(Default::default())?;
             let timelimit = *env.timelimit();
-            let config = TrainingConfig::pointenv(timelimit);
+            let mut config = TrainingConfig::pointenv(timelimit);
 
             let size_state = env.observation_space().iter().product::<usize>();
             let size_action = env.action_space().iter().product::<usize>();
@@ -129,14 +129,23 @@ fn main() -> Result<()> {
             )?;
 
             if args.gui {
-                panic!("Not implemented yet!")
-                // GUI::open(env, agent, config, device);
+                GUI::open(env, agent, config, device);
             } else {
                 run(
                     &mut env,
                     &mut agent,
-                    config,
+                    config.clone(),
                     true,
+                    &device,
+                )?;
+
+                println!("Testing:");
+                config.max_episodes = 10;
+                run(
+                    &mut env,
+                    &mut agent,
+                    config,
+                    false,
                     &device,
                 )?;
             }
