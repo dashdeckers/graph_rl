@@ -1,8 +1,9 @@
 use candle_core::{Tensor, Device};
 use pyo3::prelude::*;
 use anyhow::Result;
+use ordered_float::OrderedFloat;
 
-use super::{Environment, Step, TensorConvertible, VectorConvertible};
+use super::{Environment, Step, TensorConvertible, VectorConvertible, DistanceMeasure};
 use super::gym_wrappers::{gym_create_env, gym_reset_env, gym_step_env};
 
 
@@ -24,10 +25,10 @@ impl Default for PendulumConfig {
 }
 
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PendulumAction {
     // Torque applied to the free end of the pendulum
-    tau: f64,
+    tau: OrderedFloat<f64>,
 }
 impl VectorConvertible for PendulumAction {
     fn from_vec(value: Vec<f64>) -> Self {
@@ -35,11 +36,11 @@ impl VectorConvertible for PendulumAction {
         debug_assert!(value.len() == 1);
         Self {
             // Preprocess the action
-            tau: (2.0 * value[0]).clamp(-2.0, 2.0),
+            tau: OrderedFloat((2.0 * value[0]).clamp(-2.0, 2.0)),
         }
     }
     fn to_vec(value: Self) -> Vec<f64> {
-        vec![value.tau]
+        vec![*value.tau]
     }
 }
 impl TensorConvertible for PendulumAction {
@@ -50,7 +51,7 @@ impl TensorConvertible for PendulumAction {
         Self::from_vec(values)
     }
     fn to_tensor(value: Self, device: &Device) -> candle_core::Result<Tensor> {
-        Tensor::new(&[value.tau], device)
+        Tensor::new(Self::to_vec(value), device)
     }
 }
 // Convert PendulumAction into PyAny
@@ -61,26 +62,26 @@ impl IntoPy<PyObject> for PendulumAction {
 }
 
 
-#[derive(Clone, Debug)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PendulumState {
     // The (x, y) coordinates of the free end of the pendulum
-    x: f64,
-    y: f64,
+    x: OrderedFloat<f64>,
+    y: OrderedFloat<f64>,
     // The angular velocity of the pendulum
-    theta: f64,
+    theta: OrderedFloat<f64>,
 }
 impl VectorConvertible for PendulumState {
     fn from_vec(value: Vec<f64>) -> Self {
         // Make sure the number of elements in the Vec makes sense
         debug_assert!(value.len() == 3);
         Self {
-            x: value[0],
-            y: value[1],
-            theta: value[2],
+            x: OrderedFloat(value[0]),
+            y: OrderedFloat(value[1]),
+            theta: OrderedFloat(value[2]),
         }
     }
     fn to_vec(value: Self) -> Vec<f64> {
-        vec![value.x, value.y, value.theta]
+        vec![*value.x, *value.y, *value.theta]
     }
 }
 impl TensorConvertible for PendulumState {
@@ -91,7 +92,13 @@ impl TensorConvertible for PendulumState {
         Self::from_vec(values)
     }
     fn to_tensor(value: Self, device: &Device) -> candle_core::Result<Tensor> {
-        Tensor::new(&[value.x, value.y, value.theta], device)
+        Tensor::new(Self::to_vec(value), device)
+    }
+}
+impl DistanceMeasure for PendulumState {
+    fn distance(_s1: &Self, _s2: &Self) -> f64 {
+        // 1.0
+        todo!()
     }
 }
 

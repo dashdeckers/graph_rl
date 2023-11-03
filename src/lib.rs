@@ -10,6 +10,9 @@ pub mod ddpg;
 pub mod gui;
 
 
+use std::hash::Hash;
+use std::fmt::Debug;
+
 use anyhow::Result;
 use rand::{Rng, thread_rng};
 use candle_core::{Device, Tensor};
@@ -19,7 +22,9 @@ use crate::{
         Environment,
         VectorConvertible,
         TensorConvertible,
+        DistanceMeasure,
     },
+    sgm::dot,
 };
 
 
@@ -66,7 +71,7 @@ impl TrainingConfig {
             ou_mu: 0.0,
             ou_theta: 0.15,
             ou_sigma: 0.1,
-            sgm_freq: 10,
+            sgm_freq: 1,
             sgm_maxdist: 1.0,
             sgm_tau: 0.4,
         }
@@ -86,7 +91,7 @@ impl TrainingConfig {
             ou_mu: 0.0,
             ou_theta: 0.15,
             ou_sigma: 0.1,
-            sgm_freq: 5,
+            sgm_freq: 1,
             sgm_maxdist: 1.0,
             sgm_tau: 0.4,
         }
@@ -103,7 +108,7 @@ pub fn run<E, O, A>(
 ) -> Result<()>
 where
     E: Environment<Action = A, Observation = O>,
-    O: Clone + TensorConvertible,
+    O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure,
     A: Clone + VectorConvertible,
 {
     println!("action space: {:?}", env.action_space());
@@ -133,6 +138,15 @@ where
                     step.terminated,
                     step.truncated,
                 );
+            }
+
+            if (episode + 1) % config.sgm_freq == 0 {
+                let _graph = agent.replay_buffer().construct_sgm(
+                    |o1, o2| <O>::distance(o1, o2),
+                    config.sgm_maxdist,
+                    config.sgm_tau,
+                );
+                // println!("{}", dot(&graph.0));
             }
 
             if step.terminated || step.truncated {

@@ -1,8 +1,9 @@
 use std::collections::VecDeque;
-use std::fmt::Display;
 
 use rand::{distributions::Uniform, thread_rng, Rng};
 use candle_core::{Tensor, Result};
+
+use crate::envs::TensorConvertible;
 
 
 #[derive(Clone)]
@@ -33,20 +34,7 @@ impl Transition {
         }
     }
 }
-impl Display for Transition {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Transition: ({}, {}, {}, {}, {}, {})",
-            self.state,
-            self.action,
-            self.reward,
-            self.next_state,
-            self.terminated,
-            self.truncated,
-        )
-    }
-}
+
 
 pub struct ReplayBuffer {
     buffer: VecDeque<Transition>,
@@ -125,27 +113,17 @@ impl ReplayBuffer {
         }
     }
 
-    pub fn all_states<S: From<Tensor>>(&self) -> Vec<S> {
+    pub fn all_states<S: TensorConvertible>(&self) -> Vec<S> {
         let mut states: Vec<S> = self.buffer
             .iter()
-            .map(|t| t.state.clone().into())
+            .map(|t| <S>::from_tensor(t.state.clone()))
             .collect();
 
         states.extend(self.buffer
             .back()
-            .map(|t| t.next_state.clone().into())
+            .map(|t| <S>::from_tensor(t.next_state.clone()))
         );
 
         states
-    }
-}
-impl Display for ReplayBuffer {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        write!(
-            f,
-            "Replay Buffer (Capacity: {}, Size: {})",
-            self.capacity,
-            self.size,
-        )
     }
 }

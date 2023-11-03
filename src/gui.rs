@@ -1,4 +1,6 @@
 use std::{thread, time};
+use std::hash::Hash;
+use std::fmt::Debug;
 
 use crate::{
     ddpg::DDPG,
@@ -7,6 +9,7 @@ use crate::{
         Environment,
         VectorConvertible,
         TensorConvertible,
+        DistanceMeasure,
     },
     TrainingConfig,
     run,
@@ -25,7 +28,7 @@ use egui::{Ui, Slider};
 pub struct GUI<'a, E, O, A>
 where
     E: Environment<Action = A, Observation = O> + PlottableEnvironment + 'static,
-    O: Clone + TensorConvertible + 'static,
+    O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
     A: Clone + VectorConvertible + 'static,
 {
     env: E,
@@ -38,7 +41,7 @@ where
 impl<E, O, A> GUI<'static, E, O, A>
 where
     E: Environment<Action = A, Observation = O> + PlottableEnvironment + 'static,
-    O: Clone + TensorConvertible + 'static,
+    O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
     A: Clone + VectorConvertible + 'static,
 {
     pub fn open(
@@ -137,7 +140,7 @@ where
 impl<E, O, A> eframe::App for GUI<'static, E, O, A>
 where
     E: Environment<Action = A, Observation = O> + PlottableEnvironment + 'static,
-    O: Clone + TensorConvertible + 'static,
+    O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
     A: Clone + VectorConvertible + 'static,
 {
     fn update(

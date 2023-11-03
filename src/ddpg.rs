@@ -335,4 +335,8 @@ impl DDPG<'_> {
 
         Ok(())
     }
+
+    pub fn replay_buffer(&self) -> &ReplayBuffer {
+        &self.replay_buffer
+    }
 }
