@@ -203,6 +203,7 @@ impl Environment for PointEnv {
             &self.walls,
             &mut self.rng,
         );
+        self.state = self.start;
 
         self.history = vec![self.start];
 
@@ -210,6 +211,7 @@ impl Environment for PointEnv {
     }
 
     fn step(&mut self, action: Self::Action) -> Result<Step<Self::Observation, Self::Action>> {
+        let action = action.restrict(self.step_radius);
         self.timestep += 1;
 
         self.state = compute_next_state(
