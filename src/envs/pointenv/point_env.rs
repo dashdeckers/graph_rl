@@ -2,6 +2,7 @@ use ordered_float::OrderedFloat;
 use derive_getters::Getters;
 use rand::{SeedableRng, RngCore, rngs::StdRng};
 use anyhow::Result;
+use tracing::warn;
 
 use super::state::PointState;
 use super::action::PointAction;
@@ -97,6 +98,16 @@ fn compute_next_state(
             )
         },
     };
+
+    warn!(
+        concat!(
+            "\nCompute next step:",
+            "\nS({:.3}, {:.3}) + A({:.3}, {:.3}) --> S'({:.3}, {:.3})",
+        ),
+        state.x(), state.y(),
+        action.dx(), action.dy(),
+        next_state.x(), next_state.y(),
+    );
 
     // bounds on outgoing state
     next_state.restrict(width as f64, height as f64)
@@ -229,6 +240,18 @@ impl Environment for PointEnv {
         let reward = self.reward.compute(&self.state, &self.goal);
         let terminated = reachable(&self.state, &self.goal, self.step_radius, &self.walls);
         let truncated = !terminated && (self.timestep == self.timelimit);
+
+        warn!(
+            concat!(
+                "\nPointEnv Step:",
+                "\nS({:.3}, {:.3}) + G({:.3}, {:.3})",
+                "\nA({:.3}, {:.3})",
+                "\nR: {:?}",
+            ),
+            self.state.x(), self.state.y(), self.goal.x(), self.goal.y(),
+            action.dx(), action.dy(),
+            reward,
+        );
 
         Ok(Step {
             observation: PointObs::from((self.state, self.goal, self.walls.as_ref())),

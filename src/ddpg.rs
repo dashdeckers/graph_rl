@@ -7,6 +7,7 @@ use candle_nn::{
     func, linear, sequential::seq, Activation, AdamW, Optimizer, ParamsAdamW, Sequential,
     VarBuilder, VarMap,
 };
+use tracing::warn;
 
 
 fn track(
@@ -275,6 +276,19 @@ impl DDPG<'_> {
         terminated: bool,
         truncated: bool,
     ) {
+        warn!(
+            concat!(
+                "\nPushing to replay buffer:",
+                "\n{state:?}",
+                "\n{action:?}",
+                "\n{reward:?}",
+                "\n{next_state:?}",
+            ),
+            state = state,
+            action = action,
+            reward = reward,
+            next_state = next_state,
+        );
         self.replay_buffer
             .push(state, action, reward, next_state, terminated, truncated)
     }

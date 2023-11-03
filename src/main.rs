@@ -67,7 +67,7 @@ fn main() -> Result<()> {
     if args.logging {
         setup_logging(
             "debug.log".into(),
-            Some(Level::INFO),
+            Some(Level::WARN),
             Some(Level::WARN),
         )?;
     }
