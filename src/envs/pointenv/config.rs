@@ -17,8 +17,8 @@ pub struct PointEnvConfig {
 impl Default for PointEnvConfig {
     fn default() -> Self {
         Self {
-            width: 5,
-            height: 5,
+            width: 10,
+            height: 10,
             walls: None,
             timelimit: 10,
             step_radius: 1.0,
