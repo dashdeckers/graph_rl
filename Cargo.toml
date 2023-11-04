@@ -24,8 +24,9 @@ derive-getters = "0.3.0"
 ordered-float = { version = "4.1.1", features = ["serde"] }
 
 # GUI
-egui = "0.23.0"
 eframe = "0.23.0"
+egui = "0.23.0"
+egui_plot = "0.23.0"
 egui_graphs = { version = "0.15.0", features = ["events"] }
 
 # CLI
