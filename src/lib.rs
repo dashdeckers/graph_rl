@@ -14,6 +14,7 @@ use std::hash::Hash;
 use std::fmt::Debug;
 
 use anyhow::Result;
+use tracing::warn;
 use rand::{Rng, thread_rng};
 use candle_core::{Device, Tensor};
 use crate::{
@@ -105,15 +106,16 @@ pub fn run<E, O, A>(
     config: TrainingConfig,
     train: bool,
     device: &Device,
-) -> Result<()>
+) -> Result<Vec<f64>>
 where
     E: Environment<Action = A, Observation = O>,
     O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure,
     A: Clone + VectorConvertible,
 {
-    println!("action space: {:?}", env.action_space());
-    println!("observation space: {:?}", env.observation_space());
+    warn!("action space: {:?}", env.action_space());
+    warn!("observation space: {:?}", env.observation_space());
 
+    let mut episodic_returns = Vec::new();
     let mut rng = rand::thread_rng();
 
     agent.train = train;
@@ -154,7 +156,8 @@ where
             }
         }
 
-        println!("episode {episode} with total reward of {total_reward}");
+        warn!("episode {episode} with total reward of {total_reward}");
+        episodic_returns.push(total_reward);
 
         if train {
             for _ in 0..config.training_iterations {
@@ -163,7 +166,7 @@ where
         }
     }
     env.reset(rng.gen::<u64>())?;
-    Ok(())
+    Ok(episodic_returns)
 }
 
 

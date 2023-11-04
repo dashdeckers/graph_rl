@@ -13,7 +13,7 @@ pub use crate::envs::{
     },
 };
 
-use egui::widgets::plot::PlotUi;
+use egui::Ui;
 use candle_core::{Tensor, Device};
 use anyhow::Result;
 
@@ -53,9 +53,9 @@ pub trait Environment {
     fn current_observation(&self) -> Self::Observation;
 }
 
-pub trait PlottableEnvironment {
-    fn plot(
-        &self,
-        plot_ui: &mut PlotUi,
+pub trait Renderable {
+    fn render(
+        &mut self,
+        ui: &mut Ui,
     );
 }

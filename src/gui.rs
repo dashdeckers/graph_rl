@@ -5,7 +5,7 @@ use std::fmt::Debug;
 use crate::{
     ddpg::DDPG,
     envs::{
-        PlottableEnvironment,
+        Renderable,
         Environment,
         VectorConvertible,
         TensorConvertible,
@@ -21,13 +21,19 @@ use candle_core::Device;
 
 use eframe::egui;
 use egui::widgets::Button;
-use egui::plot::Plot;
+use egui::plot::{Plot, Line};
 use egui::{Ui, Slider};
 
 
+enum PlayMode {
+    Pause,
+    Ticks,
+    Episodes,
+}
+
 pub struct GUI<'a, E, O, A>
 where
-    E: Environment<Action = A, Observation = O> + PlottableEnvironment + 'static,
+    E: Environment<Action = A, Observation = O> + Renderable + 'static,
     O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
     A: Clone + VectorConvertible + 'static,
 {
@@ -36,11 +42,12 @@ where
     config: TrainingConfig,
     device: Device,
 
-    play: bool,
+    episodic_returns: Vec<f64>,
+    play_mode: PlayMode,
 }
 impl<E, O, A> GUI<'static, E, O, A>
 where
-    E: Environment<Action = A, Observation = O> + PlottableEnvironment + 'static,
+    E: Environment<Action = A, Observation = O> + Renderable + 'static,
     O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
     A: Clone + VectorConvertible + 'static,
 {
@@ -55,7 +62,9 @@ where
             agent,
             config,
             device,
-            play: false,
+
+            episodic_returns: Vec::new(),
+            play_mode: PlayMode::Pause,
         };
         eframe::run_native(
             "Actor-Critic Graph-Learner",
@@ -85,6 +94,31 @@ where
     //     }
     // }
 
+    fn render_rewards(
+        &mut self,
+        ui: &mut Ui,
+    ) {
+        Plot::new("data_plot").show(ui, |plot_ui| {
+            // plot_ui.set_plot_bounds(
+            //     PlotBounds::from_min_max(
+            //         [0.0, 0.0],
+            //         [width as f64, height as f64],
+            //     )
+            // );
+            plot_ui.line(
+                Line::new(
+                    self.episodic_returns.clone()
+                    .into_iter()
+                    .enumerate()
+                    .map(|(x, y)| {
+                        [x as f64, y as f64]
+                    })
+                    .collect::<Vec<_>>()
+                )
+            )
+        });
+    }
+
     fn render_options(
         &mut self,
         ui: &mut Ui,
@@ -110,36 +144,54 @@ where
         ui.separator();
         ui.label("Run Options");
         ui.add(Slider::new(&mut self.config.max_episodes, 1..=101).text("n_episodes"));
-        if ui.add(Button::new("Run Episodes")).clicked() {
-            run(
+        if ui.add(Button::new("Train Episodes")).clicked() {
+            let episodic_returns = run(
                 &mut self.env,
                 &mut self.agent,
                 self.config.clone(),
                 true,
                 &self.device,
             ).unwrap();
+            self.episodic_returns.extend(episodic_returns);
         };
         ui.horizontal(|ui| {
-            if ui.add(Button::new("Play")).clicked() {
-                self.play = true;
-            };
             if ui.add(Button::new("Pause")).clicked() {
-                self.play = false;
+                self.play_mode = PlayMode::Pause;
+            };
+            if ui.add(Button::new("Play(t)")).clicked() {
+                self.play_mode = PlayMode::Ticks;
+            };
+            if ui.add(Button::new("Play(e)")).clicked() {
+                self.play_mode = PlayMode::Episodes;
             };
         });
-        if self.play {
-            tick(
-                &mut self.env,
-                &mut self.agent,
-                &self.device,
-            ).unwrap();
+        match self.play_mode {
+            PlayMode::Pause => (),
+            PlayMode::Ticks => {
+                tick(
+                    &mut self.env,
+                    &mut self.agent,
+                    &self.device,
+                ).unwrap();
+            }
+            PlayMode::Episodes => {
+                let mut config = self.config.clone();
+                config.max_episodes = 1;
+                run(
+                    &mut self.env,
+                    &mut self.agent,
+                    config,
+                    false,
+                    &self.device,
+                ).unwrap();
+            }
         }
     }
 }
 
 impl<E, O, A> eframe::App for GUI<'static, E, O, A>
 where
-    E: Environment<Action = A, Observation = O> + PlottableEnvironment + 'static,
+    E: Environment<Action = A, Observation = O> + Renderable + 'static,
     O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
     A: Clone + VectorConvertible + 'static,
 {
@@ -148,14 +200,19 @@ where
         ctx: &egui::Context,
         _frame: &mut eframe::Frame,
     ) {
-        // render the gui
-        egui::SidePanel::right("side_panel").show(ctx, |ui| {
+        // render the settings and options
+        egui::SidePanel::right("settings").show(ctx, |ui| {
             self.render_options(ui);
         });
+
+        // render episodic rewards / learning curve
+        egui::TopBottomPanel::bottom("rewards").show(ctx, |ui| {
+            self.render_rewards(ui);
+        });
+
+        // render the environment
         egui::CentralPanel::default().show(ctx, |ui| {
-            Plot::new("main_panel").show(ui, |plot_ui| { //.view_aspect(1.0)
-                self.env.plot(plot_ui);
-            });
+            self.env.render(ui);
         });
 
         // sleep for a bit
