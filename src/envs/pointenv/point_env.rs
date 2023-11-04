@@ -4,9 +4,8 @@ use rand::{SeedableRng, RngCore, rngs::StdRng};
 use anyhow::Result;
 use tracing::warn;
 
-use egui::Ui;
-use egui::plot::{Plot, Line, Points, PlotBounds};
 use egui::Color32;
+use egui_plot::{PlotUi, Line, Points, PlotBounds};
 
 use super::state::PointState;
 use super::action::PointAction;
@@ -283,61 +282,59 @@ impl Environment for PointEnv {
 impl Renderable for PointEnv {
     fn render(
         &mut self,
-        ui: &mut Ui,
+        plot_ui: &mut PlotUi,
     ) {
-        Plot::new("environment").show(ui, |plot_ui| { //.view_aspect(1.0)
-            // Setup plot bounds
-            plot_ui.set_plot_bounds(
-                PlotBounds::from_min_max(
-                    [0.0, 0.0],
-                    [*self.width() as f64, *self.height() as f64],
-                )
-            );
-            // Plot walls
-            for wall in self.walls().iter() {
-                plot_ui.line(
-                    Line::new(
-                        vec![
-                            [wall.A.x(), wall.A.y()],
-                            [wall.B.x(), wall.B.y()],
-                        ]
-                    )
-                    .width(2.0)
-                    .color(Color32::WHITE)
-                )
-            }
-            // Plot start and goal
-            let start = self.start();
-            plot_ui.points(
-                Points::new(
-                    vec![
-                        [start.x(), start.y()],
-                    ]
-                )
-                .radius(2.0)
-                .color(Color32::WHITE)
-            );
-            let goal = self.goal();
-            plot_ui.points(
-                Points::new(
-                    vec![
-                        [goal.x(), goal.y()],
-                    ]
-                )
-                .radius(2.0)
-                .color(Color32::GREEN)
-            );
-            // Plot path
+        // Setup plot bounds
+        plot_ui.set_plot_bounds(
+            PlotBounds::from_min_max(
+                [0.0, 0.0],
+                [*self.width() as f64, *self.height() as f64],
+            )
+        );
+        // Plot walls
+        for wall in self.walls().iter() {
             plot_ui.line(
                 Line::new(
-                    self.history()
-                    .iter()
-                    .map(|p| {
-                        [p.x(), p.y()]
-                    })
-                    .collect::<Vec<_>>()
+                    vec![
+                        [wall.A.x(), wall.A.y()],
+                        [wall.B.x(), wall.B.y()],
+                    ]
                 )
+                .width(2.0)
+                .color(Color32::WHITE)
             )
-        });
+        }
+        // Plot start and goal
+        let start = self.start();
+        plot_ui.points(
+            Points::new(
+                vec![
+                    [start.x(), start.y()],
+                ]
+            )
+            .radius(2.0)
+            .color(Color32::WHITE)
+        );
+        let goal = self.goal();
+        plot_ui.points(
+            Points::new(
+                vec![
+                    [goal.x(), goal.y()],
+                ]
+            )
+            .radius(2.0)
+            .color(Color32::GREEN)
+        );
+        // Plot path
+        plot_ui.line(
+            Line::new(
+                self.history()
+                .iter()
+                .map(|p| {
+                    [p.x(), p.y()]
+                })
+                .collect::<Vec<_>>()
+            )
+        )
     }
 }

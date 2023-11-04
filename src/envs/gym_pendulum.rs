@@ -25,7 +25,7 @@ impl Default for PendulumConfig {
 }
 
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PendulumAction {
     // Torque applied to the free end of the pendulum
     tau: OrderedFloat<f64>,
@@ -62,7 +62,7 @@ impl IntoPy<PyObject> for PendulumAction {
 }
 
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PendulumState {
     // The (x, y) coordinates of the free end of the pendulum
     x: OrderedFloat<f64>,

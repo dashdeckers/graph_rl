@@ -3,14 +3,14 @@ use std::fmt::Debug;
 use std::collections::HashMap;
 
 use ordered_float::OrderedFloat;
-use petgraph::graph::{Graph, NodeIndex};
+use petgraph::stable_graph::{StableGraph, NodeIndex};
 use petgraph::dot::Dot;
 
 use crate::envs::TensorConvertible;
 use crate::replay_buffer::ReplayBuffer;
 
 
-pub fn dot<S: Debug>(graph: &Graph<S, OrderedFloat<f64>>) -> String {
+pub fn dot<S: Debug>(graph: &StableGraph<S, OrderedFloat<f64>>) -> String {
     format!("{:?}", Dot::new(graph)).to_string()
 }
 
@@ -20,7 +20,7 @@ impl ReplayBuffer {
         d: fn(&S, &S) -> f64,
         maxdist: f64,
         tau: f64,
-    ) -> (Graph<S, OrderedFloat<f64>>, HashMap<S, NodeIndex>)
+    ) -> (StableGraph<S, OrderedFloat<f64>>, HashMap<S, NodeIndex>)
     where
         S: Clone + Eq + Hash + TensorConvertible
     {
@@ -28,7 +28,7 @@ impl ReplayBuffer {
         let tau = OrderedFloat(tau);
 
         // compute the sparse graph
-        let mut graph: Graph<S, OrderedFloat<f64>> = Graph::new();
+        let mut graph: StableGraph<S, OrderedFloat<f64>> = StableGraph::new();
         let mut indices: HashMap<S, NodeIndex> = HashMap::new();
 
         // iterate over nodes in the dense graph
@@ -122,7 +122,7 @@ impl ReplayBuffer {
         s2: &S,
         tau: OrderedFloat<f64>,
         d: fn(&S, &S) -> f64,
-        graph: &Graph<S, OrderedFloat<f64>>,
+        graph: &StableGraph<S, OrderedFloat<f64>>,
     ) -> bool{
         let c_in = Self::c_in(s1, s2, d, graph);
         let c_out = Self::c_out(s1, s2, d, graph);
@@ -136,25 +136,25 @@ impl ReplayBuffer {
         s1: &S,
         s2: &S,
         d: fn(&S, &S) -> f64,
-        graph: &Graph<S, OrderedFloat<f64>>,
+        graph: &StableGraph<S, OrderedFloat<f64>>,
     ) -> OrderedFloat<f64> {
         graph
             .node_weights()
             .map(|w| OrderedFloat((d(s1, w) - d(s2, w)).abs()))
             .max()
-            .expect("Graph cannot be empty because we always accept the first node")
+            .expect("StableGraph cannot be empty because we always accept the first node")
     }
 
     fn c_in<S: Eq + Hash>(
         s1: &S,
         s2: &S,
         d: fn(&S, &S) -> f64,
-        graph: &Graph<S, OrderedFloat<f64>>,
+        graph: &StableGraph<S, OrderedFloat<f64>>,
     ) -> OrderedFloat<f64> {
         graph
             .node_weights()
             .map(|w| OrderedFloat((d(w, s1) - d(w, s2)).abs()))
             .max()
-            .expect("Graph cannot be empty because we always accept the first node")
+            .expect("StableGraph cannot be empty because we always accept the first node")
     }
 }

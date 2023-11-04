@@ -16,13 +16,15 @@ use crate::{
     tick,
 };
 use candle_core::Device;
-// use petgraph::Graph;
-// use petgraph::visit::EdgeRef;
+use ordered_float::OrderedFloat;
+use petgraph::{Directed, stable_graph::StableGraph};
+use petgraph::visit::{EdgeRef, IntoEdgeReferences};
 
 use eframe::egui;
 use egui::widgets::Button;
-use egui::plot::{Plot, Line};
-use egui::{Ui, Slider};
+use egui::{Ui, Slider, Color32, Checkbox};
+use egui_graphs::{Graph, GraphView};
+use egui_plot::{PlotUi, Plot, Line, Points};
 
 
 enum PlayMode {
@@ -43,7 +45,15 @@ where
     device: Device,
 
     episodic_returns: Vec<f64>,
+    graph: StableGraph<O, OrderedFloat<f64>, Directed>,
+
     play_mode: PlayMode,
+    train_episodes_to_go: usize,
+    last_graph_constructed_at: usize,
+
+    render_graph: bool,
+    render_buffer: bool,
+    render_fancy_graph: bool,
 }
 impl<E, O, A> GUI<'static, E, O, A>
 where
@@ -64,7 +74,15 @@ where
             device,
 
             episodic_returns: Vec::new(),
+            graph: StableGraph::new(),
+
             play_mode: PlayMode::Pause,
+            train_episodes_to_go: 0,
+            last_graph_constructed_at: 0,
+
+            render_graph: false,
+            render_buffer: false,
+            render_fancy_graph: false,
         };
         eframe::run_native(
             "Actor-Critic Graph-Learner",
@@ -73,46 +91,114 @@ where
         ).unwrap();
     }
 
-    // fn plot_graph(
-    //     graph: &Graph<PointState, OrderedFloat<f32>>,
-    //     plot_ui: &mut PlotUi,
-    // ) {
-    //     for edge in graph.edge_references() {
-    //         let s1 = graph[edge.source()];
-    //         let s2 = graph[edge.target()];
+    fn run_gui_logic(
+        &mut self,
+    ) {
+        // a kind of hack not to hang up the GUI while training and watch it train one episode at a time
+        if self.train_episodes_to_go > 0 {
+            let mut config = self.config.clone();
+            config.max_episodes = 1;
+            self.episodic_returns.extend(run(
+                &mut self.env,
+                &mut self.agent,
+                config,
+                true,
+                &self.device,
+            ).unwrap());
+            self.train_episodes_to_go -= 1;
+        }
 
-    //         plot_ui.line(
-    //             Line::new(
-    //                 vec![
-    //                     [s1.x(), s1.y()],
-    //                     [s2.x(), s2.y()],
-    //                 ]
-    //             )
-    //             .width(1.0)
-    //             .color(Color32::LIGHT_BLUE)
-    //         )
-    //     }
-    // }
+        #[allow(clippy::collapsible_if)]
+        // construct the graph every defined number of episodes
+        if (self.episodic_returns.len() + 1) % self.config.sgm_freq == 0 {
+            // but take care not to construct it constantly in this edge-case
+            if self.last_graph_constructed_at != self.episodic_returns.len() {
+                self.graph = self.agent.replay_buffer().construct_sgm(
+                    |o1, o2| <O>::distance(o1, o2),
+                    self.config.sgm_maxdist,
+                    self.config.sgm_tau,
+                ).0;
+                self.last_graph_constructed_at = self.episodic_returns.len();
+            }
+        }
+
+        // let it play to observe agent behavior!
+        match self.play_mode {
+            PlayMode::Pause => (),
+            PlayMode::Ticks => {
+                tick(
+                    &mut self.env,
+                    &mut self.agent,
+                    &self.device,
+                ).unwrap();
+            }
+            PlayMode::Episodes => {
+                let mut config = self.config.clone();
+                config.max_episodes = 1;
+                run(
+                    &mut self.env,
+                    &mut self.agent,
+                    config,
+                    false,
+                    &self.device,
+                ).unwrap();
+            }
+        }
+    }
+
+    fn render_graph(
+        &self,
+        plot_ui: &mut PlotUi,
+    ) {
+        for edge in self.graph.edge_references() {
+            let s1 = &self.graph[edge.source()];
+            let s2 = &self.graph[edge.target()];
+
+            let s1 = <O>::to_vec(s1.clone());
+            let s2 = <O>::to_vec(s2.clone());
+
+            plot_ui.line(
+                Line::new(
+                    vec![
+                        [s1[0], s1[1]],
+                        [s2[0], s2[1]],
+                    ]
+                )
+                .width(1.0)
+                .color(Color32::LIGHT_BLUE)
+            )
+        }
+    }
+
+    fn render_buffer(
+        &self,
+        plot_ui: &mut PlotUi,
+    ) {
+        for state in self.agent.replay_buffer().all_states::<O>() {
+            let s = <O>::to_vec(state.clone());
+            plot_ui.points(
+                Points::new(
+                    vec![
+                        [s[0], s[1]],
+                    ]
+                )
+                .radius(2.0)
+                .color(Color32::RED)
+            );
+        }
+    }
 
     fn render_rewards(
         &mut self,
         ui: &mut Ui,
     ) {
         Plot::new("data_plot").show(ui, |plot_ui| {
-            // plot_ui.set_plot_bounds(
-            //     PlotBounds::from_min_max(
-            //         [0.0, 0.0],
-            //         [width as f64, height as f64],
-            //     )
-            // );
             plot_ui.line(
                 Line::new(
                     self.episodic_returns.clone()
                     .into_iter()
                     .enumerate()
-                    .map(|(x, y)| {
-                        [x as f64, y as f64]
-                    })
+                    .map(|(x, y)| [x as f64, y])
                     .collect::<Vec<_>>()
                 )
             )
@@ -142,18 +228,14 @@ where
         ui.add(Slider::new(&mut self.config.sgm_tau, 0.0..=1.0).text("Tau").step_by(0.01));
 
         ui.separator();
-        ui.label("Run Options");
+        ui.label("Train Agent");
         ui.add(Slider::new(&mut self.config.max_episodes, 1..=101).text("n_episodes"));
         if ui.add(Button::new("Train Episodes")).clicked() {
-            let episodic_returns = run(
-                &mut self.env,
-                &mut self.agent,
-                self.config.clone(),
-                true,
-                &self.device,
-            ).unwrap();
-            self.episodic_returns.extend(episodic_returns);
+            self.train_episodes_to_go = self.config.max_episodes;
         };
+
+        ui.separator();
+        ui.label("Watch Agent");
         ui.horizontal(|ui| {
             if ui.add(Button::new("Pause")).clicked() {
                 self.play_mode = PlayMode::Pause;
@@ -165,27 +247,12 @@ where
                 self.play_mode = PlayMode::Episodes;
             };
         });
-        match self.play_mode {
-            PlayMode::Pause => (),
-            PlayMode::Ticks => {
-                tick(
-                    &mut self.env,
-                    &mut self.agent,
-                    &self.device,
-                ).unwrap();
-            }
-            PlayMode::Episodes => {
-                let mut config = self.config.clone();
-                config.max_episodes = 1;
-                run(
-                    &mut self.env,
-                    &mut self.agent,
-                    config,
-                    false,
-                    &self.device,
-                ).unwrap();
-            }
-        }
+
+        ui.separator();
+        ui.label("Render Options");
+        ui.add(Checkbox::new(&mut self.render_graph, "Show Graph"));
+        ui.add(Checkbox::new(&mut self.render_buffer, "Show Buffer"));
+        ui.add(Checkbox::new(&mut self.render_fancy_graph, "Fancy GraphView"));
     }
 }
 
@@ -200,19 +267,34 @@ where
         ctx: &egui::Context,
         _frame: &mut eframe::Frame,
     ) {
+        // run the GUI logic
+        self.run_gui_logic();
+
         // render the settings and options
-        egui::SidePanel::right("settings").show(ctx, |ui| {
+        egui::SidePanel::left("settings").show(ctx, |ui| {
             self.render_options(ui);
         });
 
         // render episodic rewards / learning curve
-        egui::TopBottomPanel::bottom("rewards").show(ctx, |ui| {
+        egui::TopBottomPanel::top("rewards").show(ctx, |ui| {
             self.render_rewards(ui);
         });
 
-        // render the environment
+        // render the environment / graph
         egui::CentralPanel::default().show(ctx, |ui| {
-            self.env.render(ui);
+            if self.render_fancy_graph {
+                ui.add(&mut GraphView::new(&mut Graph::from(&self.graph)));
+            } else {
+                Plot::new("environment").show(ui, |plot_ui| { //.view_aspect(1.0)
+                    self.env.render(plot_ui);
+                    if self.render_graph {
+                        self.render_graph(plot_ui);
+                    }
+                    if self.render_buffer {
+                        self.render_buffer(plot_ui);
+                    }
+                });
+            }
         });
 
         // sleep for a bit

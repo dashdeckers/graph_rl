@@ -25,7 +25,6 @@ use crate::{
         TensorConvertible,
         DistanceMeasure,
     },
-    sgm::dot,
 };
 
 
@@ -140,15 +139,6 @@ where
                     step.terminated,
                     step.truncated,
                 );
-            }
-
-            if (episode + 1) % config.sgm_freq == 0 {
-                let _graph = agent.replay_buffer().construct_sgm(
-                    |o1, o2| <O>::distance(o1, o2),
-                    config.sgm_maxdist,
-                    config.sgm_tau,
-                );
-                // println!("{}", dot(&graph.0));
             }
 
             if step.terminated || step.truncated {

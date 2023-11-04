@@ -13,9 +13,9 @@ pub use crate::envs::{
     },
 };
 
-use egui::Ui;
 use candle_core::{Tensor, Device};
 use anyhow::Result;
+use egui_plot::PlotUi;
 
 pub trait TensorConvertible: VectorConvertible {
     fn from_tensor(value: Tensor) -> Self;
@@ -56,6 +56,6 @@ pub trait Environment {
 pub trait Renderable {
     fn render(
         &mut self,
-        ui: &mut Ui,
+        plot_ui: &mut PlotUi,
     );
 }
