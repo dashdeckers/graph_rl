@@ -4,7 +4,6 @@ use std::fmt::Debug;
 
 use crate::{
     ddpg::DDPG,
-    ou_noise::OuNoise,
     envs::{
         Renderable,
         Environment,
@@ -222,24 +221,7 @@ where
     ) -> Result<()> {
         let size_state = self.env.observation_space().iter().product::<usize>();
         let size_action = self.env.action_space().iter().product::<usize>();
-
-        self.agent = DDPG::new(
-            &self.device,
-            size_state,
-            size_action,
-            true,
-            self.config.actor_learning_rate,
-            self.config.critic_learning_rate,
-            self.config.gamma,
-            self.config.tau,
-            self.config.replay_buffer_capacity,
-            OuNoise::new(
-                self.config.ou_mu,
-                self.config.ou_theta,
-                self.config.ou_sigma,
-                size_action,
-            )?,
-        )?;
+        self.agent = DDPG::from_config(&self.device, &self.config, size_state, size_action)?;
         Ok(())
     }
 
