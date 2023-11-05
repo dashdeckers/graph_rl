@@ -1,3 +1,9 @@
+# Run command (windows)
+$env:RUST_BACKTRACE=1; cargo run --release -- pointenv --gui
+# Run command (linux)
+RUST_BACKTRACE=1 cargo run --release -- pointenv --gui
+
+
 # Cuda / nvcc
 ## TODO
 
