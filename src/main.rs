@@ -7,7 +7,6 @@ use clap::{Parser, ValueEnum};
 
 use graph_rl::{
     ddpg::DDPG,
-    ou_noise::OuNoise,
     envs::{
         PendulumEnv,
         PointEnv,
@@ -46,18 +45,6 @@ struct Args {
     gui: bool,
 }
 
-
-
-
-// >- Render / Visualize SGM graphs
-//    `-> maybe get VNC going on server
-//    `-> egui graphs: https://github.com/blitzarx1/egui_graphs
-//    `-> clickable nodes --> show / render that observation!
-//    `-> plot the episodic returns as well in a bottom-plot
-
-
-
-
 // >- Add AntMaze / PointMaze as Goal-Aware Environments
 //    `-> these return a dict with 3 keys of Vec<64> instead of just a Vec<f64>
 //    `-> also implement PlottableEnvironment for Pendulum!
@@ -86,18 +73,7 @@ fn main() -> Result<()> {
             let size_state = env.observation_space().iter().product::<usize>();
             let size_action = env.action_space().iter().product::<usize>();
 
-            let mut agent = DDPG::new(
-                &device,
-                size_state,
-                size_action,
-                true,
-                config.actor_learning_rate,
-                config.critic_learning_rate,
-                config.gamma,
-                config.tau,
-                config.replay_buffer_capacity,
-                OuNoise::new(config.ou_mu, config.ou_theta, config.ou_sigma, size_action)?,
-            )?;
+            let mut agent = DDPG::from_config(&device, &config, size_state, size_action)?;
 
             if args.gui {
                 panic!("Not implemented yet!")
@@ -115,23 +91,12 @@ fn main() -> Result<()> {
         Env::Pointenv => {
             let mut env = *PointEnv::new(Default::default())?;
             let timelimit = *env.timelimit();
-            let mut config = TrainingConfig::pointenv(timelimit);
+            let config = TrainingConfig::pointenv(timelimit);
 
             let size_state = env.observation_space().iter().product::<usize>();
             let size_action = env.action_space().iter().product::<usize>();
 
-            let mut agent = DDPG::new(
-                &device,
-                size_state,
-                size_action,
-                true,
-                config.actor_learning_rate,
-                config.critic_learning_rate,
-                config.gamma,
-                config.tau,
-                config.replay_buffer_capacity,
-                OuNoise::new(config.ou_mu, config.ou_theta, config.ou_sigma, size_action)?,
-            )?;
+            let mut agent = DDPG::from_config(&device, &config, size_state, size_action)?;
 
             if args.gui {
                 GUI::open(env, agent, config, device);
@@ -139,18 +104,8 @@ fn main() -> Result<()> {
                 run(
                     &mut env,
                     &mut agent,
-                    config.clone(),
-                    true,
-                    &device,
-                )?;
-
-                println!("Testing:");
-                config.max_episodes = 10;
-                run(
-                    &mut env,
-                    &mut agent,
                     config,
-                    false,
+                    true,
                     &device,
                 )?;
             }

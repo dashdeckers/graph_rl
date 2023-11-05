@@ -2,6 +2,7 @@ use candle_core::{DType, Device, Error, Module, Result, Tensor, Var};
 use crate::{
     ou_noise::OuNoise,
     replay_buffer::ReplayBuffer,
+    TrainingConfig,
 };
 use candle_nn::{
     func, linear, sequential::seq, Activation, AdamW, Optimizer, ParamsAdamW, Sequential,
@@ -211,6 +212,31 @@ pub struct DDPG<'a> {
 }
 
 impl DDPG<'_> {
+    pub fn from_config(
+        device: &Device,
+        config: &TrainingConfig,
+        size_state: usize,
+        size_action: usize,
+    ) -> Result<Self> {
+        Self::new(
+            device,
+            size_state,
+            size_action,
+            true,
+            config.actor_learning_rate,
+            config.critic_learning_rate,
+            config.gamma,
+            config.tau,
+            config.replay_buffer_capacity,
+            OuNoise::new(
+                config.ou_mu,
+                config.ou_theta,
+                config.ou_sigma,
+                size_action,
+            )?,
+        )
+    }
+
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         device: &Device,
