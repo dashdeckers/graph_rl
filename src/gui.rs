@@ -4,6 +4,7 @@ use std::fmt::Debug;
 
 use crate::{
     ddpg::DDPG,
+    ou_noise::OuNoise,
     envs::{
         Renderable,
         Environment,
@@ -15,15 +16,16 @@ use crate::{
     run,
     tick,
 };
+use anyhow::Result;
 use candle_core::Device;
 use ordered_float::OrderedFloat;
-use petgraph::{Directed, stable_graph::StableGraph};
+use petgraph::{Undirected, stable_graph::StableGraph};
 use petgraph::visit::{EdgeRef, IntoEdgeReferences};
 
 use eframe::egui;
 use egui::widgets::Button;
 use egui::{Ui, Slider, Color32, Checkbox};
-use egui_graphs::{Graph, GraphView};
+use egui_graphs::{Graph, GraphView, SettingsInteraction, SettingsStyle};
 use egui_plot::{PlotUi, Plot, Line, Points};
 
 
@@ -45,7 +47,8 @@ where
     device: Device,
 
     episodic_returns: Vec<f64>,
-    graph: StableGraph<O, OrderedFloat<f64>, Directed>,
+    graph: StableGraph<O, OrderedFloat<f64>, Undirected>,
+    graph_egui: Graph<O, OrderedFloat<f64>, Undirected>,
 
     play_mode: PlayMode,
     train_episodes_to_go: usize,
@@ -55,6 +58,68 @@ where
     render_buffer: bool,
     render_fancy_graph: bool,
 }
+
+impl<E, O, A> eframe::App for GUI<'static, E, O, A>
+where
+    E: Environment<Action = A, Observation = O> + Renderable + 'static,
+    O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
+    A: Clone + VectorConvertible + 'static,
+{
+    fn update(
+        &mut self,
+        ctx: &egui::Context,
+        _frame: &mut eframe::Frame,
+    ) {
+        // run the GUI logic
+        self.run_gui_logic().unwrap();
+
+        // render the settings and options
+        egui::SidePanel::left("settings").show(ctx, |ui| {
+            self.render_options(ui);
+        });
+
+        // render episodic rewards / learning curve
+        egui::TopBottomPanel::top("rewards").show(ctx, |ui| {
+            Plot::new("rewards_plot").show(ui, |plot_ui| {
+                self.render_rewards(plot_ui);
+            });
+        });
+
+        // render the bottom panel in which we show the clicked on node's state
+        egui::TopBottomPanel::bottom("inspect").show(ctx, |ui| {
+            let node = self.graph_egui.g.node_indices().find(|e| self.graph_egui.g[*e].selected());
+            if let Some(node) = node {
+                ui.label(format!("Selected node: {:#?}", self.graph_egui.g[node].data()));
+            } else {
+                ui.label("No node selected.");
+            }
+        });
+
+        // render the environment / graph
+        egui::CentralPanel::default().show(ctx, |ui| {
+            if self.render_fancy_graph {
+                self.render_fancy_graph(ui);
+            } else {
+                Plot::new("environment").show(ui, |plot_ui| { //.view_aspect(1.0)
+                    self.env.render(plot_ui);
+                    if self.render_graph {
+                        self.render_graph(plot_ui);
+                    }
+                    if self.render_buffer {
+                        self.render_buffer(plot_ui);
+                    }
+                });
+            }
+        });
+
+        // sleep for a bit
+        thread::sleep(time::Duration::from_millis(100));
+
+        // always repaint, not just on mouse-hover
+        ctx.request_repaint();
+    }
+}
+
 impl<E, O, A> GUI<'static, E, O, A>
 where
     E: Environment<Action = A, Observation = O> + Renderable + 'static,
@@ -74,7 +139,8 @@ where
             device,
 
             episodic_returns: Vec::new(),
-            graph: StableGraph::new(),
+            graph: StableGraph::default(),
+            graph_egui: Graph::from(&StableGraph::default()),
 
             play_mode: PlayMode::Pause,
             train_episodes_to_go: 0,
@@ -86,14 +152,17 @@ where
         };
         eframe::run_native(
             "Actor-Critic Graph-Learner",
-            eframe::NativeOptions::default(),
+            eframe::NativeOptions{
+                min_window_size: Some(egui::vec2(800.0, 600.0)),
+                ..Default::default()
+            },
             Box::new(|_| Box::new(gui)),
         ).unwrap();
     }
 
     fn run_gui_logic(
         &mut self,
-    ) {
+    ) -> Result<()> {
         // a kind of hack not to hang up the GUI while training and watch it train one episode at a time
         if self.train_episodes_to_go > 0 {
             let mut config = self.config.clone();
@@ -104,7 +173,7 @@ where
                 config,
                 true,
                 &self.device,
-            ).unwrap());
+            )?);
             self.train_episodes_to_go -= 1;
         }
 
@@ -118,6 +187,7 @@ where
                     self.config.sgm_maxdist,
                     self.config.sgm_tau,
                 ).0;
+                self.graph_egui = Graph::from(&self.graph);
                 self.last_graph_constructed_at = self.episodic_returns.len();
             }
         }
@@ -130,7 +200,7 @@ where
                     &mut self.env,
                     &mut self.agent,
                     &self.device,
-                ).unwrap();
+                )?;
             }
             PlayMode::Episodes => {
                 let mut config = self.config.clone();
@@ -141,9 +211,36 @@ where
                     config,
                     false,
                     &self.device,
-                ).unwrap();
+                )?;
             }
         }
+        Ok(())
+    }
+
+    fn reset_agent(
+        &mut self,
+    ) -> Result<()> {
+        let size_state = self.env.observation_space().iter().product::<usize>();
+        let size_action = self.env.action_space().iter().product::<usize>();
+
+        self.agent = DDPG::new(
+            &self.device,
+            size_state,
+            size_action,
+            true,
+            self.config.actor_learning_rate,
+            self.config.critic_learning_rate,
+            self.config.gamma,
+            self.config.tau,
+            self.config.replay_buffer_capacity,
+            OuNoise::new(
+                self.config.ou_mu,
+                self.config.ou_theta,
+                self.config.ou_sigma,
+                size_action,
+            )?,
+        )?;
+        Ok(())
     }
 
     fn render_graph(
@@ -190,19 +287,33 @@ where
 
     fn render_rewards(
         &mut self,
+        plot_ui: &mut PlotUi,
+    ) {
+        plot_ui.line(
+            Line::new(
+                self.episodic_returns.clone()
+                .into_iter()
+                .enumerate()
+                .map(|(x, y)| [x as f64, y])
+                .collect::<Vec<_>>()
+            )
+        )
+    }
+
+    fn render_fancy_graph(
+        &mut self,
         ui: &mut Ui,
     ) {
-        Plot::new("data_plot").show(ui, |plot_ui| {
-            plot_ui.line(
-                Line::new(
-                    self.episodic_returns.clone()
-                    .into_iter()
-                    .enumerate()
-                    .map(|(x, y)| [x as f64, y])
-                    .collect::<Vec<_>>()
-                )
-            )
-        });
+        let interaction_settings = &SettingsInteraction::new()
+            .with_dragging_enabled(true)
+            .with_clicking_enabled(true)
+            .with_selection_enabled(true);
+        let style_settings = &SettingsStyle::new().with_labels_always(true);
+        ui.add(
+            &mut GraphView::new(&mut self.graph_egui)
+                .with_styles(style_settings)
+                .with_interactions(interaction_settings),
+        );
     }
 
     fn render_options(
@@ -213,8 +324,8 @@ where
 
         ui.separator();
         ui.label("DDPG Options");
-        ui.add(Slider::new(&mut self.config.actor_learning_rate, 0.0001..=0.1).logarithmic(true).text("Actor LR"));
-        ui.add(Slider::new(&mut self.config.critic_learning_rate, 0.0001..=0.1).logarithmic(true).text("Critic LR"));
+        ui.add(Slider::new(&mut self.config.actor_learning_rate, 0.00001..=0.1).logarithmic(true).fixed_decimals(5).text("Actor LR"));
+        ui.add(Slider::new(&mut self.config.critic_learning_rate, 0.00001..=0.1).logarithmic(true).fixed_decimals(5).text("Critic LR"));
         ui.add(Slider::new(&mut self.config.gamma, 0.0..=1.0).step_by(0.1).text("Gamma"));
         ui.add(Slider::new(&mut self.config.tau, 0.001..=1.0).logarithmic(true).text("Tau"));
         ui.add(Slider::new(&mut self.config.replay_buffer_capacity, 100..=100_000).logarithmic(true).text("Buffer size"));
@@ -230,9 +341,14 @@ where
         ui.separator();
         ui.label("Train Agent");
         ui.add(Slider::new(&mut self.config.max_episodes, 1..=101).text("n_episodes"));
-        if ui.add(Button::new("Train Episodes")).clicked() {
-            self.train_episodes_to_go = self.config.max_episodes;
-        };
+        ui.horizontal(|ui| {
+            if ui.add(Button::new("Train Episodes")).clicked() {
+                self.train_episodes_to_go = self.config.max_episodes;
+            };
+            if ui.add(Button::new("Reset Agent")).clicked() {
+                self.reset_agent().unwrap();
+            };
+        });
 
         ui.separator();
         ui.label("Watch Agent");
@@ -253,54 +369,5 @@ where
         ui.add(Checkbox::new(&mut self.render_graph, "Show Graph"));
         ui.add(Checkbox::new(&mut self.render_buffer, "Show Buffer"));
         ui.add(Checkbox::new(&mut self.render_fancy_graph, "Fancy GraphView"));
-    }
-}
-
-impl<E, O, A> eframe::App for GUI<'static, E, O, A>
-where
-    E: Environment<Action = A, Observation = O> + Renderable + 'static,
-    O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
-    A: Clone + VectorConvertible + 'static,
-{
-    fn update(
-        &mut self,
-        ctx: &egui::Context,
-        _frame: &mut eframe::Frame,
-    ) {
-        // run the GUI logic
-        self.run_gui_logic();
-
-        // render the settings and options
-        egui::SidePanel::left("settings").show(ctx, |ui| {
-            self.render_options(ui);
-        });
-
-        // render episodic rewards / learning curve
-        egui::TopBottomPanel::top("rewards").show(ctx, |ui| {
-            self.render_rewards(ui);
-        });
-
-        // render the environment / graph
-        egui::CentralPanel::default().show(ctx, |ui| {
-            if self.render_fancy_graph {
-                ui.add(&mut GraphView::new(&mut Graph::from(&self.graph)));
-            } else {
-                Plot::new("environment").show(ui, |plot_ui| { //.view_aspect(1.0)
-                    self.env.render(plot_ui);
-                    if self.render_graph {
-                        self.render_graph(plot_ui);
-                    }
-                    if self.render_buffer {
-                        self.render_buffer(plot_ui);
-                    }
-                });
-            }
-        });
-
-        // sleep for a bit
-        thread::sleep(time::Duration::from_millis(100));
-
-        // always repaint, not just on mouse-hover
-        ctx.request_repaint();
     }
 }

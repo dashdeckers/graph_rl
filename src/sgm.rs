@@ -4,6 +4,7 @@ use std::collections::HashMap;
 
 use ordered_float::OrderedFloat;
 use petgraph::stable_graph::{StableGraph, NodeIndex};
+use petgraph::Undirected;
 use petgraph::dot::Dot;
 
 use crate::envs::TensorConvertible;
@@ -20,7 +21,7 @@ impl ReplayBuffer {
         d: fn(&S, &S) -> f64,
         maxdist: f64,
         tau: f64,
-    ) -> (StableGraph<S, OrderedFloat<f64>>, HashMap<S, NodeIndex>)
+    ) -> (StableGraph<S, OrderedFloat<f64>, Undirected>, HashMap<S, NodeIndex>)
     where
         S: Clone + Eq + Hash + TensorConvertible
     {
@@ -28,7 +29,7 @@ impl ReplayBuffer {
         let tau = OrderedFloat(tau);
 
         // compute the sparse graph
-        let mut graph: StableGraph<S, OrderedFloat<f64>> = StableGraph::new();
+        let mut graph: StableGraph<S, OrderedFloat<f64>, Undirected> = StableGraph::default();
         let mut indices: HashMap<S, NodeIndex> = HashMap::new();
 
         // iterate over nodes in the dense graph
@@ -122,7 +123,7 @@ impl ReplayBuffer {
         s2: &S,
         tau: OrderedFloat<f64>,
         d: fn(&S, &S) -> f64,
-        graph: &StableGraph<S, OrderedFloat<f64>>,
+        graph: &StableGraph<S, OrderedFloat<f64>, Undirected>,
     ) -> bool{
         let c_in = Self::c_in(s1, s2, d, graph);
         let c_out = Self::c_out(s1, s2, d, graph);
@@ -136,7 +137,7 @@ impl ReplayBuffer {
         s1: &S,
         s2: &S,
         d: fn(&S, &S) -> f64,
-        graph: &StableGraph<S, OrderedFloat<f64>>,
+        graph: &StableGraph<S, OrderedFloat<f64>, Undirected>,
     ) -> OrderedFloat<f64> {
         graph
             .node_weights()
@@ -149,7 +150,7 @@ impl ReplayBuffer {
         s1: &S,
         s2: &S,
         d: fn(&S, &S) -> f64,
-        graph: &StableGraph<S, OrderedFloat<f64>>,
+        graph: &StableGraph<S, OrderedFloat<f64>, Undirected>,
     ) -> OrderedFloat<f64> {
         graph
             .node_weights()
