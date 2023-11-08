@@ -3,6 +3,7 @@ use {
         ou_noise::OuNoise,
         replay_buffer::ReplayBuffer,
         TrainingConfig,
+        RunMode,
     },
     candle_core::{
         DType,
@@ -246,7 +247,7 @@ pub struct DDPG<'a> {
 
     size_state: usize,
     size_action: usize,
-    pub train: bool,
+    pub run_mode: RunMode,
 }
 
 impl DDPG<'_> {
@@ -262,7 +263,7 @@ impl DDPG<'_> {
             size_action,
             config.hidden_1_size,
             config.hidden_2_size,
-            true,
+            RunMode::Train,
             config.actor_learning_rate,
             config.critic_learning_rate,
             config.gamma,
@@ -279,7 +280,7 @@ impl DDPG<'_> {
         size_action: usize,
         hidden_1_size: usize,
         hidden_2_size: usize,
-        train: bool,
+        run_mode: RunMode,
         actor_lr: f64,
         critic_lr: f64,
         gamma: f64,
@@ -342,7 +343,7 @@ impl DDPG<'_> {
             ou_noise,
             size_state,
             size_action,
-            train,
+            run_mode,
         })
     }
 
@@ -390,7 +391,7 @@ impl DDPG<'_> {
             .forward(&state.detach()?.unsqueeze(0)?)?
             .squeeze(0)?;
 
-        let actions = if self.train {
+        let actions = if let RunMode::Train = self.run_mode {
             (actions + self.ou_noise.sample()?)?
         } else {
             actions

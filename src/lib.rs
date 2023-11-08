@@ -29,6 +29,12 @@ use crate::{
 };
 
 
+#[derive(Clone, Copy)]
+pub enum RunMode {
+    Train,
+    Test,
+}
+
 #[derive(Clone)]
 pub struct TrainingConfig {
     // The learning rates for the Actor and Critic networks
@@ -91,7 +97,7 @@ impl TrainingConfig {
             tau: 0.005,
             hidden_1_size: 512,
             hidden_2_size: 512,
-            replay_buffer_capacity: 1000,
+            replay_buffer_capacity: 100,
             training_batch_size: 100,
             max_episodes: 50,
             episode_length: timelimit,
@@ -111,9 +117,9 @@ pub fn run<E, O, A>(
     env: &mut E,
     agent: &mut DDPG,
     config: TrainingConfig,
-    train: bool,
+    run_mode: RunMode,
     device: &Device,
-) -> Result<Vec<f64>>
+) -> Result<(Vec<f64>, Vec<bool>)>
 where
     E: Environment<Action = A, Observation = O>,
     O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure,
@@ -122,10 +128,11 @@ where
     warn!("action space: {:?}", env.action_space());
     warn!("observation space: {:?}", env.observation_space());
 
-    let mut episodic_returns = Vec::new();
+    let mut mc_returns = Vec::new();
+    let mut successes = Vec::new();
     let mut rng = rand::thread_rng();
 
-    agent.train = train;
+    agent.run_mode = run_mode;
     for episode in 0..config.max_episodes {
         let mut total_reward = 0.0;
         env.reset(rng.gen::<u64>())?;
@@ -138,7 +145,7 @@ where
             let step = env.step(<A>::from_vec(action.clone()))?;
             total_reward += step.reward;
 
-            if train {
+            if let RunMode::Train = agent.run_mode {
                 agent.remember(
                     state,
                     &Tensor::new(action, device)?,
@@ -150,21 +157,22 @@ where
             }
 
             if step.terminated || step.truncated {
+                successes.push(step.terminated);
                 break;
             }
         }
 
         warn!("episode {episode} with total reward of {total_reward}");
-        episodic_returns.push(total_reward);
+        mc_returns.push(total_reward);
 
-        if train {
+        if let RunMode::Train = agent.run_mode {
             for _ in 0..config.training_iterations {
                 agent.train(config.training_batch_size)?;
             }
         }
     }
     env.reset(rng.gen::<u64>())?;
-    Ok(episodic_returns)
+    Ok((mc_returns, successes))
 }
 
 

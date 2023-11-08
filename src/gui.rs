@@ -12,6 +12,7 @@ use crate::{
         DistanceMeasure,
     },
     TrainingConfig,
+    RunMode,
     run,
     tick,
 };
@@ -25,7 +26,7 @@ use eframe::egui;
 use egui::widgets::Button;
 use egui::{Ui, Slider, Color32, Checkbox};
 use egui_graphs::{Graph, GraphView, SettingsInteraction, SettingsStyle};
-use egui_plot::{PlotUi, Plot, Line, Points};
+use egui_plot::{PlotUi, Plot, Line, Points, PlotBounds};
 
 
 enum PlayMode {
@@ -45,7 +46,7 @@ where
     config: TrainingConfig,
     device: Device,
 
-    episodic_returns: Vec<f64>,
+    run_data: Vec<(RunMode, f64, bool)>,
     graph: StableGraph<O, OrderedFloat<f64>, Undirected>,
     graph_egui: Graph<O, OrderedFloat<f64>, Undirected>,
 
@@ -80,7 +81,7 @@ where
         // render episodic rewards / learning curve
         egui::TopBottomPanel::top("rewards").show(ctx, |ui| {
             Plot::new("rewards_plot").show(ui, |plot_ui| {
-                self.render_rewards(plot_ui);
+                self.render_returns(plot_ui);
             });
         });
 
@@ -137,7 +138,7 @@ where
             config,
             device,
 
-            episodic_returns: Vec::new(),
+            run_data: Vec::new(),
             graph: StableGraph::default(),
             graph_egui: Graph::from(&StableGraph::default()),
 
@@ -164,30 +165,37 @@ where
     ) -> Result<()> {
         // a kind of hack not to hang up the GUI while training and watch it train one episode at a time
         if self.train_episodes_to_go > 0 {
+            let run_mode = RunMode::Train;
             let mut config = self.config.clone();
             config.max_episodes = 1;
-            self.episodic_returns.extend(run(
+
+
+            // TODO: we train for 200 iterations after every single run!
+
+
+            let (mc_returns, successes) = run(
                 &mut self.env,
                 &mut self.agent,
                 config,
-                true,
+                run_mode,
                 &self.device,
-            )?);
+            )?;
+            self.run_data.push((run_mode, mc_returns[0], successes[0]));
             self.train_episodes_to_go -= 1;
         }
 
         #[allow(clippy::collapsible_if)]
         // construct the graph every defined number of episodes
-        if (self.episodic_returns.len() + 1) % self.config.sgm_freq == 0 {
+        if (self.run_data.len() + 1) % self.config.sgm_freq == 0 {
             // but take care not to construct it constantly in this edge-case
-            if self.last_graph_constructed_at != self.episodic_returns.len() {
+            if self.last_graph_constructed_at != self.run_data.len() {
                 self.graph = self.agent.replay_buffer().construct_sgm(
                     |o1, o2| <O>::distance(o1, o2),
                     self.config.sgm_maxdist,
                     self.config.sgm_tau,
                 ).0;
                 self.graph_egui = Graph::from(&self.graph);
-                self.last_graph_constructed_at = self.episodic_returns.len();
+                self.last_graph_constructed_at = self.run_data.len();
             }
         }
 
@@ -202,15 +210,17 @@ where
                 )?;
             }
             PlayMode::Episodes => {
+                let run_mode = RunMode::Test;
                 let mut config = self.config.clone();
                 config.max_episodes = 1;
-                run(
+                let (mc_returns, successes) = run(
                     &mut self.env,
                     &mut self.agent,
                     config,
-                    false,
+                    run_mode,
                     &self.device,
                 )?;
+                self.run_data.push((run_mode, mc_returns[0], successes[0]));
             }
         }
         Ok(())
@@ -267,19 +277,45 @@ where
         }
     }
 
-    fn render_rewards(
+    fn render_returns(
         &mut self,
         plot_ui: &mut PlotUi,
     ) {
-        plot_ui.line(
-            Line::new(
-                self.episodic_returns.clone()
-                .into_iter()
-                .enumerate()
-                .map(|(x, y)| [x as f64, y])
-                .collect::<Vec<_>>()
+        let (min, max) = self.env.episodic_reward_range();
+        let n = self.run_data.len() as f64;
+
+        plot_ui.set_plot_bounds(
+            PlotBounds::from_min_max(
+                [0.0, min],
+                [n, max],
             )
-        )
+        );
+
+        let _ = self.run_data
+            .iter()
+            .enumerate()
+            .map(|(idx, (run_mode, mc_return, success))|{
+                plot_ui.points(
+                    Points::new([idx as f64, *mc_return])
+                        .color(match run_mode {
+                            RunMode::Train => Color32::RED,
+                            RunMode::Test => Color32::GREEN,
+                        })
+                );
+                if *success {
+                    plot_ui.line(
+                        Line::new(
+                            vec![
+                                [idx as f64, min],
+                                [idx as f64, max],
+                            ]
+                        )
+                        .width(1.0)
+                        .color(Color32::LIGHT_GREEN)
+                    )
+                }
+            })
+            .collect::<Vec<_>>();
     }
 
     fn render_fancy_graph(

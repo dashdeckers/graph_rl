@@ -15,6 +15,7 @@ use graph_rl::{
     util::setup_logging,
     gui::GUI,
     TrainingConfig,
+    RunMode,
     run,
 };
 
@@ -82,7 +83,7 @@ fn main() -> Result<()> {
                     &mut env,
                     &mut agent,
                     config,
-                    true,
+                    RunMode::Train,
                     &device,
                 )?;
             }
@@ -105,7 +106,7 @@ fn main() -> Result<()> {
                     &mut env,
                     &mut agent,
                     config,
-                    true,
+                    RunMode::Train,
                     &device,
                 )?;
             }
