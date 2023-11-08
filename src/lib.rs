@@ -187,7 +187,13 @@ where
     A: Clone + VectorConvertible,
 {
     let action = agent.actions(&<O>::to_tensor(env.current_observation(), device)?)?;
-    let step = env.step(<A>::from_vec(action))?;
+    let step = if let Ok(step) = env.step(<A>::from_vec(action.clone())) {
+        step
+    } else {
+        env.reset(thread_rng().gen::<u64>())?;
+        env.step(<A>::from_vec(action))?
+    };
+
     if step.terminated || step.truncated {
         env.reset(thread_rng().gen::<u64>())?;
     }
