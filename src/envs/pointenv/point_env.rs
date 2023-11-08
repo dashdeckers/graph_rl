@@ -134,6 +134,7 @@ pub struct PointEnv {
     reset_count: usize,
 
     step_radius: f64,
+    term_radius: f64,
     bounce_factor: f64,
     reward: PointReward,
 
@@ -187,6 +188,7 @@ impl PointEnv {
             reset_count: 0,
 
             step_radius: 1.0,
+            term_radius: 0.2,
             bounce_factor: 0.1,
             reward: config.reward,
 
@@ -241,7 +243,7 @@ impl Environment for PointEnv {
         self.history.push(self.state);
 
         let reward = self.reward.compute(&self.state, &self.goal);
-        let terminated = reachable(&self.state, &self.goal, self.step_radius, &self.walls);
+        let terminated = reachable(&self.state, &self.goal, self.term_radius, &self.walls);
         let truncated = !terminated && (self.timestep == self.timelimit);
 
         warn!(
