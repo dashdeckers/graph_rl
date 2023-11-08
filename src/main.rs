@@ -77,7 +77,7 @@ fn main() -> Result<()> {
             let mut agent = DDPG::from_config(&device, &config, size_state, size_action)?;
 
             if args.gui {
-                panic!("Not implemented yet!")
+                GUI::open(env, agent, config, device);
             } else {
                 run(
                     &mut env,

@@ -2,8 +2,10 @@ use candle_core::{Tensor, Device};
 use pyo3::prelude::*;
 use anyhow::Result;
 use ordered_float::OrderedFloat;
+use egui::Color32;
+use egui_plot::{PlotUi, Line, PlotBounds};
 
-use super::{Environment, Step, TensorConvertible, VectorConvertible, DistanceMeasure};
+use super::{Environment, Step, TensorConvertible, VectorConvertible, DistanceMeasure, Renderable};
 use super::gym_wrappers::{gym_create_env, gym_reset_env, gym_step_env};
 
 
@@ -145,5 +147,37 @@ impl Environment for PendulumEnv {
         } else {
             panic!("Can't access current observation of Gym environments before calling reset or step")
         }
+    }
+
+    fn episodic_reward_range(&self) -> (f64, f64) {
+        (-16.2736044, 0.0)
+    }
+}
+
+
+impl Renderable for PendulumEnv {
+    fn render(
+        &mut self,
+        plot_ui: &mut PlotUi,
+    ) {
+        // Setup plot bounds
+        plot_ui.set_plot_bounds(
+            PlotBounds::from_min_max(
+                [0.0, 0.0],
+                [5.0, 5.0],
+            )
+        );
+        // Draw the Pendulum
+        let obs = self.current_observation();
+        plot_ui.line(
+            Line::new(
+                vec![
+                    [0.0, 0.0],
+                    [*obs.x, *obs.y],
+                ]
+            )
+            .width(3.0)
+            .color(Color32::RED)
+        )
     }
 }
