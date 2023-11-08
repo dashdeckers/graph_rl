@@ -6,6 +6,7 @@ pub mod replay_buffer;
 pub mod sgm;
 pub mod ou_noise;
 pub mod ddpg;
+pub mod ddpg_sgm;
 
 pub mod gui;
 
