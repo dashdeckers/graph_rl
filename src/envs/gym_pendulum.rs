@@ -11,7 +11,7 @@ use super::gym_wrappers::{gym_create_env, gym_reset_env, gym_step_env};
 
 pub struct PendulumEnv {
     env: PyObject,
-    current_observation: Option<PendulumState>,
+    current_observation: PendulumState,
     action_space: Vec<usize>,
     observation_space: Vec<usize>,
 }
@@ -70,7 +70,7 @@ pub struct PendulumState {
     x: OrderedFloat<f64>,
     y: OrderedFloat<f64>,
     // The angular velocity of the pendulum
-    theta: OrderedFloat<f64>,
+    velocity: OrderedFloat<f64>,
 }
 impl VectorConvertible for PendulumState {
     fn from_vec(value: Vec<f64>) -> Self {
@@ -79,11 +79,11 @@ impl VectorConvertible for PendulumState {
         Self {
             x: OrderedFloat(value[0]),
             y: OrderedFloat(value[1]),
-            theta: OrderedFloat(value[2]),
+            velocity: OrderedFloat(value[2]),
         }
     }
     fn to_vec(value: Self) -> Vec<f64> {
-        vec![*value.x, *value.y, *value.theta]
+        vec![*value.x, *value.y, *value.velocity]
     }
 }
 impl TensorConvertible for PendulumState {
@@ -98,9 +98,8 @@ impl TensorConvertible for PendulumState {
     }
 }
 impl DistanceMeasure for PendulumState {
-    fn distance(_s1: &Self, _s2: &Self) -> f64 {
-        // 1.0
-        todo!()
+    fn distance(s1: &Self, s2: &Self) -> f64 {
+        ((s1.x - s2.x).powi(2) + (s1.y - s2.y).powi(2) + (s1.velocity - s2.velocity).powi(2)).sqrt()
     }
 }
 
@@ -115,21 +114,24 @@ impl Environment for PendulumEnv {
         let (env, action_space, observation_space) = gym_create_env(&config.name)?;
         Ok(Box::new(Self {
             env,
-            current_observation: None,
+            current_observation: PendulumState {
+                x: OrderedFloat(-1.0),
+                y: OrderedFloat(0.0),
+                velocity: OrderedFloat(0.0),
+            },
             action_space,
             observation_space,
         }))
     }
 
     fn reset(&mut self, seed: u64) -> Result<Self::Observation> {
-        let obs = gym_reset_env(&self.env, seed)?;
-        self.current_observation = Some(obs);
+        self.current_observation = gym_reset_env(&self.env, seed)?;
         Ok(self.current_observation())
     }
 
     fn step(&mut self, action: Self::Action) -> Result<Step<Self::Observation, Self::Action>> {
         let step: Step<Self::Observation, Self::Action> = gym_step_env(&self.env, action, false)?;
-        self.current_observation = Some(step.observation.clone());
+        self.current_observation = step.observation.clone();
         Ok(step)
     }
 
@@ -142,11 +144,7 @@ impl Environment for PendulumEnv {
     }
 
     fn current_observation(&self) -> Self::Observation {
-        if let Some(obs) = self.current_observation.clone() {
-            obs
-        } else {
-            panic!("Can't access current observation of Gym environments before calling reset or step")
-        }
+        self.current_observation.clone()
     }
 
     fn episodic_reward_range(&self) -> (f64, f64) {
@@ -163,8 +161,8 @@ impl Renderable for PendulumEnv {
         // Setup plot bounds
         plot_ui.set_plot_bounds(
             PlotBounds::from_min_max(
-                [0.0, 0.0],
-                [5.0, 5.0],
+                [-1.0, -1.0],
+                [1.0, 1.0],
             )
         );
         // Draw the Pendulum
