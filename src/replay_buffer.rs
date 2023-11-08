@@ -50,6 +50,10 @@ impl ReplayBuffer {
         }
     }
 
+    pub fn is_full(&self) -> bool {
+        self.size == self.capacity
+    }
+
     pub fn push(
         &mut self,
         state: &Tensor,
