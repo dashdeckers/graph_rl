@@ -51,7 +51,6 @@ where
     graph_egui: Graph<O, OrderedFloat<f64>, Undirected>,
 
     play_mode: PlayMode,
-    train_episodes_to_go: usize,
     last_graph_constructed_at: usize,
 
     render_graph: bool,
@@ -143,7 +142,6 @@ where
             graph_egui: Graph::from(&StableGraph::default()),
 
             play_mode: PlayMode::Pause,
-            train_episodes_to_go: 0,
             last_graph_constructed_at: 0,
 
             render_graph: false,
@@ -163,27 +161,6 @@ where
     fn run_gui_logic(
         &mut self,
     ) -> Result<()> {
-        // a kind of hack not to hang up the GUI while training and watch it train one episode at a time
-        if self.train_episodes_to_go > 0 {
-            let run_mode = RunMode::Train;
-            let mut config = self.config.clone();
-            config.max_episodes = 1;
-
-
-            // TODO: we train for 200 iterations after every single run!
-
-
-            let (mc_returns, successes) = run(
-                &mut self.env,
-                &mut self.agent,
-                config,
-                run_mode,
-                &self.device,
-            )?;
-            self.run_data.push((run_mode, mc_returns[0], successes[0]));
-            self.train_episodes_to_go -= 1;
-        }
-
         #[allow(clippy::collapsible_if)]
         // construct the graph every defined number of episodes
         if (self.run_data.len() + 1) % self.config.sgm_freq == 0 {
@@ -361,7 +338,17 @@ where
         ui.add(Slider::new(&mut self.config.max_episodes, 1..=101).text("n_episodes"));
         ui.horizontal(|ui| {
             if ui.add(Button::new("Train Episodes")).clicked() {
-                self.train_episodes_to_go = self.config.max_episodes;
+                let (mc_returns, successes) = run(
+                    &mut self.env,
+                    &mut self.agent,
+                    self.config.clone(),
+                    RunMode::Train,
+                    &self.device,
+                ).unwrap();
+                self.run_data.extend(
+                    (0..self.config.max_episodes)
+                    .map(|i| (RunMode::Train, mc_returns[i], successes[i]))
+                );
             };
             if ui.add(Button::new("Reset Agent")).clicked() {
                 self.reset_agent().unwrap();
