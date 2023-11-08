@@ -163,7 +163,7 @@ where
     ) -> Result<()> {
         #[allow(clippy::collapsible_if)]
         // construct the graph every defined number of episodes
-        if (self.run_data.len() + 1) % self.config.sgm_freq == 0 {
+        if self.config.sgm_freq > 0 && (self.run_data.len() + 1) % self.config.sgm_freq == 0 {
             // but take care not to construct it constantly in this edge-case
             if self.last_graph_constructed_at != self.run_data.len() {
                 self.graph = self.agent.replay_buffer().construct_sgm(
@@ -329,7 +329,7 @@ where
 
         ui.separator();
         ui.label("SGM Options");
-        ui.add(Slider::new(&mut self.config.sgm_freq, 1..=20).text("Rebuilding freq").step_by(1.0));
+        ui.add(Slider::new(&mut self.config.sgm_freq, 0..=20).text("Rebuilding freq").step_by(1.0));
         ui.add(Slider::new(&mut self.config.sgm_maxdist, 0.0..=1.0).text("Max distance").step_by(0.01));
         ui.add(Slider::new(&mut self.config.sgm_tau, 0.0..=1.0).text("Tau").step_by(0.01));
 

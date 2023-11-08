@@ -83,7 +83,7 @@ impl TrainingConfig {
             ou_mu: 0.0,
             ou_theta: 0.15,
             ou_sigma: 0.1,
-            sgm_freq: 1,
+            sgm_freq: 0,
             sgm_maxdist: 1.0,
             sgm_tau: 0.4,
         }
