@@ -17,13 +17,13 @@ pub struct PointEnvConfig {
 impl Default for PointEnvConfig {
     fn default() -> Self {
         Self {
-            width: 10,
-            height: 10,
+            width: 7,
+            height: 7,
             walls: None,
             timelimit: 10,
             step_radius: 1.0,
             bounce_factor: 0.1,
-            reward: PointReward::Euclidean,
+            reward: PointReward::Distance,
             seed: StdRng::from_entropy().gen::<u64>(),
         }
     }
