@@ -37,6 +37,9 @@ pub struct TrainingConfig {
     pub gamma: f64,
     // The weight for updating the target networks.
     pub tau: f64,
+    // The number of neurons in the hidden layers of the Actor and Critic networks.
+    pub hidden_1_size: usize,
+    pub hidden_2_size: usize,
     // The capacity of the replay buffer used for sampling training data.
     pub replay_buffer_capacity: usize,
     // The training batch size for each training iteration.
@@ -63,6 +66,8 @@ impl TrainingConfig {
             critic_learning_rate: 1e-3,
             gamma: 0.99,
             tau: 0.005,
+            hidden_1_size: 400,
+            hidden_2_size: 300,
             replay_buffer_capacity: 100_000,
             training_batch_size: 100,
             max_episodes: 100,
@@ -83,6 +88,8 @@ impl TrainingConfig {
             critic_learning_rate: 1e-3,
             gamma: 0.99,
             tau: 0.005,
+            hidden_1_size: 512,
+            hidden_2_size: 512,
             replay_buffer_capacity: 1000,
             training_batch_size: 100,
             max_episodes: 50,

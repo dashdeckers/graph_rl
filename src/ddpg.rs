@@ -43,17 +43,17 @@ struct Actor<'a> {
     vb: VarBuilder<'a>,
     network: Sequential,
     target_network: Sequential,
-    size_state: usize,
-    size_action: usize,
     dims: Vec<(usize, usize)>,
 }
 
 impl Actor<'_> {
-    fn new(device: &Device, dtype: DType, size_state: usize, size_action: usize) -> Result<Self> {
+    fn new(
+        device: &Device,
+        dtype: DType,
+        dims: &[(usize, usize)],
+    ) -> Result<Self> {
         let mut varmap = VarMap::new();
         let vb = VarBuilder::from_varmap(&varmap, dtype, device);
-
-        let dims = vec![(size_state, 400), (400, 300), (300, size_action)];
 
         let make_network = |prefix: &str| {
             let seq = seq()
@@ -82,16 +82,14 @@ impl Actor<'_> {
         let target_network = make_network("target-actor")?;
 
         // this sets the two networks to be equal to each other using tau = 1.0
-        track(&mut varmap, &vb, "target-actor", "actor", &dims, 1.0)?;
+        track(&mut varmap, &vb, "target-actor", "actor", dims, 1.0)?;
 
         Ok(Self {
             varmap,
             vb,
             network,
             target_network,
-            size_state,
-            size_action,
-            dims,
+            dims: dims.to_vec(),
         })
     }
 
@@ -121,17 +119,17 @@ struct Critic<'a> {
     vb: VarBuilder<'a>,
     network: Sequential,
     target_network: Sequential,
-    size_state: usize,
-    size_action: usize,
     dims: Vec<(usize, usize)>,
 }
 
 impl Critic<'_> {
-    fn new(device: &Device, dtype: DType, size_state: usize, size_action: usize) -> Result<Self> {
+    fn new(
+        device: &Device,
+        dtype: DType,
+        dims: &[(usize, usize)],
+    ) -> Result<Self> {
         let mut varmap = VarMap::new();
         let vb = VarBuilder::from_varmap(&varmap, dtype, device);
-
-        let dims: Vec<(usize, usize)> = vec![(size_state + size_action, 400), (400, 300), (300, 1)];
 
         let make_network = |prefix: &str| {
             let seq = seq()
@@ -159,16 +157,14 @@ impl Critic<'_> {
         let target_network = make_network("target-critic")?;
 
         // this sets the two networks to be equal to each other using tau = 1.0
-        track(&mut varmap, &vb, "target-critic", "critic", &dims, 1.0)?;
+        track(&mut varmap, &vb, "target-critic", "critic", dims, 1.0)?;
 
         Ok(Self {
             varmap,
             vb,
             network,
             target_network,
-            size_state,
-            size_action,
-            dims,
+            dims: dims.to_vec(),
         })
     }
 
@@ -222,18 +218,15 @@ impl DDPG<'_> {
             device,
             size_state,
             size_action,
+            config.hidden_1_size,
+            config.hidden_2_size,
             true,
             config.actor_learning_rate,
             config.critic_learning_rate,
             config.gamma,
             config.tau,
             config.replay_buffer_capacity,
-            OuNoise::new(
-                config.ou_mu,
-                config.ou_theta,
-                config.ou_sigma,
-                size_action,
-            )?,
+            OuNoise::new(config.ou_mu, config.ou_theta, config.ou_sigma, size_action)?,
         )
     }
 
@@ -242,6 +235,8 @@ impl DDPG<'_> {
         device: &Device,
         size_state: usize,
         size_action: usize,
+        hidden_1_size: usize,
+        hidden_2_size: usize,
         train: bool,
         actor_lr: f64,
         critic_lr: f64,
@@ -260,7 +255,15 @@ impl DDPG<'_> {
                 .collect::<Vec<Var>>()
         };
 
-        let actor = Actor::new(device, DType::F64, size_state, size_action)?;
+        let actor = Actor::new(
+            device,
+            DType::F64,
+            &[
+                (size_state, hidden_1_size),
+                (hidden_1_size, hidden_2_size),
+                (hidden_2_size, size_action),
+            ],
+        )?;
         let actor_optim = AdamW::new(
             filter_by_prefix(&actor.varmap, "actor"),
             ParamsAdamW {
@@ -269,7 +272,15 @@ impl DDPG<'_> {
             },
         )?;
 
-        let critic = Critic::new(device, DType::F64, size_state, size_action)?;
+        let critic = Critic::new(
+            device,
+            DType::F64,
+            &[
+                (size_state + size_action, hidden_1_size),
+                (hidden_1_size, hidden_2_size),
+                (hidden_2_size, 1),
+            ],
+        )?;
         let critic_optim = AdamW::new(
             filter_by_prefix(&critic.varmap, "critic"),
             ParamsAdamW {
