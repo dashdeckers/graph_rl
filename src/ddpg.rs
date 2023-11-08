@@ -1,15 +1,37 @@
-use candle_core::{DType, Device, Error, Module, Result, Tensor, Var};
-use crate::{
-    ou_noise::OuNoise,
-    replay_buffer::ReplayBuffer,
-    TrainingConfig,
+use {
+    crate::{
+        ou_noise::OuNoise,
+        replay_buffer::ReplayBuffer,
+        TrainingConfig,
+    },
+    candle_core::{
+        DType,
+        Device,
+        Error,
+        Module,
+        Result,
+        Tensor,
+        Var,
+    },
+    candle_nn::{
+        func,
+        linear,
+        sequential::seq,
+        Activation,
+        AdamW,
+        Optimizer,
+        ParamsAdamW,
+        Sequential,
+        VarBuilder,
+        VarMap,
+    },
+    rand::{
+        distributions::Uniform,
+        thread_rng,
+        Rng,
+    },
+    tracing::warn,
 };
-use candle_nn::{
-    func, linear, sequential::seq, Activation, AdamW, Optimizer, ParamsAdamW, Sequential,
-    VarBuilder, VarMap,
-};
-use tracing::warn;
-
 
 fn track(
     varmap: &mut VarMap,
@@ -93,15 +115,24 @@ impl Actor<'_> {
         })
     }
 
-    fn forward(&self, state: &Tensor) -> Result<Tensor> {
+    fn forward(
+        &self,
+        state: &Tensor,
+    ) -> Result<Tensor> {
         self.network.forward(state)
     }
 
-    fn target_forward(&self, state: &Tensor) -> Result<Tensor> {
+    fn target_forward(
+        &self,
+        state: &Tensor,
+    ) -> Result<Tensor> {
         self.target_network.forward(state)
     }
 
-    fn track(&mut self, tau: f64) -> Result<()> {
+    fn track(
+        &mut self,
+        tau: f64,
+    ) -> Result<()> {
         track(
             &mut self.varmap,
             &self.vb,
@@ -168,17 +199,28 @@ impl Critic<'_> {
         })
     }
 
-    fn forward(&self, state: &Tensor, action: &Tensor) -> Result<Tensor> {
+    fn forward(
+        &self,
+        state: &Tensor,
+        action: &Tensor,
+    ) -> Result<Tensor> {
         let xs = Tensor::cat(&[action, state], 1)?;
         self.network.forward(&xs)
     }
 
-    fn target_forward(&self, state: &Tensor, action: &Tensor) -> Result<Tensor> {
+    fn target_forward(
+        &self,
+        state: &Tensor,
+        action: &Tensor,
+    ) -> Result<Tensor> {
         let xs = Tensor::cat(&[action, state], 1)?;
         self.target_network.forward(&xs)
     }
 
-    fn track(&mut self, tau: f64) -> Result<()> {
+    fn track(
+        &mut self,
+        tau: f64,
+    ) -> Result<()> {
         track(
             &mut self.varmap,
             &self.vb,
@@ -330,6 +372,10 @@ impl DDPG<'_> {
             .push(state, action, reward, next_state, terminated, truncated)
     }
 
+    pub fn actions(
+        &mut self,
+        state: &Tensor,
+    ) -> Result<Vec<f64>> {
         // if the replay buffer is not full, then we just sample random actions.
         // this helps generate more diverse experiences especially at the beginning.
         if !self.replay_buffer.is_full() {
@@ -343,6 +389,7 @@ impl DDPG<'_> {
             .actor
             .forward(&state.detach()?.unsqueeze(0)?)?
             .squeeze(0)?;
+
         let actions = if self.train {
             (actions + self.ou_noise.sample()?)?
         } else {
@@ -351,7 +398,10 @@ impl DDPG<'_> {
         actions.to_vec1::<f64>()
     }
 
-    pub fn train(&mut self, batch_size: usize) -> Result<()> {
+    pub fn train(
+        &mut self,
+        batch_size: usize,
+    ) -> Result<()> {
         let (states, actions, rewards, next_states, _, _) =
             match self.replay_buffer.random_batch(batch_size)? {
                 Some(v) => v,
