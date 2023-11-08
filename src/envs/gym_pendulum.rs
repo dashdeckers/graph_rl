@@ -148,7 +148,7 @@ impl Environment for PendulumEnv {
     }
 
     fn episodic_reward_range(&self) -> (f64, f64) {
-        (-16.2736044, 0.0)
+        (-16.2736044 * 200.0, 0.0)
     }
 }
 
