@@ -310,7 +310,7 @@ where
         ui.add(Slider::new(&mut self.config.critic_learning_rate, 0.00001..=0.1).logarithmic(true).fixed_decimals(5).text("Critic LR"));
         ui.add(Slider::new(&mut self.config.gamma, 0.0..=1.0).step_by(0.1).text("Gamma"));
         ui.add(Slider::new(&mut self.config.tau, 0.001..=1.0).logarithmic(true).text("Tau"));
-        ui.add(Slider::new(&mut self.config.replay_buffer_capacity, 100..=100_000).logarithmic(true).text("Buffer size"));
+        ui.add(Slider::new(&mut self.config.replay_buffer_capacity, 10..=100_000).logarithmic(true).text("Buffer size"));
         ui.add(Slider::new(&mut self.config.training_batch_size, 1..=200).text("Batch size"));
         ui.add(Slider::new(&mut self.config.training_iterations, 1..=200).text("Training iters"));
 
@@ -333,7 +333,7 @@ where
         });
 
         ui.separator();
-        ui.label("Watch Agent");
+        ui.label("Test Agent");
         ui.horizontal(|ui| {
             if ui.add(Button::new("Pause")).clicked() {
                 self.play_mode = PlayMode::Pause;
