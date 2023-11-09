@@ -14,6 +14,11 @@ pub fn gym_create_env(
     name: &str,
 ) -> Result<(PyObject, Vec<usize>, Vec<usize>)> {
     Python::with_gil(|py| {
+        let sys = py.import("sys")?;
+        let version: String = sys.getattr("version")?.extract()?;
+        let path: String = sys.getattr("executable")?.extract()?;
+        println!("PYTHON VERSION: {version}");
+        println!("PYTHON EXECUTABLE: {path}");
         let gym = py.import("gymnasium")?;
         let make = gym.getattr("make")?;
         let env = make.call1((name,))?;
