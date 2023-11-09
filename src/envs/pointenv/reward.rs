@@ -19,7 +19,7 @@ impl PointReward {
     ) -> f64 {
         match self {
             PointReward::Euclidean => -PointState::distance(state, goal),
-            PointReward::Distance => if reachable(state, goal, term_radius, walls) {10.0} else {-1.0},
+            PointReward::Distance => if reachable(state, goal, term_radius, walls) {0.0} else {-1.0},
             PointReward::Sparse => if reachable(state, goal, term_radius, walls) {1.0} else {0.0},
         }
     }
