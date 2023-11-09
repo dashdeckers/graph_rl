@@ -1,3 +1,6 @@
+use std::ops::RangeInclusive;
+
+use rand::Rng;
 use candle_core::{Tensor, Device};
 use pyo3::prelude::*;
 use anyhow::Result;
@@ -5,7 +8,7 @@ use ordered_float::OrderedFloat;
 use egui::Color32;
 use egui_plot::{PlotUi, Line, PlotBounds};
 
-use super::{Environment, Step, TensorConvertible, VectorConvertible, DistanceMeasure, Renderable};
+use super::{Environment, Step, TensorConvertible, VectorConvertible, DistanceMeasure, Renderable, Sampleable};
 use super::gym_wrappers::{gym_create_env, gym_reset_env, gym_step_env};
 
 
@@ -31,6 +34,15 @@ impl Default for PendulumConfig {
 pub struct PendulumAction {
     // Torque applied to the free end of the pendulum
     tau: OrderedFloat<f64>,
+}
+impl Sampleable for PendulumAction {
+    fn sample(
+        rng: &mut dyn rand::RngCore,
+        domain: &[RangeInclusive<f64>]
+    ) -> Self {
+        debug_assert!(domain.len() == 1);
+        Self { tau: OrderedFloat(rng.gen_range(domain[0].clone())) }
+    }
 }
 impl VectorConvertible for PendulumAction {
     fn from_vec(value: Vec<f64>) -> Self {
@@ -139,8 +151,20 @@ impl Environment for PendulumEnv {
         self.action_space.clone()
     }
 
+    fn action_domain(&self) -> Vec<RangeInclusive<f64>> {
+        vec![-2.0..=2.0]
+    }
+
     fn observation_space(&self) -> Vec<usize> {
         self.observation_space.clone()
+    }
+
+    fn observation_domain(&self) -> Vec<RangeInclusive<f64>> {
+        vec![
+            -1.0..=1.0,
+            -1.0..=1.0,
+            -8.0..=8.0,
+        ]
     }
 
     fn current_observation(&self) -> Self::Observation {
@@ -148,7 +172,7 @@ impl Environment for PendulumEnv {
     }
 
     fn value_range(&self) -> (f64, f64) {
-        (-16.2736044 * 200.0, 0.0)
+        (-16.2736044 * 200.0, 0.0 + 200.0) // add a little bit of padding to upper bound
     }
 }
 

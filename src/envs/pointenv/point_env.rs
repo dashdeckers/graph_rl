@@ -1,3 +1,4 @@
+use std::ops::RangeInclusive;
 use ordered_float::OrderedFloat;
 use derive_getters::Getters;
 use rand::{SeedableRng, RngCore, rngs::StdRng};
@@ -14,7 +15,7 @@ use super::line::PointLine;
 use super::reward::PointReward;
 use super::config::PointEnvConfig;
 
-use super::super::{Environment, Renderable, Step};
+use super::super::{Environment, Renderable, Step, Sampleable};
 
 
 /// Generate a valid pair of (start, goal). \
@@ -28,8 +29,8 @@ fn generate_start_goal(
     rng: &mut dyn RngCore,
 ) -> (PointState, PointState) {
     loop {
-        let state = PointState::sample(rng, width as f64, height as f64);
-        let goal = PointState::sample(rng, width as f64, height as f64);
+        let state = PointState::sample(rng, &[0.0..=(width as f64), 0.0..=(height as f64)]);
+        let goal = PointState::sample(rng, &[0.0..=(width as f64), 0.0..=(height as f64)]);
 
         let wall_contains_state = walls.iter().any(|w| w.contains(&state) || w.contains(&goal));
 
@@ -271,8 +272,19 @@ impl Environment for PointEnv {
         vec![2]
     }
 
+    fn action_domain(&self) -> Vec<RangeInclusive<f64>> {
+        vec![0.0..=self.step_radius]
+    }
+
     fn observation_space(&self) -> Vec<usize> {
         vec![2 + 2]// + 4 * self.walls.len()]
+    }
+
+    fn observation_domain(&self) -> Vec<RangeInclusive<f64>> {
+        vec![
+            0.0..=(self.width as f64),
+            0.0..=(self.height as f64),
+        ]
     }
 
     fn current_observation(&self) -> Self::Observation {

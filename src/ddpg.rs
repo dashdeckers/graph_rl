@@ -26,11 +26,6 @@ use {
         VarBuilder,
         VarMap,
     },
-    rand::{
-        distributions::Uniform,
-        thread_rng,
-        Rng,
-    },
     tracing::info,
 };
 
@@ -377,15 +372,6 @@ impl DDPG<'_> {
         &mut self,
         state: &Tensor,
     ) -> Result<Vec<f64>> {
-        // if the replay buffer is not full, then we just sample random actions.
-        // this helps generate more diverse experiences especially at the beginning.
-        // if !self.replay_buffer.is_full() {
-        //     return Ok(thread_rng()
-        //         .sample_iter(Uniform::from(-1.0..1.0))
-        //         .take(self.size_action)
-        //         .collect());
-        // }
-
         let actions = self
             .actor
             .forward(&state.detach()?.unsqueeze(0)?)?

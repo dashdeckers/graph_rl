@@ -10,6 +10,7 @@ use crate::{
         VectorConvertible,
         TensorConvertible,
         DistanceMeasure,
+        Sampleable,
     },
     TrainingConfig,
     RunMode,
@@ -39,7 +40,7 @@ pub struct GUI<'a, E, O, A>
 where
     E: Environment<Action = A, Observation = O> + Renderable + 'static,
     O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
-    A: Clone + VectorConvertible + 'static,
+    A: Clone + VectorConvertible + Sampleable + 'static,
 {
     env: E,
     agent: DDPG<'a>,
@@ -62,7 +63,7 @@ impl<E, O, A> eframe::App for GUI<'static, E, O, A>
 where
     E: Environment<Action = A, Observation = O> + Renderable + 'static,
     O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
-    A: Clone + VectorConvertible + 'static,
+    A: Clone + VectorConvertible + Sampleable + 'static,
 {
     fn update(
         &mut self,
@@ -123,7 +124,7 @@ impl<E, O, A> GUI<'static, E, O, A>
 where
     E: Environment<Action = A, Observation = O> + Renderable + 'static,
     O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
-    A: Clone + VectorConvertible + 'static,
+    A: Clone + VectorConvertible + Sampleable + 'static,
 {
     pub fn open(
         env: E,

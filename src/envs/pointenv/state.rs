@@ -3,7 +3,7 @@ use candle_core::{Device, Tensor};
 use ordered_float::OrderedFloat;
 use rand::{Rng, RngCore};
 
-use super::super::{TensorConvertible, VectorConvertible, DistanceMeasure};
+use super::super::{TensorConvertible, VectorConvertible, DistanceMeasure, Sampleable};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PointState {
@@ -17,14 +17,6 @@ impl PointState {
 
     pub fn y(&self) -> f64 {
         self.y.into_inner()
-    }
-
-    pub fn sample(
-        rng: &mut dyn RngCore,
-        width: f64,
-        height: f64,
-    ) -> Self {
-        Self::from((rng.gen_range(0.0..=width), rng.gen_range(0.0..=height)))
     }
 
     pub fn restrict(
@@ -65,6 +57,20 @@ impl From<(f64, f64)> for PointState {
             x: OrderedFloat(value.0),
             y: OrderedFloat(value.1),
         }
+    }
+}
+
+// Sample a random PointState
+impl Sampleable for PointState {
+    fn sample(
+        rng: &mut dyn RngCore,
+        domain: &[std::ops::RangeInclusive<f64>]
+    ) -> Self {
+        debug_assert!(domain.len() == 2);
+        Self::from((
+            rng.gen_range(domain[0].clone()),
+            rng.gen_range(domain[1].clone()),
+        ))
     }
 }
 

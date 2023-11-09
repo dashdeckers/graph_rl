@@ -4,7 +4,7 @@ use ordered_float::OrderedFloat;
 use rand::{Rng, RngCore};
 
 use super::state::PointState;
-use super::super::{TensorConvertible, VectorConvertible};
+use super::super::{TensorConvertible, VectorConvertible, Sampleable};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PointAction {
@@ -18,16 +18,6 @@ impl PointAction {
 
     pub fn dy(&self) -> f64 {
         self.dy.into_inner()
-    }
-
-    pub fn sample(
-        rng: &mut dyn RngCore,
-        radius: f64,
-    ) -> Self {
-        let r: f64 = radius * f64::sqrt(rng.gen_range(0.0..=1.0));
-        let theta: f64 = rng.gen_range(0.0..=1.0) * 2.0 * std::f64::consts::PI;
-
-        Self::from((r * theta.cos(), r * theta.sin()))
     }
 
     pub fn restrict(
@@ -55,6 +45,22 @@ impl From<(f64, f64)> for PointAction {
             dx: OrderedFloat(value.0),
             dy: OrderedFloat(value.1),
         }
+    }
+}
+
+// Sample a random PointAction
+impl Sampleable for PointAction {
+    fn sample(
+        rng: &mut dyn RngCore,
+        domain: &[std::ops::RangeInclusive<f64>]
+    ) -> Self {
+        debug_assert!(domain.len() == 1);
+
+        let radius = domain[0].end();
+        let r: f64 = radius * f64::sqrt(rng.gen_range(0.0..=1.0));
+        let theta: f64 = rng.gen_range(0.0..=1.0) * 2.0 * std::f64::consts::PI;
+
+        Self::from((r * theta.cos(), r * theta.sin()))
     }
 }
 

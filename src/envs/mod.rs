@@ -2,6 +2,7 @@ mod gym_wrappers;
 mod pointenv;
 mod gym_pendulum;
 
+
 pub use crate::envs::{
     gym_pendulum::{
         PendulumEnv,
@@ -13,9 +14,11 @@ pub use crate::envs::{
     },
 };
 
+use std::ops::RangeInclusive;
 use candle_core::{Tensor, Device};
 use anyhow::Result;
 use egui_plot::PlotUi;
+use rand::RngCore;
 
 pub trait TensorConvertible: VectorConvertible {
     fn from_tensor(value: Tensor) -> Self;
@@ -27,7 +30,12 @@ pub trait VectorConvertible {
     fn to_vec(value: Self) -> Vec<f64>;
 }
 
-// pub trait Sampl
+pub trait Sampleable {
+    fn sample(
+        rng: &mut dyn RngCore,
+        domain: &[RangeInclusive<f64>]
+    ) -> Self;
+}
 
 pub trait DistanceMeasure {
     fn distance(s1: &Self, s2: &Self) -> f64;
@@ -51,7 +59,9 @@ pub trait Environment {
     fn reset(&mut self, seed: u64) -> Result<Self::Observation>;
     fn step(&mut self, action: Self::Action) -> Result<Step<Self::Observation, Self::Action>>;
     fn action_space(&self) -> Vec<usize>;
+    fn action_domain(&self) -> Vec<RangeInclusive<f64>>;
     fn observation_space(&self) -> Vec<usize>;
+    fn observation_domain(&self) -> Vec<RangeInclusive<f64>>;
     fn current_observation(&self) -> Self::Observation;
     fn value_range(&self) -> (f64, f64);
 }

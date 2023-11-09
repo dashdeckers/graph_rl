@@ -25,6 +25,7 @@ use crate::{
         VectorConvertible,
         TensorConvertible,
         DistanceMeasure,
+        Sampleable,
     },
 };
 
@@ -57,6 +58,8 @@ pub struct TrainingConfig {
     pub episode_length: usize,
     // The number of training iterations after one episode finishes.
     pub training_iterations: usize,
+    // Number of random actions to take at very beginning of training.
+    pub initial_random_actions: usize,
     // Ornstein-Uhlenbeck process parameters.
     pub ou_mu: f64,
     pub ou_theta: f64,
@@ -80,6 +83,7 @@ impl TrainingConfig {
             max_episodes: 100,
             episode_length: 200,
             training_iterations: 200,
+            initial_random_actions: 0,
             ou_mu: 0.0,
             ou_theta: 0.15,
             ou_sigma: 0.1,
@@ -102,6 +106,7 @@ impl TrainingConfig {
             max_episodes: 50,
             episode_length: timelimit,
             training_iterations: 200,
+            initial_random_actions: 100,
             ou_mu: 0.0,
             ou_theta: 0.15,
             ou_sigma: 0.1,
@@ -123,11 +128,12 @@ pub fn run<E, O, A>(
 where
     E: Environment<Action = A, Observation = O>,
     O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure,
-    A: Clone + VectorConvertible,
+    A: Clone + VectorConvertible + Sampleable,
 {
     warn!("action space: {:?}", env.action_space());
     warn!("observation space: {:?}", env.observation_space());
 
+    let mut steps_taken = 0;
     let mut mc_returns = Vec::new();
     let mut successes = Vec::new();
     let mut rng = rand::thread_rng();
@@ -141,9 +147,16 @@ where
             let observation = env.current_observation();
             let state = &<O>::to_tensor(observation, device)?;
 
-            let action = agent.actions(state)?;
+            // select an action, or randomly sample one
+            let action = if steps_taken < config.initial_random_actions {
+                <A>::to_vec(<A>::sample(&mut rng, &env.action_domain()))
+            } else {
+                agent.actions(state)?
+            };
+
             let step = env.step(<A>::from_vec(action.clone()))?;
             total_reward += step.reward;
+            steps_taken += 1;
 
             if let RunMode::Train = agent.run_mode {
                 agent.remember(
