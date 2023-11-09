@@ -31,7 +31,7 @@ use {
         thread_rng,
         Rng,
     },
-    tracing::warn,
+    tracing::info,
 };
 
 fn track(
@@ -356,7 +356,7 @@ impl DDPG<'_> {
         terminated: bool,
         truncated: bool,
     ) {
-        warn!(
+        info!(
             concat!(
                 "\nPushing to replay buffer:",
                 "\n{state:?}",
@@ -379,12 +379,12 @@ impl DDPG<'_> {
     ) -> Result<Vec<f64>> {
         // if the replay buffer is not full, then we just sample random actions.
         // this helps generate more diverse experiences especially at the beginning.
-        if !self.replay_buffer.is_full() {
-            return Ok(thread_rng()
-                .sample_iter(Uniform::from(-1.0..1.0))
-                .take(self.size_action)
-                .collect());
-        }
+        // if !self.replay_buffer.is_full() {
+        //     return Ok(thread_rng()
+        //         .sample_iter(Uniform::from(-1.0..1.0))
+        //         .take(self.size_action)
+        //         .collect());
+        // }
 
         let actions = self
             .actor

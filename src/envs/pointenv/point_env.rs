@@ -279,7 +279,7 @@ impl Environment for PointEnv {
         PointObs::from((self.state, self.goal, self.walls.as_ref()))
     }
 
-    fn episodic_reward_range(&self) -> (f64, f64) {
+    fn value_range(&self) -> (f64, f64) {
         self.reward.value_range(
             self.timelimit,
             self.width,

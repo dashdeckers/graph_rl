@@ -258,7 +258,7 @@ where
         &mut self,
         plot_ui: &mut PlotUi,
     ) {
-        let (min, max) = self.env.episodic_reward_range();
+        let (min, max) = self.env.value_range();
         let n = self.run_data.len() as f64;
 
         plot_ui.set_plot_bounds(

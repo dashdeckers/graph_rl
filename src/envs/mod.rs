@@ -27,6 +27,8 @@ pub trait VectorConvertible {
     fn to_vec(value: Self) -> Vec<f64>;
 }
 
+// pub trait Sampl
+
 pub trait DistanceMeasure {
     fn distance(s1: &Self, s2: &Self) -> f64;
 }
@@ -51,7 +53,7 @@ pub trait Environment {
     fn action_space(&self) -> Vec<usize>;
     fn observation_space(&self) -> Vec<usize>;
     fn current_observation(&self) -> Self::Observation;
-    fn episodic_reward_range(&self) -> (f64, f64);
+    fn value_range(&self) -> (f64, f64);
 }
 
 pub trait Renderable {

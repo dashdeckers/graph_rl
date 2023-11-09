@@ -147,7 +147,7 @@ impl Environment for PendulumEnv {
         self.current_observation.clone()
     }
 
-    fn episodic_reward_range(&self) -> (f64, f64) {
+    fn value_range(&self) -> (f64, f64) {
         (-16.2736044 * 200.0, 0.0)
     }
 }
