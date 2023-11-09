@@ -188,9 +188,9 @@ impl PointEnv {
             timelimit: config.timelimit,
             reset_count: 0,
 
-            step_radius: 1.0,
-            term_radius: 0.7,
-            bounce_factor: 0.1,
+            step_radius: config.step_radius,
+            term_radius: config.term_radius,
+            bounce_factor: config.bounce_factor,
             reward: config.reward,
 
             rng,
