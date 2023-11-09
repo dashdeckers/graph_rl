@@ -1,7 +1,7 @@
 # Run command (windows)
-$env:RUST_BACKTRACE=1; cargo run --release -- pointenv --gui
+$env:RUST_BACKTRACE=1; cargo run --release -- --env pointenv --gui --log warn
 # Run command (linux)
-RUST_BACKTRACE=1 cargo run --release -- pointenv --gui
+RUST_BACKTRACE=1 cargo run --release -- --env pointenv --gui --log warn
 
 
 # Cuda / nvcc
@@ -48,8 +48,8 @@ AutoROM --accept-license
 # Candle: Gymnasium
 pip install gymnasium
 
-
-
+# Install Python as a dynamic/shared library
+env PYTHON_CONFIGURE_OPTS="--enable-shared" pyenv install 3.11
 
 
 # Misc
