@@ -45,11 +45,18 @@ pip install --upgrade AutoROM
 AutoROM --accept-license
 
 
-# Candle: Gymnasium
+
+
+# Setup Gymnasium:
+## Install Python as a dynamic/shared library
+env PYTHON_CONFIGURE_OPTS="--enable-shared" pyenv install 3.11
+## Install missing libraries
+sudo apt-get install libpython3.11-dev
+## Setup virtualenv and install gymnasium
+pyenv virtualenv 3.11 thesis
+pyenv local thesis
 pip install gymnasium
 
-# Install Python as a dynamic/shared library
-env PYTHON_CONFIGURE_OPTS="--enable-shared" pyenv install 3.11
 
 
 # Misc
