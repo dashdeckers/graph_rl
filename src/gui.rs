@@ -356,7 +356,7 @@ where
 
         ui.separator();
         ui.label("Train Agent");
-        ui.add(Slider::new(&mut self.config.max_episodes, 1..=101).text("n_episodes"));
+        ui.add(Slider::new(&mut self.config.max_episodes, 1..=301).text("n_episodes"));
         ui.horizontal(|ui| {
             if ui.add(Button::new("Train Episodes")).clicked() {
                 self.train_agent().unwrap();
