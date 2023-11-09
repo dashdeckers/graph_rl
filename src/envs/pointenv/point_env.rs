@@ -2,7 +2,7 @@ use ordered_float::OrderedFloat;
 use derive_getters::Getters;
 use rand::{SeedableRng, RngCore, rngs::StdRng};
 use anyhow::Result;
-use tracing::warn;
+use tracing::info;
 
 use egui::Color32;
 use egui_plot::{PlotUi, Line, Points, PlotBounds};
@@ -40,7 +40,7 @@ fn generate_start_goal(
 }
 
 /// The goal is reachable from state if they are within step_radius of each other and no wall is in the way
-fn reachable(
+pub fn reachable(
     state: &PointState,
     goal: &PointState,
     step_radius: f64,
@@ -102,7 +102,7 @@ fn compute_next_state(
         },
     };
 
-    warn!(
+    info!(
         concat!(
             "\nCompute next step:",
             "\nS({:.3}, {:.3}) + A({:.3}, {:.3}) --> S'({:.3}, {:.3})",
@@ -188,7 +188,7 @@ impl PointEnv {
             reset_count: 0,
 
             step_radius: 1.0,
-            term_radius: 0.2,
+            term_radius: 0.7,
             bounce_factor: 0.1,
             reward: config.reward,
 
@@ -242,11 +242,11 @@ impl Environment for PointEnv {
 
         self.history.push(self.state);
 
-        let reward = self.reward.compute(&self.state, &self.goal);
+        let reward = self.reward.compute(&self.state, &self.goal, self.term_radius, &self.walls);
         let terminated = reachable(&self.state, &self.goal, self.term_radius, &self.walls);
         let truncated = !terminated && (self.timestep == self.timelimit);
 
-        warn!(
+        info!(
             concat!(
                 "\nPointEnv Step:",
                 "\nS({:.3}, {:.3}) + G({:.3}, {:.3})",

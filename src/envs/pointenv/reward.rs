@@ -1,4 +1,6 @@
 use super::state::PointState;
+use super::point_env::reachable;
+use super::line::PointLine;
 use super::super::DistanceMeasure;
 
 #[derive(Debug)]
@@ -6,19 +8,19 @@ pub enum PointReward {
     Euclidean,
     Distance,
     Sparse,
-    SparseTimePenalty,
 }
 impl PointReward {
     pub fn compute(
         &self,
         state: &PointState,
         goal: &PointState,
+        term_radius: f64,
+        walls: &[PointLine],
     ) -> f64 {
         match self {
             PointReward::Euclidean => -PointState::distance(state, goal),
-            PointReward::Distance => -1.0,
-            PointReward::Sparse => if state == goal {1.0} else {0.0},
-            PointReward::SparseTimePenalty => if state == goal {1.0} else {-1.0},
+            PointReward::Distance => if reachable(state, goal, term_radius, walls) {10.0} else {-1.0},
+            PointReward::Sparse => if reachable(state, goal, term_radius, walls) {1.0} else {0.0},
         }
     }
 
@@ -35,7 +37,6 @@ impl PointReward {
             PointReward::Euclidean => (-((width.powi(2) + height.powi(2)).sqrt()) * timelimit, 0.0),
             PointReward::Distance => (-1.0 * timelimit, 0.0),
             PointReward::Sparse => (0.0, 1.0),
-            PointReward::SparseTimePenalty => (-1.0 * timelimit, 1.0),
         }
     }
 }
