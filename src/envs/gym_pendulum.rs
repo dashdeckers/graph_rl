@@ -127,8 +127,8 @@ impl Environment for PendulumEnv {
         Ok(Box::new(Self {
             env,
             current_observation: PendulumState {
-                x: OrderedFloat(0.0),
-                y: OrderedFloat(-1.0),
+                x: OrderedFloat(-1.0),
+                y: OrderedFloat(0.0),
                 velocity: OrderedFloat(0.0),
             },
             action_space,
@@ -172,7 +172,15 @@ impl Environment for PendulumEnv {
     }
 
     fn value_range(&self) -> (f64, f64) {
-        (-16.2736044 * 200.0, 0.0 + 200.0) // add a little bit of padding to upper bound
+        // the reward per timestep is in [-16.2736044, 0.0]
+        // the environment is reset after 200 timesteps
+        let lo: f64 = -16.2736044 * 200.0;
+        let hi: f64 = 0.0;
+
+        // add 40% padding to upper bound
+        let padding = (lo.abs() + hi.abs()) * 0.4;
+
+        (lo, hi + padding)
     }
 }
 
@@ -195,7 +203,7 @@ impl Renderable for PendulumEnv {
             Line::new(
                 vec![
                     [0.0, 0.0],
-                    [*obs.x, *obs.y],
+                    [*obs.y, *obs.x],
                 ]
             )
             .width(3.0)

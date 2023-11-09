@@ -188,19 +188,36 @@ where
                 )?;
             }
             PlayMode::Episodes => {
-                let run_mode = RunMode::Test;
                 let mut config = self.config.clone();
                 config.max_episodes = 1;
+                config.initial_random_actions = 0;
                 let (mc_returns, successes) = run(
                     &mut self.env,
                     &mut self.agent,
                     config,
-                    run_mode,
+                    RunMode::Test,
                     &self.device,
                 )?;
-                self.run_data.push((run_mode, mc_returns[0], successes[0]));
+                self.run_data.push((RunMode::Test, mc_returns[0], successes[0]));
             }
         }
+        Ok(())
+    }
+
+    fn train_agent(
+        &mut self,
+    ) -> Result<()> {
+        let (mc_returns, successes) = run(
+            &mut self.env,
+            &mut self.agent,
+            self.config.clone(),
+            RunMode::Train,
+            &self.device,
+        )?;
+        self.run_data.extend(
+            (0..self.config.max_episodes)
+            .map(|i| (RunMode::Train, mc_returns[i], successes[i]))
+        );
         Ok(())
     }
 
@@ -339,17 +356,7 @@ where
         ui.add(Slider::new(&mut self.config.max_episodes, 1..=101).text("n_episodes"));
         ui.horizontal(|ui| {
             if ui.add(Button::new("Train Episodes")).clicked() {
-                let (mc_returns, successes) = run(
-                    &mut self.env,
-                    &mut self.agent,
-                    self.config.clone(),
-                    RunMode::Train,
-                    &self.device,
-                ).unwrap();
-                self.run_data.extend(
-                    (0..self.config.max_episodes)
-                    .map(|i| (RunMode::Train, mc_returns[i], successes[i]))
-                );
+                self.train_agent().unwrap();
             };
             if ui.add(Button::new("Reset Agent")).clicked() {
                 self.reset_agent().unwrap();

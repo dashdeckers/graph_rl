@@ -292,11 +292,16 @@ impl Environment for PointEnv {
     }
 
     fn value_range(&self) -> (f64, f64) {
-        self.reward.value_range(
+        let (lo, hi) = self.reward.value_range(
             self.timelimit,
             self.width,
             self.height,
-        )
+        );
+
+        // add 40% padding to upper bound
+        let padding = (lo.abs() + hi.abs()) * 0.4;
+
+        (lo, hi + padding)
     }
 }
 

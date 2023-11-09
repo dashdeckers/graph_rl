@@ -43,7 +43,7 @@ impl TrainingConfig {
             hidden_2_size: 300,
             replay_buffer_capacity: 100_000,
             training_batch_size: 100,
-            max_episodes: 100,
+            max_episodes: 30,
             episode_length: 200,
             training_iterations: 200,
             initial_random_actions: 0,
