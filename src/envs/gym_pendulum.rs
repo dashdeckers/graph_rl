@@ -127,8 +127,8 @@ impl Environment for PendulumEnv {
         Ok(Box::new(Self {
             env,
             current_observation: PendulumState {
-                x: OrderedFloat(-1.0),
-                y: OrderedFloat(0.0),
+                x: OrderedFloat(0.0),
+                y: OrderedFloat(-1.0),
                 velocity: OrderedFloat(0.0),
             },
             action_space,
