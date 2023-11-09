@@ -181,11 +181,14 @@ where
         match self.play_mode {
             PlayMode::Pause => (),
             PlayMode::Ticks => {
+                let prev_run_mode = self.agent.run_mode;
+                self.agent.run_mode = RunMode::Test;
                 tick(
                     &mut self.env,
                     &mut self.agent,
                     &self.device,
                 )?;
+                self.agent.run_mode = prev_run_mode;
             }
             PlayMode::Episodes => {
                 let mut config = self.config.clone();
