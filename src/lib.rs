@@ -43,7 +43,6 @@ pub fn run<E, O, A>(
     env: &mut E,
     agent: &mut DDPG,
     config: TrainingConfig,
-    run_mode: RunMode,
     device: &Device,
 ) -> Result<(Vec<f64>, Vec<bool>)>
 where
@@ -59,7 +58,6 @@ where
     let mut successes = Vec::new();
     let mut rng = rand::thread_rng();
 
-    agent.run_mode = run_mode;
     for episode in 0..config.max_episodes {
         let mut total_reward = 0.0;
         env.reset(rng.gen::<u64>())?;
@@ -79,16 +77,14 @@ where
             total_reward += step.reward;
             steps_taken += 1;
 
-            if let RunMode::Train = agent.run_mode {
-                agent.remember(
-                    state,
-                    &Tensor::new(action, device)?,
-                    &Tensor::new(vec![step.reward], device)?,
-                    &<O>::to_tensor(step.observation, device)?,
-                    step.terminated,
-                    step.truncated,
-                );
-            }
+            agent.remember(
+                state,
+                &Tensor::new(action, device)?,
+                &Tensor::new(vec![step.reward], device)?,
+                &<O>::to_tensor(step.observation, device)?,
+                step.terminated,
+                step.truncated,
+            );
 
             if step.terminated || step.truncated {
                 successes.push(step.terminated);

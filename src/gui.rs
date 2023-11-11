@@ -195,23 +195,21 @@ where
                     &mut self.env,
                     &mut self.agent,
                     config,
-                    RunMode::Test,
                     &self.device,
                 )?;
-                self.run_data.push((RunMode::Test, mc_returns[0], successes[0]));
+                self.run_data.push((self.agent.run_mode, mc_returns[0], successes[0]));
             }
         }
         Ok(())
     }
 
-    fn train_agent(
+    fn run_agent(
         &mut self,
     ) -> Result<()> {
         let (mc_returns, successes) = run(
             &mut self.env,
             &mut self.agent,
             self.config.clone(),
-            RunMode::Train,
             &self.device,
         )?;
         self.run_data.extend(
@@ -344,6 +342,7 @@ where
         ui.add(Slider::new(&mut self.config.replay_buffer_capacity, 10..=100_000).logarithmic(true).text("Buffer size"));
         ui.add(Slider::new(&mut self.config.training_batch_size, 1..=200).text("Batch size"));
         ui.add(Slider::new(&mut self.config.training_iterations, 1..=200).text("Training iters"));
+        ui.add(Slider::new(&mut self.config.initial_random_actions, 0..=1000).text("Init. random actions"));
 
         ui.separator();
         ui.label("SGM Options");
@@ -352,19 +351,40 @@ where
         ui.add(Slider::new(&mut self.config.sgm_tau, 0.0..=1.0).text("Tau").step_by(0.01));
 
         ui.separator();
-        ui.label("Train Agent");
-        ui.add(Slider::new(&mut self.config.max_episodes, 1..=301).text("n_episodes"));
+        ui.label("Render Options");
+        ui.add(Checkbox::new(&mut self.render_graph, "Show Graph"));
+        ui.add(Checkbox::new(&mut self.render_buffer, "Show Buffer"));
+        ui.add(Checkbox::new(&mut self.render_fancy_graph, "Fancy GraphView"));
+
+
+        ui.separator();
+        ui.heading("Actions");
         ui.horizontal(|ui| {
-            if ui.add(Button::new("Train Episodes")).clicked() {
-                self.train_agent().unwrap();
-            };
             if ui.add(Button::new("Reset Agent")).clicked() {
                 self.reset_agent().unwrap();
+            };
+
+            let agent_mode = match self.agent.run_mode {
+                RunMode::Test => "Test",
+                RunMode::Train => "Train",
+            };
+            if ui.add(Button::new(format!("Toggle Mode ({agent_mode})"))).clicked() {
+                self.agent.run_mode = match self.agent.run_mode {
+                    RunMode::Test => RunMode::Train,
+                    RunMode::Train => RunMode::Test,
+                };
             };
         });
 
         ui.separator();
-        ui.label("Test Agent");
+        ui.label("Run Agent");
+        ui.add(Slider::new(&mut self.config.max_episodes, 1..=301).text("n_episodes"));
+        if ui.add(Button::new("Run Episodes")).clicked() {
+            self.run_agent().unwrap();
+        };
+
+        ui.separator();
+        ui.label("Watch Agent");
         ui.horizontal(|ui| {
             if ui.add(Button::new("Pause")).clicked() {
                 self.play_mode = PlayMode::Pause;
@@ -376,11 +396,5 @@ where
                 self.play_mode = PlayMode::Episodes;
             };
         });
-
-        ui.separator();
-        ui.label("Render Options");
-        ui.add(Checkbox::new(&mut self.render_graph, "Show Graph"));
-        ui.add(Checkbox::new(&mut self.render_buffer, "Show Buffer"));
-        ui.add(Checkbox::new(&mut self.render_fancy_graph, "Fancy GraphView"));
     }
 }
