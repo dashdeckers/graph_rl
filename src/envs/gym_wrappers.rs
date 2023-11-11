@@ -1,18 +1,25 @@
 //! Wrappers around the Python API of Gymnasium (the new version of OpenAI gym)
-use pyo3::prelude::*;
-use pyo3::types::PyDict;
-use anyhow::{Result, Error, anyhow};
-
-use super::{Step, VectorConvertible};
-
+use {
+    super::{
+        Step,
+        VectorConvertible,
+    },
+    anyhow::{
+        anyhow,
+        Error,
+        Result,
+    },
+    pyo3::{
+        prelude::*,
+        types::PyDict,
+    },
+};
 
 fn w(res: PyErr) -> Error {
     anyhow!(res)
 }
 
-pub fn gym_create_env(
-    name: &str,
-) -> Result<(PyObject, Vec<usize>, Vec<usize>)> {
+pub fn gym_create_env(name: &str) -> Result<(PyObject, Vec<usize>, Vec<usize>)> {
     Python::with_gil(|py| {
         let sys = py.import("sys")?;
         let version: String = sys.getattr("version")?.extract()?;
@@ -26,11 +33,7 @@ pub fn gym_create_env(
         let action_space = action_space.getattr("shape")?.extract()?;
         let observation_space = env.getattr("observation_space")?;
         let observation_space = observation_space.getattr("shape")?.extract()?;
-        Ok((
-            env.into(),
-            action_space,
-            observation_space,
-        ))
+        Ok((env.into(), action_space, observation_space))
     })
     .map_err(w)
 }
@@ -40,13 +43,15 @@ pub fn gym_reset_env<O>(
     seed: u64,
 ) -> Result<O>
 where
-    O: VectorConvertible
+    O: VectorConvertible,
 {
     Python::with_gil(|py| {
         let kwargs = PyDict::new(py);
         kwargs.set_item("seed", seed)?;
         let observation = env.call_method(py, "reset", (), Some(kwargs))?;
-        Ok(O::from_vec(observation.as_ref(py).get_item(0)?.extract::<Vec<f64>>()?))
+        Ok(O::from_vec(
+            observation.as_ref(py).get_item(0)?.extract::<Vec<f64>>()?,
+        ))
     })
     .map_err(w)
 }
@@ -58,7 +63,7 @@ pub fn gym_step_env<O, A>(
 ) -> Result<Step<O, A>>
 where
     O: VectorConvertible,
-    A: pyo3::IntoPy<pyo3::Py<pyo3::PyAny>> + Clone
+    A: pyo3::IntoPy<pyo3::Py<pyo3::PyAny>> + Clone,
 {
     let (observation, reward, terminated, truncated) = Python::with_gil(|py| {
         let step = env.call_method(py, "step", (vec![action.clone()],), None)?;
@@ -82,4 +87,3 @@ where
         truncated,
     })
 }
-

@@ -2,8 +2,8 @@ use {
     crate::{
         ou_noise::OuNoise,
         replay_buffer::ReplayBuffer,
-        TrainingConfig,
         RunMode,
+        TrainingConfig,
     },
     candle_core::{
         DType,

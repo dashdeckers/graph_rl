@@ -1,4 +1,9 @@
-use candle_core::{Tensor, Device, DType, Result};
+use candle_core::{
+    DType,
+    Device,
+    Result,
+    Tensor,
+};
 
 pub struct OuNoise {
     mu: f64,
@@ -7,7 +12,12 @@ pub struct OuNoise {
     state: Tensor,
 }
 impl OuNoise {
-    pub fn new(mu: f64, theta: f64, sigma: f64, size_action: usize) -> Result<Self> {
+    pub fn new(
+        mu: f64,
+        theta: f64,
+        sigma: f64,
+        size_action: usize,
+    ) -> Result<Self> {
         Ok(Self {
             mu,
             theta,

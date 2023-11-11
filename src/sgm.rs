@@ -1,15 +1,23 @@
-use std::hash::Hash;
-use std::fmt::Debug;
-use std::collections::HashMap;
-
-use ordered_float::OrderedFloat;
-use petgraph::stable_graph::{StableGraph, NodeIndex};
-use petgraph::Undirected;
-use petgraph::dot::Dot;
-
-use crate::envs::TensorConvertible;
-use crate::replay_buffer::ReplayBuffer;
-
+use {
+    crate::{
+        envs::TensorConvertible,
+        replay_buffer::ReplayBuffer,
+    },
+    ordered_float::OrderedFloat,
+    petgraph::{
+        dot::Dot,
+        stable_graph::{
+            NodeIndex,
+            StableGraph,
+        },
+        Undirected,
+    },
+    std::{
+        collections::HashMap,
+        fmt::Debug,
+        hash::Hash,
+    },
+};
 
 pub fn dot<S: Debug>(graph: &StableGraph<S, OrderedFloat<f64>>) -> String {
     format!("{:?}", Dot::new(graph)).to_string()
@@ -21,9 +29,12 @@ impl ReplayBuffer {
         d: fn(&S, &S) -> f64,
         maxdist: f64,
         tau: f64,
-    ) -> (StableGraph<S, OrderedFloat<f64>, Undirected>, HashMap<S, NodeIndex>)
+    ) -> (
+        StableGraph<S, OrderedFloat<f64>, Undirected>,
+        HashMap<S, NodeIndex>,
+    )
     where
-        S: Clone + Eq + Hash + TensorConvertible
+        S: Clone + Eq + Hash + TensorConvertible,
     {
         let maxdist = OrderedFloat(maxdist);
         let tau = OrderedFloat(tau);
@@ -38,11 +49,9 @@ impl ReplayBuffer {
             if graph.node_count() == 0 {
                 let i1 = graph.add_node(s1.clone());
                 indices.insert(s1, i1);
-
             } else {
                 // check if new node is TWC consistent
-                let is_twc_consistent =
-                    graph
+                let is_twc_consistent = graph
                     .node_weights()
                     .all(|s2| Self::TWC(&s1, s2, tau, d, &graph));
 
@@ -64,12 +73,13 @@ impl ReplayBuffer {
                     let i1 = graph.add_node(s1.clone());
                     indices.insert(s1.clone(), i1);
 
-
                     // add edges
                     let mut edges_to_add = Vec::new();
                     for s2 in graph.node_weights() {
                         // no self edges
-                        if &s1 == s2 {continue;}
+                        if &s1 == s2 {
+                            continue;
+                        }
 
                         let d_out = OrderedFloat(d(&s1, s2));
                         let d_in = OrderedFloat(d(s2, &s1));
@@ -124,7 +134,7 @@ impl ReplayBuffer {
         tau: OrderedFloat<f64>,
         d: fn(&S, &S) -> f64,
         graph: &StableGraph<S, OrderedFloat<f64>, Undirected>,
-    ) -> bool{
+    ) -> bool {
         let c_in = Self::c_in(s1, s2, d, graph);
         let c_out = Self::c_out(s1, s2, d, graph);
 

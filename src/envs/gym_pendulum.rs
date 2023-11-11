@@ -1,16 +1,34 @@
-use std::ops::RangeInclusive;
-
-use rand::Rng;
-use candle_core::{Tensor, Device};
-use pyo3::prelude::*;
-use anyhow::Result;
-use ordered_float::OrderedFloat;
-use egui::Color32;
-use egui_plot::{PlotUi, Line, PlotBounds};
-
-use super::{Environment, Step, TensorConvertible, VectorConvertible, DistanceMeasure, Renderable, Sampleable};
-use super::gym_wrappers::{gym_create_env, gym_reset_env, gym_step_env};
-
+use {
+    super::{
+        gym_wrappers::{
+            gym_create_env,
+            gym_reset_env,
+            gym_step_env,
+        },
+        DistanceMeasure,
+        Environment,
+        Renderable,
+        Sampleable,
+        Step,
+        TensorConvertible,
+        VectorConvertible,
+    },
+    anyhow::Result,
+    candle_core::{
+        Device,
+        Tensor,
+    },
+    egui::Color32,
+    egui_plot::{
+        Line,
+        PlotBounds,
+        PlotUi,
+    },
+    ordered_float::OrderedFloat,
+    pyo3::prelude::*,
+    rand::Rng,
+    std::ops::RangeInclusive,
+};
 
 pub struct PendulumEnv {
     env: PyObject,
@@ -19,16 +37,16 @@ pub struct PendulumEnv {
     observation_space: Vec<usize>,
 }
 
-
 pub struct PendulumConfig {
     name: String,
 }
 impl Default for PendulumConfig {
     fn default() -> Self {
-        Self { name: "Pendulum-v1".to_owned() }
+        Self {
+            name: "Pendulum-v1".to_owned(),
+        }
     }
 }
-
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PendulumAction {
@@ -38,10 +56,12 @@ pub struct PendulumAction {
 impl Sampleable for PendulumAction {
     fn sample(
         rng: &mut dyn rand::RngCore,
-        domain: &[RangeInclusive<f64>]
+        domain: &[RangeInclusive<f64>],
     ) -> Self {
         debug_assert!(domain.len() == 1);
-        Self { tau: OrderedFloat(rng.gen_range(domain[0].clone())) }
+        Self {
+            tau: OrderedFloat(rng.gen_range(domain[0].clone())),
+        }
     }
 }
 impl VectorConvertible for PendulumAction {
@@ -59,22 +79,25 @@ impl VectorConvertible for PendulumAction {
 }
 impl TensorConvertible for PendulumAction {
     fn from_tensor(value: Tensor) -> Self {
-        let values = value
-            .squeeze(0).unwrap()
-            .to_vec1::<f64>().unwrap();
+        let values = value.squeeze(0).unwrap().to_vec1::<f64>().unwrap();
         Self::from_vec(values)
     }
-    fn to_tensor(value: Self, device: &Device) -> candle_core::Result<Tensor> {
+    fn to_tensor(
+        value: Self,
+        device: &Device,
+    ) -> candle_core::Result<Tensor> {
         Tensor::new(Self::to_vec(value), device)
     }
 }
 // Convert PendulumAction into PyAny
 impl IntoPy<PyObject> for PendulumAction {
-    fn into_py(self, py: Python<'_>) -> PyObject {
+    fn into_py(
+        self,
+        py: Python<'_>,
+    ) -> PyObject {
         self.tau.into_py(py)
     }
 }
-
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PendulumState {
@@ -100,22 +123,24 @@ impl VectorConvertible for PendulumState {
 }
 impl TensorConvertible for PendulumState {
     fn from_tensor(value: Tensor) -> Self {
-        let values = value
-            .squeeze(0).unwrap()
-            .to_vec1::<f64>().unwrap();
+        let values = value.squeeze(0).unwrap().to_vec1::<f64>().unwrap();
         Self::from_vec(values)
     }
-    fn to_tensor(value: Self, device: &Device) -> candle_core::Result<Tensor> {
+    fn to_tensor(
+        value: Self,
+        device: &Device,
+    ) -> candle_core::Result<Tensor> {
         Tensor::new(Self::to_vec(value), device)
     }
 }
 impl DistanceMeasure for PendulumState {
-    fn distance(s1: &Self, s2: &Self) -> f64 {
+    fn distance(
+        s1: &Self,
+        s2: &Self,
+    ) -> f64 {
         ((s1.x - s2.x).powi(2) + (s1.y - s2.y).powi(2) + (s1.velocity - s2.velocity).powi(2)).sqrt()
     }
 }
-
-
 
 impl Environment for PendulumEnv {
     type Config = PendulumConfig;
@@ -136,12 +161,18 @@ impl Environment for PendulumEnv {
         }))
     }
 
-    fn reset(&mut self, seed: u64) -> Result<Self::Observation> {
+    fn reset(
+        &mut self,
+        seed: u64,
+    ) -> Result<Self::Observation> {
         self.current_observation = gym_reset_env(&self.env, seed)?;
         Ok(self.current_observation())
     }
 
-    fn step(&mut self, action: Self::Action) -> Result<Step<Self::Observation, Self::Action>> {
+    fn step(
+        &mut self,
+        action: Self::Action,
+    ) -> Result<Step<Self::Observation, Self::Action>> {
         let step: Step<Self::Observation, Self::Action> = gym_step_env(&self.env, action, false)?;
         self.current_observation = step.observation.clone();
         Ok(step)
@@ -160,11 +191,7 @@ impl Environment for PendulumEnv {
     }
 
     fn observation_domain(&self) -> Vec<RangeInclusive<f64>> {
-        vec![
-            -1.0..=1.0,
-            -1.0..=1.0,
-            -8.0..=8.0,
-        ]
+        vec![-1.0..=1.0, -1.0..=1.0, -8.0..=8.0]
     }
 
     fn current_observation(&self) -> Self::Observation {
@@ -184,30 +211,19 @@ impl Environment for PendulumEnv {
     }
 }
 
-
 impl Renderable for PendulumEnv {
     fn render(
         &mut self,
         plot_ui: &mut PlotUi,
     ) {
         // Setup plot bounds
-        plot_ui.set_plot_bounds(
-            PlotBounds::from_min_max(
-                [-1.0, -1.0],
-                [1.0, 1.0],
-            )
-        );
+        plot_ui.set_plot_bounds(PlotBounds::from_min_max([-1.0, -1.0], [1.0, 1.0]));
         // Draw the Pendulum
         let obs = self.current_observation();
         plot_ui.line(
-            Line::new(
-                vec![
-                    [0.0, 0.0],
-                    [*obs.y, *obs.x],
-                ]
-            )
-            .width(3.0)
-            .color(Color32::RED)
+            Line::new(vec![[0.0, 0.0], [*obs.y, *obs.x]])
+                .width(3.0)
+                .color(Color32::RED),
         )
     }
 }

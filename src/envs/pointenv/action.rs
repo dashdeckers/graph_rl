@@ -1,10 +1,23 @@
-use auto_ops::impl_op_ex;
-use candle_core::{Device, Tensor};
-use ordered_float::OrderedFloat;
-use rand::{Rng, RngCore};
-
-use super::state::PointState;
-use super::super::{TensorConvertible, VectorConvertible, Sampleable};
+use {
+    super::{
+        super::{
+            Sampleable,
+            TensorConvertible,
+            VectorConvertible,
+        },
+        state::PointState,
+    },
+    auto_ops::impl_op_ex,
+    candle_core::{
+        Device,
+        Tensor,
+    },
+    ordered_float::OrderedFloat,
+    rand::{
+        Rng,
+        RngCore,
+    },
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PointAction {
@@ -52,7 +65,7 @@ impl From<(f64, f64)> for PointAction {
 impl Sampleable for PointAction {
     fn sample(
         rng: &mut dyn RngCore,
-        domain: &[std::ops::RangeInclusive<f64>]
+        domain: &[std::ops::RangeInclusive<f64>],
     ) -> Self {
         debug_assert!(domain.len() == 1);
 

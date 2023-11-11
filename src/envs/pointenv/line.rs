@@ -1,9 +1,18 @@
 #![allow(non_snake_case)]
-use candle_core::{Device, Tensor};
-use ordered_float::OrderedFloat;
-
-use super::state::PointState;
-use super::super::{TensorConvertible, VectorConvertible};
+use {
+    super::{
+        super::{
+            TensorConvertible,
+            VectorConvertible,
+        },
+        state::PointState,
+    },
+    candle_core::{
+        Device,
+        Tensor,
+    },
+    ordered_float::OrderedFloat,
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PointLine {

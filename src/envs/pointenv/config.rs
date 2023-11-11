@@ -1,7 +1,14 @@
-use rand::{SeedableRng, Rng, rngs::StdRng};
-
-use super::line::PointLine;
-use super::reward::PointReward;
+use {
+    super::{
+        line::PointLine,
+        reward::PointReward,
+    },
+    rand::{
+        rngs::StdRng,
+        Rng,
+        SeedableRng,
+    },
+};
 
 #[derive(Debug)]
 pub struct PointEnvConfig {

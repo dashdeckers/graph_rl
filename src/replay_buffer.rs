@@ -1,10 +1,16 @@
-use std::collections::VecDeque;
-
-use rand::{distributions::Uniform, thread_rng, Rng};
-use candle_core::{Tensor, Result};
-
-use crate::envs::TensorConvertible;
-
+use {
+    crate::envs::TensorConvertible,
+    candle_core::{
+        Result,
+        Tensor,
+    },
+    rand::{
+        distributions::Uniform,
+        thread_rng,
+        Rng,
+    },
+    std::collections::VecDeque,
+};
 
 #[derive(Clone)]
 struct Transition {
@@ -34,7 +40,6 @@ impl Transition {
         }
     }
 }
-
 
 pub struct ReplayBuffer {
     buffer: VecDeque<Transition>,
@@ -118,14 +123,16 @@ impl ReplayBuffer {
     }
 
     pub fn all_states<S: TensorConvertible>(&self) -> Vec<S> {
-        let mut states: Vec<S> = self.buffer
+        let mut states: Vec<S> = self
+            .buffer
             .iter()
             .map(|t| <S>::from_tensor(t.state.clone()))
             .collect();
 
-        states.extend(self.buffer
-            .back()
-            .map(|t| <S>::from_tensor(t.next_state.clone()))
+        states.extend(
+            self.buffer
+                .back()
+                .map(|t| <S>::from_tensor(t.next_state.clone())),
         );
 
         states

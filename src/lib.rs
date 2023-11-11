@@ -2,42 +2,48 @@ pub mod util;
 
 pub mod envs;
 
-pub mod replay_buffer;
-pub mod sgm;
-pub mod ou_noise;
 pub mod ddpg;
 pub mod ddpg_sgm;
+pub mod ou_noise;
+pub mod replay_buffer;
+pub mod sgm;
 
 mod config;
 pub use config::TrainingConfig;
 pub mod gui;
 
-
-use std::hash::Hash;
-use std::fmt::Debug;
-
-use anyhow::Result;
-use tracing::warn;
-use rand::{Rng, thread_rng};
-use candle_core::{Device, Tensor};
-use crate::{
-    ddpg::DDPG,
-    envs::{
-        Environment,
-        VectorConvertible,
-        TensorConvertible,
-        DistanceMeasure,
-        Sampleable,
+use {
+    crate::{
+        ddpg::DDPG,
+        envs::{
+            DistanceMeasure,
+            Environment,
+            Sampleable,
+            TensorConvertible,
+            VectorConvertible,
+        },
     },
+    anyhow::Result,
+    candle_core::{
+        Device,
+        Tensor,
+    },
+    rand::{
+        thread_rng,
+        Rng,
+    },
+    std::{
+        fmt::Debug,
+        hash::Hash,
+    },
+    tracing::warn,
 };
-
 
 #[derive(Clone, Copy)]
 pub enum RunMode {
     Train,
     Test,
 }
-
 
 pub fn run<E, O, A>(
     env: &mut E,
@@ -104,7 +110,6 @@ where
     env.reset(rng.gen::<u64>())?;
     Ok((mc_returns, successes))
 }
-
 
 pub fn tick<E, O, A>(
     env: &mut E,

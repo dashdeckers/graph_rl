@@ -1,9 +1,21 @@
-use auto_ops::impl_op_ex;
-use candle_core::{Device, Tensor};
-use ordered_float::OrderedFloat;
-use rand::{Rng, RngCore};
-
-use super::super::{TensorConvertible, VectorConvertible, DistanceMeasure, Sampleable};
+use {
+    super::super::{
+        DistanceMeasure,
+        Sampleable,
+        TensorConvertible,
+        VectorConvertible,
+    },
+    auto_ops::impl_op_ex,
+    candle_core::{
+        Device,
+        Tensor,
+    },
+    ordered_float::OrderedFloat,
+    rand::{
+        Rng,
+        RngCore,
+    },
+};
 
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
 pub struct PointState {
@@ -64,7 +76,7 @@ impl From<(f64, f64)> for PointState {
 impl Sampleable for PointState {
     fn sample(
         rng: &mut dyn RngCore,
-        domain: &[std::ops::RangeInclusive<f64>]
+        domain: &[std::ops::RangeInclusive<f64>],
     ) -> Self {
         debug_assert!(domain.len() == 2);
         Self::from((
@@ -102,7 +114,10 @@ impl TensorConvertible for PointState {
 
 // PointState has a notion of distance
 impl DistanceMeasure for PointState {
-    fn distance(s1: &Self, s2: &Self) -> f64 {
+    fn distance(
+        s1: &Self,
+        s2: &Self,
+    ) -> f64 {
         s1.squared_distance_to(s2).sqrt()
     }
 }

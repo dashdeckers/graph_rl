@@ -1,9 +1,18 @@
-use candle_core::{Tensor, Device};
-
-use super::super::{TensorConvertible, VectorConvertible, DistanceMeasure};
-use super::state::PointState;
-use super::line::PointLine;
-
+use {
+    super::{
+        super::{
+            DistanceMeasure,
+            TensorConvertible,
+            VectorConvertible,
+        },
+        line::PointLine,
+        state::PointState,
+    },
+    candle_core::{
+        Device,
+        Tensor,
+    },
+};
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PointObs {
@@ -45,7 +54,12 @@ impl VectorConvertible for PointObs {
         // let mut v = vec![value.state.x(), value.state.y(), value.goal.x(), value.goal.y()];
         // v.extend(value.obs.iter().flat_map(|l| vec![l.A.x(), l.A.y(), l.B.x(), l.B.y()]));
         // v
-        vec![value.state.x(), value.state.y(), value.goal.x(), value.goal.y()]
+        vec![
+            value.state.x(),
+            value.state.y(),
+            value.goal.x(),
+            value.goal.y(),
+        ]
     }
 }
 
@@ -65,7 +79,10 @@ impl TensorConvertible for PointObs {
 
 // Delegate the notion of distance to the distance between states
 impl DistanceMeasure for PointObs {
-    fn distance(s1: &Self, s2: &Self) -> f64 {
+    fn distance(
+        s1: &Self,
+        s2: &Self,
+    ) -> f64 {
         (s1.state).squared_distance_to(&s2.state).sqrt()
     }
 }

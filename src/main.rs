@@ -1,23 +1,26 @@
 extern crate intel_mkl_src;
 
-use candle_core::Device;
-use anyhow::Result;
-use tracing::Level;
-use clap::{Parser, ValueEnum};
-
-use graph_rl::{
-    ddpg::DDPG,
-    envs::{
-        PendulumEnv,
-        PointEnv,
-        Environment,
+use {
+    anyhow::Result,
+    candle_core::Device,
+    clap::{
+        Parser,
+        ValueEnum,
     },
-    util::setup_logging,
-    gui::GUI,
-    TrainingConfig,
-    run,
+    graph_rl::{
+        ddpg::DDPG,
+        envs::{
+            Environment,
+            PendulumEnv,
+            PointEnv,
+        },
+        gui::GUI,
+        run,
+        util::setup_logging,
+        TrainingConfig,
+    },
+    tracing::Level,
 };
-
 
 #[derive(ValueEnum, Debug, Clone)]
 enum Env {
@@ -27,10 +30,10 @@ enum Env {
 
 #[derive(ValueEnum, Debug, Clone)]
 enum Loglevel {
-    Error,  // put these only during active debugging and then downgrade later
-    Warn,   // main events in the program
-    Info,   // all the little details
-    None,   // don't log anything
+    Error, // put these only during active debugging and then downgrade later
+    Warn,  // main events in the program
+    Info,  // all the little details
+    None,  // don't log anything
 }
 
 #[derive(Parser, Debug, Clone)]
@@ -57,10 +60,7 @@ struct Args {
 
 // TODO: Learning is broken
 // Pendulum with reward mode Distance the agent almost avoids learning?
-// 
-
-
-
+//
 
 // LATER
 
@@ -71,25 +71,14 @@ struct Args {
 // >- Put the Candle "cuda" feature behind a cfg() flag
 //    `-> https://doc.rust-lang.org/cargo/reference/features.html
 
-
 fn main() -> Result<()> {
     let args = Args::parse();
     match args.log {
-        Loglevel::Error => setup_logging(
-            "debug.log".into(),
-            Some(Level::ERROR),
-            Some(Level::ERROR),
-        )?,
-        Loglevel::Warn => setup_logging(
-            "debug.log".into(),
-            Some(Level::WARN),
-            Some(Level::WARN),
-        )?,
-        Loglevel::Info => setup_logging(
-            "debug.log".into(),
-            Some(Level::INFO),
-            Some(Level::INFO),
-        )?,
+        Loglevel::Error => {
+            setup_logging("debug.log".into(), Some(Level::ERROR), Some(Level::ERROR))?
+        }
+        Loglevel::Warn => setup_logging("debug.log".into(), Some(Level::WARN), Some(Level::WARN))?,
+        Loglevel::Info => setup_logging("debug.log".into(), Some(Level::INFO), Some(Level::INFO))?,
         Loglevel::None => (),
     };
 
@@ -108,14 +97,9 @@ fn main() -> Result<()> {
             if args.gui {
                 GUI::open(env, agent, config, device);
             } else {
-                run(
-                    &mut env,
-                    &mut agent,
-                    config,
-                    &device,
-                )?;
+                run(&mut env, &mut agent, config, &device)?;
             }
-        },
+        }
 
         Env::Pointenv => {
             let mut env = *PointEnv::new(Default::default())?;
@@ -130,15 +114,9 @@ fn main() -> Result<()> {
             if args.gui {
                 GUI::open(env, agent, config, device);
             } else {
-                run(
-                    &mut env,
-                    &mut agent,
-                    config,
-                    &device,
-                )?;
+                run(&mut env, &mut agent, config, &device)?;
             }
-        },
+        }
     }
     Ok(())
 }
-
