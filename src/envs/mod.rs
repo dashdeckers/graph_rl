@@ -73,6 +73,7 @@ pub trait Environment {
         &mut self,
         action: Self::Action,
     ) -> Result<Step<Self::Observation, Self::Action>>;
+    fn timelimit(&self) -> usize;
     fn action_space(&self) -> Vec<usize>;
     fn action_domain(&self) -> Vec<RangeInclusive<f64>>;
     fn observation_space(&self) -> Vec<usize>;

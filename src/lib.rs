@@ -45,7 +45,7 @@ pub enum RunMode {
     Test,
 }
 
-pub fn run<E, O, A>(
+pub fn train<E, O, A>(
     env: &mut E,
     agent: &mut DDPG,
     config: TrainingConfig,

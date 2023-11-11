@@ -32,6 +32,7 @@ use {
 
 pub struct PendulumEnv {
     env: PyObject,
+    timelimit: usize,
     current_observation: PendulumState,
     action_space: Vec<usize>,
     observation_space: Vec<usize>,
@@ -151,6 +152,7 @@ impl Environment for PendulumEnv {
         let (env, action_space, observation_space) = gym_create_env(&config.name)?;
         Ok(Box::new(Self {
             env,
+            timelimit: 200,
             current_observation: PendulumState {
                 x: OrderedFloat(-1.0),
                 y: OrderedFloat(0.0),
@@ -178,6 +180,10 @@ impl Environment for PendulumEnv {
         Ok(step)
     }
 
+    fn timelimit(&self) -> usize {
+        self.timelimit
+    }
+
     fn action_space(&self) -> Vec<usize> {
         self.action_space.clone()
     }
@@ -201,7 +207,7 @@ impl Environment for PendulumEnv {
     fn value_range(&self) -> (f64, f64) {
         // the reward per timestep is in [-16.2736044, 0.0]
         // the environment is reset after 200 timesteps
-        let lo: f64 = -16.2736044 * 200.0;
+        let lo: f64 = -16.2736044 * self.timelimit as f64;
         let hi: f64 = 0.0;
 
         // add 40% padding to upper bound

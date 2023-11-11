@@ -9,7 +9,7 @@ use {
             TensorConvertible,
             VectorConvertible,
         },
-        run,
+        train,
         tick,
         RunMode,
         TrainingConfig,
@@ -116,6 +116,7 @@ where
                 .g
                 .node_indices()
                 .find(|e| self.graph_egui.g[*e].selected());
+
             if let Some(node) = node {
                 ui.label(format!(
                     "Selected node: {:#?}",
@@ -223,7 +224,7 @@ where
                 config.max_episodes = 1;
                 config.initial_random_actions = 0;
                 let (mc_returns, successes) =
-                    run(&mut self.env, &mut self.agent, config, &self.device)?;
+                    train(&mut self.env, &mut self.agent, config, &self.device)?;
                 self.run_data
                     .push((self.agent.run_mode, mc_returns[0], successes[0]));
             }
@@ -232,7 +233,7 @@ where
     }
 
     fn run_agent(&mut self) -> Result<()> {
-        let (mc_returns, successes) = run(
+        let (mc_returns, successes) = train(
             &mut self.env,
             &mut self.agent,
             self.config.clone(),

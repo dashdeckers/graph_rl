@@ -32,7 +32,7 @@ pub struct TrainingConfig {
     pub sgm_tau: f64,
 }
 impl TrainingConfig {
-    pub fn pendulum() -> Self {
+    pub fn pendulum(timelimit: usize) -> Self {
         Self {
             actor_learning_rate: 1e-4,
             critic_learning_rate: 1e-3,
@@ -43,7 +43,7 @@ impl TrainingConfig {
             replay_buffer_capacity: 100_000,
             training_batch_size: 100,
             max_episodes: 30,
-            episode_length: 200,
+            episode_length: timelimit,
             training_iterations: 200,
             initial_random_actions: 0,
             ou_mu: 0.0,

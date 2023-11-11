@@ -14,7 +14,6 @@ use {
         state::PointState,
     },
     anyhow::Result,
-    derive_getters::Getters,
     egui::Color32,
     egui_plot::{
         Line,
@@ -133,7 +132,6 @@ fn compute_next_state(
     next_state.restrict(width as f64, height as f64)
 }
 
-#[derive(Getters)]
 pub struct PointEnv {
     width: usize,
     height: usize,
@@ -213,6 +211,34 @@ impl PointEnv {
 
             rng,
         }))
+    }
+
+    pub fn width(&self) -> usize {
+        self.width
+    }
+
+    pub fn height(&self) -> usize {
+        self.height
+    }
+
+    pub fn walls(&self) -> &Vec<PointLine> {
+        &self.walls
+    }
+
+    pub fn state(&self) -> &PointState {
+        &self.state
+    }
+
+    pub fn start(&self) -> &PointState {
+        &self.start
+    }
+
+    pub fn goal(&self) -> &PointState {
+        &self.goal
+    }
+
+    pub fn history(&self) -> &Vec<PointState> {
+        &self.history
     }
 }
 
@@ -297,6 +323,10 @@ impl Environment for PointEnv {
         })
     }
 
+    fn timelimit(&self) -> usize {
+        self.timelimit
+    }
+
     fn action_space(&self) -> Vec<usize> {
         vec![2]
     }
@@ -337,7 +367,7 @@ impl Renderable for PointEnv {
         // Setup plot bounds
         plot_ui.set_plot_bounds(PlotBounds::from_min_max(
             [0.0, 0.0],
-            [*self.width() as f64, *self.height() as f64],
+            [self.width() as f64, self.height() as f64],
         ));
         // Plot walls
         for wall in self.walls().iter() {

@@ -15,7 +15,7 @@ use {
             PointEnv,
         },
         gui::GUI,
-        run,
+        train,
         util::setup_logging,
         TrainingConfig,
     },
@@ -58,9 +58,7 @@ struct Args {
 
 // NOW
 
-// TODO: Learning is broken
-// Pendulum with reward mode Distance the agent almost avoids learning?
-//
+// >- Distributional RL
 
 // LATER
 
@@ -71,14 +69,25 @@ struct Args {
 // >- Put the Candle "cuda" feature behind a cfg() flag
 //    `-> https://doc.rust-lang.org/cargo/reference/features.html
 
+
 fn main() -> Result<()> {
     let args = Args::parse();
     match args.log {
-        Loglevel::Error => {
-            setup_logging("debug.log".into(), Some(Level::ERROR), Some(Level::ERROR))?
-        }
-        Loglevel::Warn => setup_logging("debug.log".into(), Some(Level::WARN), Some(Level::WARN))?,
-        Loglevel::Info => setup_logging("debug.log".into(), Some(Level::INFO), Some(Level::INFO))?,
+        Loglevel::Error => setup_logging(
+            "debug.log".into(),
+            Some(Level::ERROR),
+            Some(Level::ERROR),
+        )?,
+        Loglevel::Warn => setup_logging(
+            "debug.log".into(),
+            Some(Level::WARN),
+            Some(Level::WARN),
+        )?,
+        Loglevel::Info => setup_logging(
+            "debug.log".into(),
+            Some(Level::INFO),
+            Some(Level::INFO),
+        )?,
         Loglevel::None => (),
     };
 
@@ -87,7 +96,7 @@ fn main() -> Result<()> {
     match args.env {
         Env::Pendulum => {
             let mut env = *PendulumEnv::new(Default::default())?;
-            let config = TrainingConfig::pendulum();
+            let config = TrainingConfig::pendulum(env.timelimit());
 
             let size_state = env.observation_space().iter().product::<usize>();
             let size_action = env.action_space().iter().product::<usize>();
@@ -97,14 +106,13 @@ fn main() -> Result<()> {
             if args.gui {
                 GUI::open(env, agent, config, device);
             } else {
-                run(&mut env, &mut agent, config, &device)?;
+                train(&mut env, &mut agent, config, &device)?;
             }
         }
 
         Env::Pointenv => {
             let mut env = *PointEnv::new(Default::default())?;
-            let timelimit = *env.timelimit();
-            let config = TrainingConfig::pointenv(timelimit);
+            let config = TrainingConfig::pointenv(env.timelimit());
 
             let size_state = env.observation_space().iter().product::<usize>();
             let size_action = env.action_space().iter().product::<usize>();
@@ -114,7 +122,7 @@ fn main() -> Result<()> {
             if args.gui {
                 GUI::open(env, agent, config, device);
             } else {
-                run(&mut env, &mut agent, config, &device)?;
+                train(&mut env, &mut agent, config, &device)?;
             }
         }
     }
