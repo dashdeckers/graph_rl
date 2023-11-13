@@ -13,6 +13,7 @@ use {
             Environment,
             PendulumEnv,
             PointEnv,
+            PointMazeEnv,
         },
         gui::GUI,
         train,
@@ -26,6 +27,7 @@ use {
 enum Env {
     Pendulum,
     Pointenv,
+    Pointmaze,
 }
 
 #[derive(ValueEnum, Debug, Clone)]
@@ -61,9 +63,6 @@ struct Args {
 // >- Distributional RL
 
 // LATER
-
-// >- Add AntMaze / PointMaze as Goal-Aware Environments
-//    `-> these return a dict with 3 keys of Vec<64> instead of just a Vec<f64>
 
 // >- Add Cuda as a Device and get that working on the server
 // >- Put the Candle "cuda" feature behind a cfg() flag
@@ -113,6 +112,22 @@ fn main() -> Result<()> {
         Env::Pointenv => {
             let mut env = *PointEnv::new(Default::default())?;
             let config = TrainingConfig::pointenv(env.timelimit());
+
+            let size_state = env.observation_space().iter().product::<usize>();
+            let size_action = env.action_space().iter().product::<usize>();
+
+            let mut agent = DDPG::from_config(&device, &config, size_state, size_action)?;
+
+            if args.gui {
+                GUI::open(env, agent, config, device);
+            } else {
+                train(&mut env, &mut agent, config, &device)?;
+            }
+        }
+
+        Env::Pointmaze => {
+            let mut env = *PointMazeEnv::new(Default::default())?;
+            let config = TrainingConfig::pointmaze(env.timelimit());
 
             let size_state = env.observation_space().iter().product::<usize>();
             let size_action = env.action_space().iter().product::<usize>();

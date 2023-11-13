@@ -1,4 +1,5 @@
 mod gym_pendulum;
+mod gym_pointmaze;
 mod gym_wrappers;
 mod pointenv;
 
@@ -17,6 +18,10 @@ pub use crate::envs::{
     gym_pendulum::{
         PendulumConfig,
         PendulumEnv,
+    },
+    gym_pointmaze::{
+        PointMazeConfig,
+        PointMazeEnv,
     },
     pointenv::{
         config::PointEnvConfig,

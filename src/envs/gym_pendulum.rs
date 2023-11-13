@@ -25,7 +25,7 @@ use {
         PlotUi,
     },
     ordered_float::OrderedFloat,
-    pyo3::prelude::*,
+    pyo3::PyObject,
     rand::Rng,
     std::ops::RangeInclusive,
 };
@@ -90,15 +90,6 @@ impl TensorConvertible for PendulumAction {
         Tensor::new(Self::to_vec(value), device)
     }
 }
-// Convert PendulumAction into PyAny
-impl IntoPy<PyObject> for PendulumAction {
-    fn into_py(
-        self,
-        py: Python<'_>,
-    ) -> PyObject {
-        self.tau.into_py(py)
-    }
-}
 
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PendulumState {
@@ -149,7 +140,7 @@ impl Environment for PendulumEnv {
     type Observation = PendulumState;
 
     fn new(config: Self::Config) -> Result<Box<Self>> {
-        let (env, action_space, observation_space) = gym_create_env(&config.name)?;
+        let (env, action_space, observation_space) = gym_create_env(&config.name, false)?;
         Ok(Box::new(Self {
             env,
             timelimit: 200,
@@ -167,7 +158,7 @@ impl Environment for PendulumEnv {
         &mut self,
         seed: u64,
     ) -> Result<Self::Observation> {
-        self.current_observation = gym_reset_env(&self.env, seed)?;
+        self.current_observation = gym_reset_env(&self.env, seed, false)?;
         Ok(self.current_observation())
     }
 

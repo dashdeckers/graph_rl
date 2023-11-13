@@ -20,7 +20,6 @@ categories = ["research"]
 # Developer candy
 anyhow = "1.0.70"
 auto_ops = "0.3.0"
-derive-getters = "0.3.0"
 ordered-float = { version = "4.1.1", features = ["serde"] }
 
 # GUI
@@ -44,8 +43,8 @@ rand = { version = "0.8.5", features = ["std"] }
 petgraph = "0.6.3"
 
 # Deep Learning
-candle-core = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
-candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
+candle-core = { git = "https://github.com/huggingface/candle.git" }
+candle-nn = { git = "https://github.com/huggingface/candle.git" }
 intel-mkl-src = { version = "0.8.1", features = ["mkl-static-lp64-iomp"] }
 
 # Python Interop
