@@ -352,7 +352,7 @@ where
         );
         ui.add(
             Slider::new(&mut self.config.gamma, 0.0..=1.0)
-                .step_by(0.1)
+                .step_by(0.01)
                 .text("Gamma"),
         );
         ui.add(
