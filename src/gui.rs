@@ -423,7 +423,7 @@ where
 
         ui.separator();
         ui.label("Run Agent");
-        ui.add(Slider::new(&mut self.config.max_episodes, 1..=301).text("n_episodes"));
+        ui.add(Slider::new(&mut self.config.max_episodes, 1..=1001).text("n_episodes"));
         if ui.add(Button::new("Run Episodes")).clicked() {
             self.run_agent().unwrap();
         };
