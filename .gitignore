@@ -1,2 +1,6 @@
-/target
+target/
 debug.log
+*.parquet
+*.ron
+.python-version
+.vscode/

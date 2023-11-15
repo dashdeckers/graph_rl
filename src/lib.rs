@@ -6,5 +6,10 @@ pub mod agents;
 
 pub mod gui;
 pub mod engine;
-mod config;
-pub use config::TrainingConfig;
+
+
+#[derive(Clone, Copy)]
+pub enum RunMode {
+    Train,
+    Test,
+}

@@ -26,6 +26,7 @@ pub use crate::envs::{
     pointenv::{
         config::PointEnvConfig,
         point_env::PointEnv,
+        reward::PointReward,
     },
 };
 

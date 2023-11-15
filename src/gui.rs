@@ -1,6 +1,13 @@
 use {
     crate::{
-        agents::DDPG,
+        agents::{
+            Algorithm,
+            OffPolicyAlgorithm,
+            AlgorithmConfig,
+            ActorCriticConfig,
+            OffPolicyConfig,
+            SgmConfig,
+        },
         envs::{
             DistanceMeasure,
             Environment,
@@ -12,9 +19,8 @@ use {
         engine::{
             train,
             tick,
-            RunMode,
         },
-        TrainingConfig,
+        RunMode,
     },
     anyhow::Result,
     candle_core::Device,
@@ -62,34 +68,38 @@ enum PlayMode {
     Episodes,
 }
 
-pub struct GUI<'a, E, O, A>
+pub struct GUI<Alg, Env, Obs, Act>
 where
-    E: Environment<Action = A, Observation = O> + Renderable + 'static,
-    O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
-    A: Clone + VectorConvertible + Sampleable + 'static,
+    Alg: Algorithm + OffPolicyAlgorithm,
+    Alg::Config: AlgorithmConfig + ActorCriticConfig + OffPolicyConfig + SgmConfig + Clone,
+    Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
+    Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
+    Act: Clone + VectorConvertible + Sampleable + 'static,
 {
-    env: E,
-    agent: DDPG<'a>,
-    config: TrainingConfig,
+    env: Env,
+    agent: Alg,
+    config: Alg::Config,
     device: Device,
 
     run_data: Vec<(RunMode, f64, bool)>,
-    graph: StableGraph<O, OrderedFloat<f64>, Undirected>,
-    graph_egui: Graph<O, OrderedFloat<f64>, Undirected>,
+    graph: StableGraph<Obs, OrderedFloat<f64>, Undirected>,
+    graph_egui: Graph<Obs, OrderedFloat<f64>, Undirected>,
 
     play_mode: PlayMode,
     last_graph_constructed_at: usize,
 
     render_graph: bool,
     render_buffer: bool,
-    render_fancy_graph: bool,
+    render_fancy: bool,
 }
 
-impl<E, O, A> eframe::App for GUI<'static, E, O, A>
+impl<Alg, Env, Obs, Act> eframe::App for GUI<Alg, Env, Obs, Act>
 where
-    E: Environment<Action = A, Observation = O> + Renderable + 'static,
-    O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
-    A: Clone + VectorConvertible + Sampleable + 'static,
+    Alg: Algorithm + OffPolicyAlgorithm + 'static,
+    Alg::Config: AlgorithmConfig + ActorCriticConfig + OffPolicyConfig + SgmConfig + Clone,
+    Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
+    Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
+    Act: Clone + VectorConvertible + Sampleable + 'static,
 {
     fn update(
         &mut self,
@@ -131,8 +141,8 @@ where
 
         // render the environment / graph
         egui::CentralPanel::default().show(ctx, |ui| {
-            if self.render_fancy_graph {
-                self.render_fancy_graph(ui);
+            if self.render_fancy {
+                self.render_fancy(ui);
             } else {
                 Plot::new("environment").show(ui, |plot_ui| {
                     //.view_aspect(1.0)
@@ -155,16 +165,18 @@ where
     }
 }
 
-impl<E, O, A> GUI<'static, E, O, A>
+impl<Alg, Env, Obs, Act> GUI<Alg, Env, Obs, Act>
 where
-    E: Environment<Action = A, Observation = O> + Renderable + 'static,
-    O: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
-    A: Clone + VectorConvertible + Sampleable + 'static,
+    Alg: Algorithm + OffPolicyAlgorithm + 'static,
+    Alg::Config: AlgorithmConfig + ActorCriticConfig + OffPolicyConfig + SgmConfig + Clone,
+    Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
+    Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
+    Act: Clone + VectorConvertible + Sampleable + 'static,
 {
     pub fn open(
-        env: E,
-        agent: DDPG<'static>,
-        config: TrainingConfig,
+        env: Env,
+        agent: Alg,
+        config: Alg::Config,
         device: Device,
     ) {
         let gui = Self {
@@ -182,7 +194,7 @@ where
 
             render_graph: false,
             render_buffer: false,
-            render_fancy_graph: false,
+            render_fancy: false,
         };
         eframe::run_native(
             "Actor-Critic Graph-Learner",
@@ -198,16 +210,16 @@ where
     fn run_gui_logic(&mut self) -> Result<()> {
         #[allow(clippy::collapsible_if)]
         // construct the graph every defined number of episodes
-        if self.config.sgm_freq > 0 && (self.run_data.len() + 1) % self.config.sgm_freq == 0 {
+        if self.config.sgm_freq() > 0 && (self.run_data.len() + 1) % self.config.sgm_freq() == 0 {
             // but take care not to construct it constantly in this edge-case
             if self.last_graph_constructed_at != self.run_data.len() {
                 self.graph = self
                     .agent
                     .replay_buffer()
                     .construct_sgm(
-                        |o1, o2| <O>::distance(o1, o2),
-                        self.config.sgm_maxdist,
-                        self.config.sgm_tau,
+                        |o1, o2| <Obs>::distance(o1, o2),
+                        self.config.sgm_maxdist(),
+                        self.config.sgm_tau(),
                     )
                     .0;
                 self.graph_egui = Graph::from(&self.graph);
@@ -223,12 +235,12 @@ where
             }
             PlayMode::Episodes => {
                 let mut config = self.config.clone();
-                config.max_episodes = 1;
-                config.initial_random_actions = 0;
+                config.set_max_episodes(1);
+                config.set_initial_random_actions(0);
                 let (mc_returns, successes) =
                     train(&mut self.env, &mut self.agent, config, &self.device)?;
                 self.run_data
-                    .push((self.agent.run_mode, mc_returns[0], successes[0]));
+                    .push((self.agent.run_mode(), mc_returns[0], successes[0]));
             }
         }
         Ok(())
@@ -242,7 +254,8 @@ where
             &self.device,
         )?;
         self.run_data.extend(
-            (0..self.config.max_episodes).map(|i| (RunMode::Train, mc_returns[i], successes[i])),
+            (0..self.config.max_episodes())
+                .map(|i| (RunMode::Train, mc_returns[i], successes[i])),
         );
         Ok(())
     }
@@ -250,7 +263,7 @@ where
     fn reset_agent(&mut self) -> Result<()> {
         let size_state = self.env.observation_space().iter().product::<usize>();
         let size_action = self.env.action_space().iter().product::<usize>();
-        self.agent = DDPG::from_config(&self.device, &self.config, size_state, size_action)?;
+        self.agent = *<Alg>::from_config(&self.device, &self.config, size_state, size_action)?;
         Ok(())
     }
 
@@ -262,8 +275,8 @@ where
             let s1 = &self.graph[edge.source()];
             let s2 = &self.graph[edge.target()];
 
-            let s1 = <O>::to_vec(s1.clone());
-            let s2 = <O>::to_vec(s2.clone());
+            let s1 = <Obs>::to_vec(s1.clone());
+            let s2 = <Obs>::to_vec(s2.clone());
 
             plot_ui.line(
                 Line::new(vec![[s1[0], s1[1]], [s2[0], s2[1]]])
@@ -277,8 +290,8 @@ where
         &self,
         plot_ui: &mut PlotUi,
     ) {
-        for state in self.agent.replay_buffer().all_states::<O>() {
-            let s = <O>::to_vec(state.clone());
+        for state in self.agent.replay_buffer().all_states::<Obs>() {
+            let s = <Obs>::to_vec(state.clone());
             plot_ui.points(
                 Points::new(vec![[s[0], s[1]]])
                     .radius(2.0)
@@ -316,7 +329,7 @@ where
             .collect::<Vec<_>>();
     }
 
-    fn render_fancy_graph(
+    fn render_fancy(
         &mut self,
         ui: &mut Ui,
     ) {
@@ -337,69 +350,90 @@ where
         ui: &mut Ui,
     ) {
         ui.heading("Settings");
+        let mut max_episodes = self.config.max_episodes();
+        let mut train_iterations = self.config.training_iterations();
+        let mut init_random_actions = self.config.initial_random_actions();
+
+        let mut actor_lr = self.config.actor_lr();
+        let mut critic_lr = self.config.critic_lr();
+        let mut gamma = self.config.gamma();
+        let mut tau = self.config.tau();
+
+        let mut buffer_size = self.config.replay_buffer_capacity();
+        let mut batch_size = self.config.training_batch_size();
+
+        let mut sgm_freq = self.config.sgm_freq();
+        let mut sgm_maxdist = self.config.sgm_maxdist();
+        let mut sgm_tau = self.config.sgm_tau();
+
 
         ui.separator();
         ui.label("DDPG Options");
         ui.add(
-            Slider::new(&mut self.config.actor_learning_rate, 0.00001..=0.1)
+            Slider::new(&mut actor_lr, 0.00001..=0.1)
                 .logarithmic(true)
                 .fixed_decimals(5)
                 .text("Actor LR"),
         );
         ui.add(
-            Slider::new(&mut self.config.critic_learning_rate, 0.00001..=0.1)
+            Slider::new(&mut critic_lr, 0.00001..=0.1)
                 .logarithmic(true)
                 .fixed_decimals(5)
                 .text("Critic LR"),
         );
         ui.add(
-            Slider::new(&mut self.config.gamma, 0.0..=1.0)
+            Slider::new(&mut gamma, 0.0..=1.0)
                 .step_by(0.01)
                 .text("Gamma"),
         );
         ui.add(
-            Slider::new(&mut self.config.tau, 0.001..=1.0)
+            Slider::new(&mut tau, 0.001..=1.0)
                 .logarithmic(true)
                 .text("Tau"),
         );
         ui.add(
-            Slider::new(&mut self.config.replay_buffer_capacity, 10..=100_000)
+            Slider::new(&mut buffer_size, 10..=100_000)
                 .logarithmic(true)
                 .text("Buffer size"),
         );
-        ui.add(Slider::new(&mut self.config.training_batch_size, 1..=200).text("Batch size"));
-        ui.add(Slider::new(&mut self.config.training_iterations, 1..=200).text("Training iters"));
         ui.add(
-            Slider::new(&mut self.config.initial_random_actions, 0..=1000)
+            Slider::new(&mut batch_size, 1..=1024)
+                .step_by(1.0)
+                .text("Batch size"),
+        );
+        ui.add(
+            Slider::new(&mut train_iterations, 1..=200)
+                .step_by(1.0)
+                .text("Training iters"),
+        );
+        ui.add(
+            Slider::new(&mut init_random_actions, 0..=1000)
                 .text("Init. random actions"),
         );
 
         ui.separator();
         ui.label("SGM Options");
         ui.add(
-            Slider::new(&mut self.config.sgm_freq, 0..=20)
-                .text("Rebuilding freq")
-                .step_by(1.0),
+            Slider::new(&mut sgm_freq, 0..=20)
+                .step_by(1.0)
+                .text("Rebuilding freq"),
         );
         ui.add(
-            Slider::new(&mut self.config.sgm_maxdist, 0.0..=1.0)
-                .text("Max distance")
-                .step_by(0.01),
+            Slider::new(&mut sgm_maxdist, 0.0..=1.0)
+                .step_by(0.01)
+                .text("Max distance"),
         );
         ui.add(
-            Slider::new(&mut self.config.sgm_tau, 0.0..=1.0)
-                .text("Tau")
-                .step_by(0.01),
+            Slider::new(&mut sgm_tau, 0.0..=1.0)
+                .step_by(0.01)
+                .text("Tau"),
         );
 
         ui.separator();
         ui.label("Render Options");
         ui.add(Checkbox::new(&mut self.render_graph, "Show Graph"));
         ui.add(Checkbox::new(&mut self.render_buffer, "Show Buffer"));
-        ui.add(Checkbox::new(
-            &mut self.render_fancy_graph,
-            "Fancy GraphView",
-        ));
+        ui.add(Checkbox::new(&mut self.render_fancy, "Fancy GraphView"));
 
         ui.separator();
         ui.heading("Actions");
@@ -408,7 +442,7 @@ where
                 self.reset_agent().unwrap();
             };
 
-            let agent_mode = match self.agent.run_mode {
+            let agent_mode = match self.agent.run_mode() {
                 RunMode::Test => "Test",
                 RunMode::Train => "Train",
             };
@@ -416,16 +450,20 @@ where
                 .add(Button::new(format!("Toggle Mode ({agent_mode})")))
                 .clicked()
             {
-                self.agent.run_mode = match self.agent.run_mode {
+                self.agent.set_run_mode(match self.agent.run_mode() {
                     RunMode::Test => RunMode::Train,
                     RunMode::Train => RunMode::Test,
-                };
+                });
             };
         });
 
         ui.separator();
         ui.label("Run Agent");
-        ui.add(Slider::new(&mut self.config.max_episodes, 1..=1001).text("n_episodes"));
+        ui.add(
+            Slider::new(&mut max_episodes, 1..=1001)
+                .step_by(1.0)
+                .text("n_episodes"),
+        );
         if ui.add(Button::new("Run Episodes")).clicked() {
             self.run_agent().unwrap();
         };

@@ -1,11 +1,15 @@
 use {
+    super::{
+        DDPGConfig,
+        Algorithm,
+        OffPolicyAlgorithm,
+    },
     crate::{
         components::{
             OuNoise,
             ReplayBuffer,
         },
-        engine::RunMode,
-        TrainingConfig,
+        RunMode,
     },
     candle_core::{
         DType,
@@ -240,6 +244,7 @@ pub struct DDPG<'a> {
     gamma: f64,
     tau: f64,
     replay_buffer: ReplayBuffer,
+    batch_size: usize,
     ou_noise: OuNoise,
 
     size_state: usize,
@@ -248,28 +253,6 @@ pub struct DDPG<'a> {
 }
 
 impl DDPG<'_> {
-    pub fn from_config(
-        device: &Device,
-        config: &TrainingConfig,
-        size_state: usize,
-        size_action: usize,
-    ) -> Result<Self> {
-        Self::new(
-            device,
-            size_state,
-            size_action,
-            config.hidden_1_size,
-            config.hidden_2_size,
-            RunMode::Train,
-            config.actor_learning_rate,
-            config.critic_learning_rate,
-            config.gamma,
-            config.tau,
-            config.replay_buffer_capacity,
-            OuNoise::new(config.ou_mu, config.ou_theta, config.ou_sigma, size_action)?,
-        )
-    }
-
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         device: &Device,
@@ -283,6 +266,7 @@ impl DDPG<'_> {
         gamma: f64,
         tau: f64,
         buffer_capacity: usize,
+        batch_size: usize,
         ou_noise: OuNoise,
     ) -> Result<Self> {
         let filter_by_prefix = |varmap: &VarMap, prefix: &str| {
@@ -337,40 +321,42 @@ impl DDPG<'_> {
             gamma,
             tau,
             replay_buffer: ReplayBuffer::new(buffer_capacity),
+            batch_size,
             ou_noise,
             size_state,
             size_action,
             run_mode,
         })
     }
+}
 
-    pub fn remember(
-        &mut self,
-        state: &Tensor,
-        action: &Tensor,
-        reward: &Tensor,
-        next_state: &Tensor,
-        terminated: bool,
-        truncated: bool,
-    ) {
-        info!(
-            concat!(
-                "\nPushing to replay buffer:",
-                "\n{state:?}",
-                "\n{action:?}",
-                "\n{reward:?}",
-                "\n{next_state:?}",
-            ),
-            state = state,
-            action = action,
-            reward = reward,
-            next_state = next_state,
-        );
-        self.replay_buffer
-            .push(state, action, reward, next_state, terminated, truncated)
+impl Algorithm for DDPG<'_> {
+    type Config = DDPGConfig;
+
+    fn from_config(
+        device: &Device,
+        config: &DDPGConfig,
+        size_state: usize,
+        size_action: usize,
+    ) -> Result<Box<Self>> {
+        Ok(Box::new(Self::new(
+            device,
+            size_state,
+            size_action,
+            config.hidden_1_size,
+            config.hidden_2_size,
+            RunMode::Train,
+            config.actor_learning_rate,
+            config.critic_learning_rate,
+            config.gamma,
+            config.tau,
+            config.replay_buffer_capacity,
+            config.training_batch_size,
+            OuNoise::new(config.ou_mu, config.ou_theta, config.ou_sigma, size_action)?,
+        )?))
     }
 
-    pub fn actions(
+    fn actions(
         &mut self,
         state: &Tensor,
     ) -> Result<Vec<f64>> {
@@ -387,12 +373,9 @@ impl DDPG<'_> {
         actions.to_vec1::<f64>()
     }
 
-    pub fn train(
-        &mut self,
-        batch_size: usize,
-    ) -> Result<()> {
+    fn train(&mut self) -> Result<()> {
         let (states, actions, rewards, next_states, _, _) =
-            match self.replay_buffer.random_batch(batch_size)? {
+            match self.replay_buffer.random_batch(self.batch_size)? {
                 Some(v) => v,
                 _ => return Ok(()),
             };
@@ -420,7 +403,44 @@ impl DDPG<'_> {
         Ok(())
     }
 
-    pub fn replay_buffer(&self) -> &ReplayBuffer {
+    fn run_mode(&self) -> RunMode {
+        self.run_mode
+    }
+
+    fn set_run_mode(&mut self, mode: RunMode) {
+        self.run_mode = mode;
+    }
+}
+
+
+impl OffPolicyAlgorithm for DDPG<'_> {
+    fn remember(
+        &mut self,
+        state: &Tensor,
+        action: &Tensor,
+        reward: &Tensor,
+        next_state: &Tensor,
+        terminated: bool,
+        truncated: bool,
+    ) {
+        info!(
+            concat!(
+                "\nPushing to replay buffer:",
+                "\n{state:?}",
+                "\n{action:?}",
+                "\n{reward:?}",
+                "\n{next_state:?}",
+            ),
+            state = state,
+            action = action,
+            reward = reward,
+            next_state = next_state,
+        );
+        self.replay_buffer
+            .push(state, action, reward, next_state, terminated, truncated)
+    }
+
+    fn replay_buffer(&self) -> &ReplayBuffer {
         &self.replay_buffer
     }
 }

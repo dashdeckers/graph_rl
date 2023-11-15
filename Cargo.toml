@@ -42,9 +42,16 @@ rand = { version = "0.8.5", features = ["std"] }
 # Graph
 petgraph = "0.6.3"
 
+# Dataframes
+polars = { version = "0.34.2", features = ["parquet"] }
+
 # Deep Learning
 candle-core = { git = "https://github.com/huggingface/candle.git" }
 candle-nn = { git = "https://github.com/huggingface/candle.git" }
 
 # Python Interop
 pyo3 = { version = "0.20.0", features = ["auto-initialize"] }
+
+# Serialization
+serde = { version = "1.0.192", features = ["derive"] }
+ron = "0.8.1"

@@ -1,14 +1,18 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 use {
+    super::DDPGConfig,
     crate::{
-        agents::DDPG,
+        agents::{
+            DDPG,
+            Algorithm,
+            OffPolicyAlgorithm,
+        },
         envs::{
             DistanceMeasure,
             TensorConvertible,
         },
         components::sgm,
-        TrainingConfig,
     },
     anyhow::Result,
     candle_core::Device,
@@ -42,14 +46,14 @@ where
 {
     pub fn from_config(
         device: &Device,
-        config: &TrainingConfig,
+        config: &DDPGConfig,
         size_state: usize,
         size_action: usize,
     ) -> Result<Self> {
         let ddpg = DDPG::from_config(device, config, size_state, size_action)?;
 
         Ok(Self {
-            ddpg,
+            ddpg: *ddpg,
             sgm: StableGraph::default(),
             sgm_freq: config.sgm_freq,
             sgm_maxdist: config.sgm_maxdist,

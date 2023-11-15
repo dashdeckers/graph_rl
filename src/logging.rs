@@ -2,7 +2,7 @@ use {
     anyhow::Result,
     std::{
         fs::File,
-        path::PathBuf,
+        path::Path,
         sync::Arc,
     },
     tracing::Level,
@@ -17,7 +17,7 @@ use {
 };
 
 pub fn setup_logging(
-    path: PathBuf,
+    path: &dyn AsRef<Path>,
     min_level_file: Option<Level>,
     min_level_stdout: Option<Level>,
 ) -> Result<()> {

@@ -6,17 +6,24 @@ use {
         ValueEnum,
     },
     graph_rl::{
-        agents::DDPG,
+        agents::{
+            DDPG,
+            DDPGConfig,
+            Algorithm,
+        },
         envs::{
             Environment,
             PendulumEnv,
+
             PointEnv,
+            PointEnvConfig,
+            PointReward,
+
             PointMazeEnv,
         },
         gui::GUI,
-        engine::train,
+        engine::run_n,
         logging::setup_logging,
-        TrainingConfig,
     },
     tracing::Level,
 };
@@ -75,17 +82,17 @@ fn main() -> Result<()> {
     let args = Args::parse();
     match args.log {
         Loglevel::Error => setup_logging(
-            "debug.log".into(),
+            &"debug.log",
             Some(Level::ERROR),
             Some(Level::ERROR),
         )?,
         Loglevel::Warn => setup_logging(
-            "debug.log".into(),
+            &"debug.log",
             Some(Level::WARN),
             Some(Level::WARN),
         )?,
         Loglevel::Info => setup_logging(
-            "debug.log".into(),
+            &"debug.log",
             Some(Level::INFO),
             Some(Level::INFO),
         )?,
@@ -97,49 +104,88 @@ fn main() -> Result<()> {
     match args.env {
         Env::Pendulum => {
             let mut env = *PendulumEnv::new(Default::default())?;
-            let config = TrainingConfig::pendulum(env.timelimit());
-
-            let size_state = env.observation_space().iter().product::<usize>();
-            let size_action = env.action_space().iter().product::<usize>();
-
-            let mut agent = DDPG::from_config(&device, &config, size_state, size_action)?;
+            let config = DDPGConfig::pendulum();
 
             if args.gui {
-                GUI::open(env, agent, config, device);
+                let agent = *DDPG::from_config(
+                    &device,
+                    &config,
+                    env.observation_space().iter().product::<usize>(),
+                    env.action_space().iter().product::<usize>(),
+                )?;
+                GUI::open(
+                    env,
+                    agent,
+                    config,
+                    device,
+                );
             } else {
-                train(&mut env, &mut agent, config, &device)?;
+                run_n::<DDPG, _, _, _>(
+                    &"pendulum_data.parquet",
+                    &"pendulum_data.ron",
+                    10,
+                    &mut env,
+                    config,
+                    &device,
+                )?;
             }
         }
 
         Env::Pointenv => {
-            let mut env = *PointEnv::new(Default::default())?;
-            let config = TrainingConfig::pointenv(env.timelimit());
-
-            let size_state = env.observation_space().iter().product::<usize>();
-            let size_action = env.action_space().iter().product::<usize>();
-
-            let mut agent = DDPG::from_config(&device, &config, size_state, size_action)?;
+            let mut env = *PointEnv::new(PointEnvConfig::new(
+                5,
+                5,
+                None,
+                30,
+                1.0,
+                0.5,
+                0.1,
+                PointReward::Distance,
+                42,
+            ))?;
+            let config = DDPGConfig::pointenv();
 
             if args.gui {
+                let agent = *DDPG::from_config(
+                    &device,
+                    &config,
+                    env.observation_space().iter().product::<usize>(),
+                    env.action_space().iter().product::<usize>(),
+                )?;
                 GUI::open(env, agent, config, device);
             } else {
-                train(&mut env, &mut agent, config, &device)?;
+                run_n::<DDPG, _, _, _>(
+                    &"pointenv_data.parquet",
+                    &"pointenv_data.ron",
+                    10,
+                    &mut env,
+                    config,
+                    &device,
+                )?;
             }
         }
 
         Env::Pointmaze => {
             let mut env = *PointMazeEnv::new(Default::default())?;
-            let config = TrainingConfig::pointmaze(env.timelimit());
-
-            let size_state = env.observation_space().iter().product::<usize>();
-            let size_action = env.action_space().iter().product::<usize>();
-
-            let mut agent = DDPG::from_config(&device, &config, size_state, size_action)?;
+            let config = DDPGConfig::pointmaze();
 
             if args.gui {
+                let agent = *DDPG::from_config(
+                    &device,
+                    &config,
+                    env.observation_space().iter().product::<usize>(),
+                    env.action_space().iter().product::<usize>(),
+                )?;
                 GUI::open(env, agent, config, device);
             } else {
-                train(&mut env, &mut agent, config, &device)?;
+                run_n::<DDPG, _, _, _>(
+                    &"pointmaze_data.parquet",
+                    &"pointmaze_data.ron",
+                    10,
+                    &mut env,
+                    config,
+                    &device,
+                )?;
             }
         }
     }
