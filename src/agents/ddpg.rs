@@ -352,7 +352,13 @@ impl Algorithm for DDPG<'_> {
             config.tau,
             config.replay_buffer_capacity,
             config.training_batch_size,
-            OuNoise::new(config.ou_mu, config.ou_theta, config.ou_sigma, size_action)?,
+            OuNoise::new(
+                config.ou_mu,
+                config.ou_theta,
+                config.ou_sigma,
+                size_action,
+                device,
+            )?,
         )?))
     }
 

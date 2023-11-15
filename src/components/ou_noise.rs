@@ -17,12 +17,13 @@ impl OuNoise {
         theta: f64,
         sigma: f64,
         size_action: usize,
+        device: &Device,
     ) -> Result<Self> {
         Ok(Self {
             mu,
             theta,
             sigma,
-            state: Tensor::ones(size_action, DType::F64, &Device::Cpu)?,
+            state: Tensor::ones(size_action, DType::F64, device)?,
         })
     }
 
