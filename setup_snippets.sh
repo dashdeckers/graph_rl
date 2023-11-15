@@ -57,6 +57,8 @@ pyenv virtualenv 3.11 thesis
 pyenv local thesis
 pip install gymnasium
 
+# Might need to fix Pyenv bug with this:
+export LD_LIBRARY_PATH=/home/travis/.pyenv/versions/3.10.13/lib:$LD_LIBRARY_PATH
 
 
 # Misc
