@@ -1,7 +1,7 @@
 use {
     anyhow::Result,
     std::{
-        fs::File,
+        fs::{File, create_dir_all},
         path::Path,
         sync::Arc,
     },
@@ -21,6 +21,7 @@ pub fn setup_logging(
     min_level_file: Option<Level>,
     min_level_stdout: Option<Level>,
 ) -> Result<()> {
+    create_dir_all(path.as_ref())?;
     let log_file = Arc::new(File::create(path.as_ref().join("debug.log"))?);
 
     tracing_subscriber::registry()
