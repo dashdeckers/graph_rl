@@ -34,7 +34,7 @@ use {
     },
     std::{
         path::Path,
-        fs::File,
+        fs::{File, create_dir_all},
         io::Write,
         fmt::Debug,
         hash::Hash,
@@ -43,9 +43,9 @@ use {
 };
 
 
+
 pub fn run_n<Alg, Env, Obs, Act>(
-    data_path: &dyn AsRef<Path>,
-    config_path: &dyn AsRef<Path>,
+    path: &dyn AsRef<Path>,
     n_runs: usize,
     env: &mut Env,
     config: Alg::Config,
@@ -53,11 +53,13 @@ pub fn run_n<Alg, Env, Obs, Act>(
 ) -> Result<DataFrame>
 where
     Alg: Algorithm + OffPolicyAlgorithm,
-    Alg::Config: AlgorithmConfig + OffPolicyConfig + SgmConfig + Clone + Serialize,
+    Alg::Config: Clone + Serialize + AlgorithmConfig + OffPolicyConfig + SgmConfig,
     Env: Environment<Action = Act, Observation = Obs>,
     Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure,
     Act: Clone + VectorConvertible + Sampleable,
 {
+    create_dir_all(path.as_ref())?;
+
     let mut cols: Vec<Series> = Vec::new();
     for n in 0..n_runs {
         warn!("Collecting data, run {n}/{n_runs}");
@@ -83,7 +85,7 @@ where
         ));
     }
 
-    let mut config_file = File::create(config_path)?;
+    let mut config_file = File::create(path.as_ref().join("alg_config.ron"))?;
     config_file.write_all(
         ron::ser::to_string_pretty(
             &config,
@@ -91,7 +93,15 @@ where
         )?.as_bytes()
     )?;
 
-    let data_file = File::create(data_path)?;
+    let mut config_file = File::create(path.as_ref().join("env_config.ron"))?;
+    config_file.write_all(
+        ron::ser::to_string_pretty(
+            &config,
+            ron::ser::PrettyConfig::default(),
+        )?.as_bytes()
+    )?;
+
+    let data_file = File::create(path.as_ref().join("data.parquet"))?;
     let mut df = DataFrame::new(cols)?;
     ParquetWriter::new(data_file).finish(&mut df)?;
     Ok(df)

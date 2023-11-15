@@ -21,7 +21,7 @@ pub fn setup_logging(
     min_level_file: Option<Level>,
     min_level_stdout: Option<Level>,
 ) -> Result<()> {
-    let log_file = Arc::new(File::create(path)?);
+    let log_file = Arc::new(File::create(path.as_ref().join("debug.log"))?);
 
     tracing_subscriber::registry()
         // File writer
