@@ -45,13 +45,19 @@ petgraph = "0.6.3"
 # Dataframes
 polars = { version = "0.34.2", features = ["parquet"] }
 
-# Deep Learning
-candle-core = { git = "https://github.com/huggingface/candle.git" }
-candle-nn = { git = "https://github.com/huggingface/candle.git" }
-
 # Python Interop
 pyo3 = { version = "0.20.0", features = ["auto-initialize"] }
 
 # Serialization
 serde = { version = "1.0.192", features = ["derive"] }
 ron = "0.8.1"
+
+
+# Deep Learning
+[target.'cfg(windows)'.dependencies]
+candle-core = { git = "https://github.com/huggingface/candle.git" }
+candle-nn = { git = "https://github.com/huggingface/candle.git" }
+
+[target.'cfg(not(windows))'.dependencies]
+candle-core = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
+candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }

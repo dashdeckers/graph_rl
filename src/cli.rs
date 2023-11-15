@@ -21,7 +21,11 @@ use {
         logging::setup_logging,
     },
     anyhow::Result,
-    candle_core::Device,
+    candle_core::{
+        Device,
+        CudaDevice,
+        backend::BackendDevice,
+    },
     clap::{
         Parser,
         ValueEnum,
@@ -103,9 +107,7 @@ pub struct Args {
 pub fn do_stuff<Alg, Env, Obs, Act>(
     mut env: Env,
     config: Alg::Config,
-    device: Device,
     args: Args,
-    name: &str,
 ) -> Result<()>
 where
     Alg: Algorithm + OffPolicyAlgorithm + 'static,
@@ -114,11 +116,24 @@ where
     Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
     Act: Clone + VectorConvertible + Sampleable + 'static,
 {
+    let name = if let Some(name) = args.output.clone() {
+        name
+    } else {
+        args.env.name().to_owned()
+    };
+
     setup_logging(
         &name,
         args.log.level(),
         args.log.level(),
     )?;
+
+    let device = if args.cpu {
+        Device::Cpu
+    } else {
+        Device::Cuda(CudaDevice::new(0)?)
+    };
+
     if args.gui {
         let agent = *Alg::from_config(
             &device,
@@ -135,7 +150,7 @@ where
     } else {
         run_n::<Alg, Env, Obs, Act>(
             &name,
-            10,
+            15,
             &mut env,
             config,
             &device,
