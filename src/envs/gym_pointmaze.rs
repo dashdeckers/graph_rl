@@ -58,7 +58,7 @@ impl Default for PointMazeConfig {
         // TODO: this hardcodes the PointMaze_Open-v3
         // adapt gym_create_env to take some kwargs
         // and parse the env string with its options
-        let name = "PointMaze_Open-v3".to_owned();
+        let name = "PointMaze_OpenDense-v3".to_owned();
         let maze = vec![
             vec!['1', '1', '1', '1', '1', '1', '1'],
             vec!['1', '0', '0', '0', '0', '0', '1'],
@@ -76,7 +76,7 @@ impl Default for PointMazeConfig {
             width,
             height,
             timelimit: 300,
-            reward_mode: PointMazeReward::SparseNegative,
+            reward_mode: PointMazeReward::Dense,
             seed: rand::thread_rng().gen::<u64>(),
         }
     }
