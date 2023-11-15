@@ -1,6 +1,6 @@
 use {
     crate::{
-        ddpg::DDPG,
+        agents::DDPG,
         envs::{
             DistanceMeasure,
             Environment,
@@ -9,9 +9,11 @@ use {
             TensorConvertible,
             VectorConvertible,
         },
-        train,
-        tick,
-        RunMode,
+        engine::{
+            train,
+            tick,
+            RunMode,
+        },
         TrainingConfig,
     },
     anyhow::Result,

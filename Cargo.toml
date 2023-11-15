@@ -45,7 +45,6 @@ petgraph = "0.6.3"
 # Deep Learning
 candle-core = { git = "https://github.com/huggingface/candle.git" }
 candle-nn = { git = "https://github.com/huggingface/candle.git" }
-intel-mkl-src = { version = "0.8.1", features = ["mkl-static-lp64-iomp"] }
 
 # Python Interop
 pyo3 = { version = "0.20.0", features = ["auto-initialize"] }

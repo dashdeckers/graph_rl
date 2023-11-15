@@ -1,8 +1,10 @@
 use {
     crate::{
-        ou_noise::OuNoise,
-        replay_buffer::ReplayBuffer,
-        RunMode,
+        components::{
+            OuNoise,
+            ReplayBuffer,
+        },
+        engine::RunMode,
         TrainingConfig,
     },
     candle_core::{

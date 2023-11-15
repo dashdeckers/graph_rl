@@ -1,7 +1,7 @@
 use {
     crate::{
         envs::TensorConvertible,
-        replay_buffer::ReplayBuffer,
+        components::ReplayBuffer,
     },
     ordered_float::OrderedFloat,
     petgraph::{

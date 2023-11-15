@@ -2,12 +2,12 @@
 #![allow(dead_code)]
 use {
     crate::{
-        ddpg::DDPG,
+        agents::DDPG,
         envs::{
             DistanceMeasure,
             TensorConvertible,
         },
-        sgm,
+        components::sgm,
         TrainingConfig,
     },
     anyhow::Result,

@@ -1,5 +1,3 @@
-extern crate intel_mkl_src;
-
 use {
     anyhow::Result,
     candle_core::Device,
@@ -8,7 +6,7 @@ use {
         ValueEnum,
     },
     graph_rl::{
-        ddpg::DDPG,
+        agents::DDPG,
         envs::{
             Environment,
             PendulumEnv,
@@ -16,8 +14,8 @@ use {
             PointMazeEnv,
         },
         gui::GUI,
-        train,
-        util::setup_logging,
+        engine::train,
+        logging::setup_logging,
         TrainingConfig,
     },
     tracing::Level,
@@ -56,6 +54,10 @@ struct Args {
     /// Run as a GUI instead of just training.
     #[arg(long)]
     gui: bool,
+
+    /// File to write the results to.
+    #[arg(long)]
+    output: Option<String>,
 }
 
 // NOW
