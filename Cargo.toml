@@ -69,10 +69,6 @@ candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["cu
 
 
 
-# Enabling katex
-[build]
-rustdocflags = [ "--html-in-header", "./src/docs-header.html" ]
-
 # Enabling katex on docs.rs
 [package.metadata.docs.rs]
 rustdoc-args = [
