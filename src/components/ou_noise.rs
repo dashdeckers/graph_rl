@@ -1,3 +1,4 @@
+use aquamarine::aquamarine;
 use candle_core::{
     DType,
     Device,
@@ -5,6 +6,20 @@ use candle_core::{
     Tensor,
 };
 
+#[cfg_attr(doc, aquamarine)]
+/// ```mermaid
+/// graph LR
+///     s([Source]) --> a[[aquamarine]]
+///     r[[rustdoc]] --> f([Docs w/ Mermaid!])
+///     subgraph rustc[Rust Compiler]
+///     a -. inject mermaid.js .-> r
+///     end
+/// ```
+/// The Ornstein-Uhlenbeck process, given by the equation:
+/// ```math
+/// dX_t = \kappa(\theta-X_t)dt + \sigma dW_t
+/// ```
+/// Where in our code we should replace theta with kappa
 pub struct OuNoise {
     mu: f64,
     theta: f64,

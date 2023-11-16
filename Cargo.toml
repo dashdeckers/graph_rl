@@ -9,6 +9,7 @@ keywords = [
     "reinforcement learning",
     "machine-learning",
     "actor-critic",
+    "planning",
     "graph",
 ]
 license = "MIT"
@@ -21,6 +22,10 @@ categories = ["research"]
 anyhow = "1.0.70"
 auto_ops = "0.3.0"
 ordered-float = { version = "4.1.1", features = ["serde"] }
+
+# Docs
+katex-doc = "0.1.0"
+aquamarine = "0.3.2"
 
 # GUI
 eframe = "0.23.0"
@@ -61,3 +66,16 @@ candle-nn = { git = "https://github.com/huggingface/candle.git" }
 [target.'cfg(not(windows))'.dependencies]
 candle-core = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
 candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
+
+
+
+# Enabling katex
+[build]
+rustdocflags = [ "--html-in-header", "./src/docs-header.html" ]
+
+# Enabling katex on docs.rs
+[package.metadata.docs.rs]
+rustdoc-args = [
+    "--html-in-header",
+    ".cargo/registry/src/github.com-1ecc6299db9ec823/katex-doc-0.1.0/katex.html",
+]
