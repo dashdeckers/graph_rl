@@ -7,6 +7,7 @@ use {
         },
         state::PointState,
     },
+    serde::Serialize,
     candle_core::{
         Device,
         Tensor,
@@ -14,7 +15,7 @@ use {
     ordered_float::OrderedFloat,
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct PointLine {
     // Let's assume a directionality from A -> B where it makes sense
     pub A: PointState,

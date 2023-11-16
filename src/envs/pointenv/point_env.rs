@@ -133,6 +133,7 @@ fn compute_next_state(
 }
 
 pub struct PointEnv {
+    config: PointEnvConfig,
     width: usize,
     height: usize,
     walls: Vec<PointLine>,
@@ -166,7 +167,7 @@ impl PointEnv {
         );
 
         // add walls for the borders around the map
-        let mut walls = config.walls.unwrap_or_default();
+        let mut walls = config.walls.clone().unwrap_or_default();
         walls.extend([
             PointLine::from(((0.0, 0.0), (config.width as f64, 0.0))),
             PointLine::from(((0.0, 0.0), (0.0, config.height as f64))),
@@ -191,6 +192,7 @@ impl PointEnv {
         );
 
         Ok(Box::new(PointEnv {
+            config: config.clone(),
             width: config.width,
             height: config.height,
             walls,
@@ -356,6 +358,10 @@ impl Environment for PointEnv {
         let padding = (lo.abs() + hi.abs()) * 0.4;
 
         (lo, hi + padding)
+    }
+
+    fn config(&self) -> Self::Config {
+        self.config.clone()
     }
 }
 

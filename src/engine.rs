@@ -43,24 +43,39 @@ use {
 };
 
 
-
 pub fn run_n<Alg, Env, Obs, Act>(
     path: &dyn AsRef<Path>,
     n_runs: usize,
     env: &mut Env,
     config: Alg::Config,
     device: &Device,
-) -> Result<DataFrame>
+) -> Result<()>
 where
     Alg: Algorithm + OffPolicyAlgorithm,
     Alg::Config: Clone + Serialize + AlgorithmConfig + OffPolicyConfig + SgmConfig,
     Env: Environment<Action = Act, Observation = Obs>,
+    Env::Config: Clone + Serialize,
     Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure,
     Act: Clone + VectorConvertible + Sampleable,
 {
+    assert!(path.as_ref().exists(), "Directory already exists!");
+
     create_dir_all(path.as_ref())?;
 
-    let mut cols: Vec<Series> = Vec::new();
+    File::create(path.as_ref().join("alg_config.ron"))?.write_all(
+        ron::ser::to_string_pretty(
+            &config,
+            ron::ser::PrettyConfig::default(),
+        )?.as_bytes()
+    )?;
+
+    File::create(path.as_ref().join("env_config.ron"))?.write_all(
+        ron::ser::to_string_pretty(
+            &env.config(),
+            ron::ser::PrettyConfig::default(),
+        )?.as_bytes()
+    )?;
+
     for n in 0..n_runs {
         warn!("Collecting data, run {n}/{n_runs}");
         let mut agent = *Alg::from_config(
@@ -75,36 +90,23 @@ where
             config.clone(),
             device,
         )?;
-        cols.push(Series::new(
-            &format!("run_{n}_total_rewards"),
-            &mc_returns,
-        ));
-        cols.push(Series::new(
-            &format!("run_{n}_successes"),
-            &successes,
-        ));
+
+        let mut df = DataFrame::new(vec![
+            Series::new(
+                &format!("run_{n}_total_rewards"),
+                &mc_returns,
+            ),
+            Series::new(
+                &format!("run_{n}_successes"),
+                &successes,
+            )
+        ])?;
+
+        ParquetWriter::new(
+            File::create(path.as_ref().join(format!("run_{n}_data.parquet")))?
+        ).finish(&mut df)?;
     }
-
-    let mut config_file = File::create(path.as_ref().join("alg_config.ron"))?;
-    config_file.write_all(
-        ron::ser::to_string_pretty(
-            &config,
-            ron::ser::PrettyConfig::default(),
-        )?.as_bytes()
-    )?;
-
-    let mut config_file = File::create(path.as_ref().join("env_config.ron"))?;
-    config_file.write_all(
-        ron::ser::to_string_pretty(
-            &config,
-            ron::ser::PrettyConfig::default(),
-        )?.as_bytes()
-    )?;
-
-    let data_file = File::create(path.as_ref().join("data.parquet"))?;
-    let mut df = DataFrame::new(cols)?;
-    ParquetWriter::new(data_file).finish(&mut df)?;
-    Ok(df)
+    Ok(())
 }
 
 pub fn train<Alg, Env, Obs, Act>(

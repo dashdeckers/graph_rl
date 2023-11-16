@@ -13,6 +13,7 @@ use {
         TensorConvertible,
         VectorConvertible,
     },
+    serde::Serialize,
     anyhow::Result,
     candle_core::{
         Device,
@@ -31,6 +32,7 @@ use {
 };
 
 pub struct PendulumEnv {
+    config: PendulumConfig,
     env: PyObject,
     timelimit: usize,
     current_observation: PendulumState,
@@ -38,6 +40,7 @@ pub struct PendulumEnv {
     observation_space: Vec<usize>,
 }
 
+#[derive(Clone, Serialize)]
 pub struct PendulumConfig {
     name: String,
 }
@@ -142,6 +145,7 @@ impl Environment for PendulumEnv {
     fn new(config: Self::Config) -> Result<Box<Self>> {
         let (env, action_space, observation_space) = gym_create_env(&config.name, false)?;
         Ok(Box::new(Self {
+            config: config.clone(),
             env,
             timelimit: 200,
             current_observation: PendulumState {
@@ -205,6 +209,10 @@ impl Environment for PendulumEnv {
         let padding = (lo.abs() + hi.abs()) * 0.4;
 
         (lo, hi + padding)
+    }
+
+    fn config(&self) -> Self::Config {
+        self.config.clone()
     }
 }
 

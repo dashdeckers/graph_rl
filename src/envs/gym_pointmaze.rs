@@ -13,6 +13,7 @@ use {
         TensorConvertible,
         VectorConvertible,
     },
+    serde::Serialize,
     anyhow::Result,
     candle_core::{
         Device,
@@ -32,6 +33,7 @@ use {
 };
 
 pub struct PointMazeEnv {
+    config: PointMazeConfig,
     env: PyObject,
     #[allow(dead_code)]
     maze: Vec<Vec<char>>,
@@ -44,6 +46,7 @@ pub struct PointMazeEnv {
     observation_space: Vec<usize>,
 }
 
+#[derive(Clone, Serialize)]
 pub struct PointMazeConfig {
     name: String,
     maze: Vec<Vec<char>>,
@@ -83,6 +86,7 @@ impl Default for PointMazeConfig {
 }
 
 #[allow(dead_code)]
+#[derive(Clone, Serialize)]
 pub enum PointMazeReward {
     SparseNegative,
     Sparse,
@@ -283,6 +287,7 @@ impl Environment for PointMazeEnv {
         let (env, action_space, observation_space) = gym_create_env(&config.name, true)?;
         let current_observation = gym_reset_env(&env, config.seed, true)?;
         Ok(Box::new(Self {
+            config: config.clone(),
             env,
             maze: config.maze,
             width: config.width,
@@ -357,6 +362,10 @@ impl Environment for PointMazeEnv {
         let padding = (lo.abs() + hi.abs()) * 0.4;
 
         (lo, hi + padding)
+    }
+
+    fn config(&self) -> Self::Config {
+        self.config.clone()
     }
 }
 

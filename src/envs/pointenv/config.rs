@@ -3,6 +3,7 @@ use {
         line::PointLine,
         reward::PointReward,
     },
+    serde::Serialize,
     rand::{
         rngs::StdRng,
         Rng,
@@ -10,7 +11,7 @@ use {
     },
 };
 
-#[derive(Debug)]
+#[derive(Debug, Clone, Serialize)]
 pub struct PointEnvConfig {
     pub width: usize,
     pub height: usize,

@@ -86,6 +86,7 @@ pub trait Environment {
     fn observation_domain(&self) -> Vec<RangeInclusive<f64>>;
     fn current_observation(&self) -> Self::Observation;
     fn value_range(&self) -> (f64, f64);
+    fn config(&self) -> Self::Config;
 }
 
 pub trait Renderable {

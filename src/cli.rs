@@ -95,6 +95,10 @@ pub struct Args {
     /// File to write the results to.
     #[arg(long)]
     pub output: Option<String>,
+
+    /// Number of runs to collect data on.
+    #[arg(long, default_value_t=10)]
+    pub runs: usize,
 }
 
 /// This handles setup up logging, the GUI, and/or training, which simplifies
@@ -113,6 +117,7 @@ where
     Alg: Algorithm + OffPolicyAlgorithm + 'static,
     Alg::Config: AlgorithmConfig + ActorCriticConfig + OffPolicyConfig + SgmConfig + Clone + Serialize,
     Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
+    Env::Config: Clone + Serialize + 'static,
     Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
     Act: Clone + VectorConvertible + Sampleable + 'static,
 {
@@ -121,6 +126,8 @@ where
     } else {
         args.env.name().to_owned()
     };
+
+    let name = format!("data_{name}");
 
     setup_logging(
         &name,
@@ -150,7 +157,7 @@ where
     } else {
         run_n::<Alg, Env, Obs, Act>(
             &name,
-            15,
+            args.runs,
             &mut env,
             config,
             &device,

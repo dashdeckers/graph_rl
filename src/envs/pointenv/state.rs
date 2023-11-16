@@ -5,6 +5,7 @@ use {
         TensorConvertible,
         VectorConvertible,
     },
+    serde::Serialize,
     auto_ops::impl_op_ex,
     candle_core::{
         Device,
@@ -17,7 +18,7 @@ use {
     },
 };
 
-#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
+#[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct PointState {
     x: OrderedFloat<f64>,
     y: OrderedFloat<f64>,

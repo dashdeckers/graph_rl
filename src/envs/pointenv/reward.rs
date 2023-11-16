@@ -1,11 +1,15 @@
-use super::{
-    super::DistanceMeasure,
-    line::PointLine,
-    point_env::reachable,
-    state::PointState,
+use {
+    super::{
+        super::DistanceMeasure,
+        line::PointLine,
+        point_env::reachable,
+        state::PointState,
+    },
+    serde::Serialize,
 };
 
-#[derive(Debug)]
+
+#[derive(Debug, Clone, Serialize)]
 pub enum PointReward {
     Euclidean,
     Distance,

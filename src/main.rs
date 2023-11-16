@@ -29,12 +29,6 @@ use {
 
 // >- Distributional RL
 
-// LATER
-
-// >- Add Cuda as a Device and get that working on the server
-// >- Put the Candle "cuda" feature behind a cfg() flag
-//    `-> https://doc.rust-lang.org/cargo/reference/features.html
-
 
 fn main() -> Result<()> {
     let args = Args::parse();
