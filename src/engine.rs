@@ -63,23 +63,23 @@ where
 {
     let path = Path::new("data/").join(path);
 
-    if path.join("alg_config.ron").try_exists()? {
+    if path.join("config_algorithm.ron").try_exists()? {
         Err(anyhow!(concat!(
-            "Algorithm config already exists in this directory! ",
+            "Algorithm config already exists in this directory!\n",
             "I am assuming I would be overwriting existing data!",
         )))?
     }
 
     create_dir_all(path.as_path())?;
 
-    File::create(path.join("alg_config.ron"))?.write_all(
+    File::create(path.join("config_algorithm.ron"))?.write_all(
         ron::ser::to_string_pretty(
             &config,
             ron::ser::PrettyConfig::default(),
         )?.as_bytes()
     )?;
 
-    File::create(path.join("env_config.ron"))?.write_all(
+    File::create(path.join("config_environment.ron"))?.write_all(
         ron::ser::to_string_pretty(
             &env.config(),
             ron::ser::PrettyConfig::default(),
