@@ -33,6 +33,7 @@ use candle_core::{
 ///
 /// In plain English you can interpret the differentials as a process that reverts to a mean,
 /// `$\theta$`, with speed, `$\kappa$`, and volatility, `$\sigma$`.
+///
 /// ---
 pub struct OuNoise {
     mu: f64,
