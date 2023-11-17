@@ -14,10 +14,10 @@ if args.dir is None:
     print("No path provided")
     sys.exit()
 
-path = Path(args.dir)
+path = Path("data") / Path(args.dir)
 
 df = (
-    pl.read_parquet(path / "data.parquet")
+    pl.read_parquet(path / "*data.parquet")
     .with_columns(
         pl.concat_list("^run_.*_total_rewards$").list.eval(
             pl.element().std()

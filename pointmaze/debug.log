@@ -1,6 +1,0 @@
-2023-11-17T14:27:42.116667Z  WARN graph_rl::engine: Collecting data, run 0/100
-2023-11-17T14:27:42.134387Z  WARN graph_rl::engine: action space: [2]
-2023-11-17T14:27:42.134416Z  WARN graph_rl::engine: observation space: [8]
-2023-11-17T14:27:42.211822Z  WARN graph_rl::engine: episode 0 with total reward of 59.640034306460414
-2023-11-17T14:27:43.780351Z  WARN graph_rl::engine: episode 1 with total reward of 70.71035020479876
-2023-11-17T14:27:45.314213Z  WARN graph_rl::engine: episode 2 with total reward of 112.04798752153317
