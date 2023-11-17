@@ -63,8 +63,11 @@ where
 {
     let path = Path::new("data/").join(path);
 
-    if path.exists() {
-        Err(anyhow!("Directory already exists!"))?
+    if path.join("alg_config.ron").try_exists()? {
+        Err(anyhow!(concat!(
+            "Algorithm config already exists in this directory! ",
+            "I am assuming I would be overwriting existing data!",
+        )))?
     }
 
     create_dir_all(path.as_path())?;
