@@ -1,3 +1,8 @@
+//! Some doc text
+#![ doc=mermaid!( "../docs/example.mmd" ) ]
+
+use simple_mermaid::mermaid;
+
 pub mod logging;
 
 pub mod envs;

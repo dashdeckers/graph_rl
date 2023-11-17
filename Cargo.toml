@@ -23,10 +23,6 @@ anyhow = "1.0.70"
 auto_ops = "0.3.0"
 ordered-float = { version = "4.1.1", features = ["serde"] }
 
-# Docs
-katex-doc = "0.1.0"
-aquamarine = "0.3.2"
-
 # GUI
 eframe = "0.23.0"
 egui = "0.23.0"
@@ -57,8 +53,20 @@ pyo3 = { version = "0.20.0", features = ["auto-initialize"] }
 serde = { version = "1.0.192", features = ["derive"] }
 ron = "0.8.1"
 
+# Docs
+simple-mermaid = "0.1.0"
 
-# Deep Learning
+
+# Enabling katex on docs.rs
+[package.metadata.docs.rs]
+# To build locally:
+# RUSTDOCFLAGS="--html-in-header katex-header.html" cargo doc --no-deps --open
+rustdoc-args = [
+    "--html-in-header",
+    "katex-header.html",
+]
+
+# Deep Learning (config gate: I didn't install CUDA on my windows machine)
 [target.'cfg(windows)'.dependencies]
 candle-core = { git = "https://github.com/huggingface/candle.git" }
 candle-nn = { git = "https://github.com/huggingface/candle.git" }
@@ -67,11 +75,3 @@ candle-nn = { git = "https://github.com/huggingface/candle.git" }
 candle-core = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
 candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
 
-
-
-# Enabling katex on docs.rs
-[package.metadata.docs.rs]
-rustdoc-args = [
-    "--html-in-header",
-    ".cargo/registry/src/github.com-1ecc6299db9ec823/katex-doc-0.1.0/katex.html",
-]

@@ -1,3 +1,0 @@
-# Enabling katex
-[build]
-rustdocflags = [ "--html-in-header", "./src/docs-header.html" ]
