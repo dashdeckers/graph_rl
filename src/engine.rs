@@ -16,7 +16,10 @@ use {
         },
         RunMode,
     },
-    anyhow::Result,
+    anyhow::{
+        anyhow,
+        Result,
+    },
     candle_core::{
         Device,
         Tensor,
@@ -58,18 +61,22 @@ where
     Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure,
     Act: Clone + VectorConvertible + Sampleable,
 {
-    assert!(path.as_ref().exists(), "Directory already exists!");
+    let path = Path::new("data/").join(path);
 
-    create_dir_all(path.as_ref())?;
+    if path.exists() {
+        Err(anyhow!("Directory already exists!"))?
+    }
 
-    File::create(path.as_ref().join("alg_config.ron"))?.write_all(
+    create_dir_all(path.as_path())?;
+
+    File::create(path.join("alg_config.ron"))?.write_all(
         ron::ser::to_string_pretty(
             &config,
             ron::ser::PrettyConfig::default(),
         )?.as_bytes()
     )?;
 
-    File::create(path.as_ref().join("env_config.ron"))?.write_all(
+    File::create(path.join("env_config.ron"))?.write_all(
         ron::ser::to_string_pretty(
             &env.config(),
             ron::ser::PrettyConfig::default(),
@@ -103,7 +110,7 @@ where
         ])?;
 
         ParquetWriter::new(
-            File::create(path.as_ref().join(format!("run_{n}_data.parquet")))?
+            File::create(path.join(format!("run_{n}_data.parquet")))?
         ).finish(&mut df)?;
     }
     Ok(())

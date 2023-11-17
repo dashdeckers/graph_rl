@@ -127,8 +127,6 @@ where
         args.env.name().to_owned()
     };
 
-    let name = format!("data_{name}");
-
     setup_logging(
         &name,
         args.log.level(),

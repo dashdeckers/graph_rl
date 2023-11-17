@@ -17,7 +17,7 @@ if args.dir is None:
 path = Path(args.dir)
 
 df = (
-    pl.read_parquet(path / "run_*_data.parquet")
+    pl.read_parquet(path / "data.parquet")
     .with_columns(
         pl.concat_list("^run_.*_total_rewards$").list.eval(
             pl.element().std()
@@ -46,5 +46,5 @@ plt.xlabel("Episode")
 plt.ylabel("Total reward")
 plt.title("Learning Curve")
 
-plt.savefig(path / "plot.png")
+plt.savefig(path / f"{args.dir}.png")
 print("Success")

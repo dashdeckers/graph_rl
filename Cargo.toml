@@ -57,13 +57,12 @@ ron = "0.8.1"
 simple-mermaid = "0.1.0"
 
 
-# Enabling katex on docs.rs
+# Enabling katex on docs.rs. To build locally:
+# RUSTDOCFLAGS="--html-in-header docs/katex-header.html" cargo doc --no-deps --open
 [package.metadata.docs.rs]
-# To build locally:
-# RUSTDOCFLAGS="--html-in-header katex-header.html" cargo doc --no-deps --open
 rustdoc-args = [
     "--html-in-header",
-    "katex-header.html",
+    "docs/katex-header.html",
 ]
 
 # Deep Learning (config gate: I didn't install CUDA on my windows machine)

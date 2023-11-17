@@ -1,9 +1,5 @@
 target/
+data/
 
 .python-version
 .vscode/
-
-debug.log
-*.parquet
-*.ron
-*.png
