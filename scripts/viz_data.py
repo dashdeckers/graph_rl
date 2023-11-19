@@ -8,16 +8,24 @@ import sys
 
 parser = argparse.ArgumentParser()
 
-parser.add_argument('-d', "--dir",)
+parser.add_argument('-d', "--dir")
+parser.add_argument('-n', "--runs")
 args = parser.parse_args()
 if args.dir is None:
     print("No path provided")
     sys.exit()
 
 path = Path("data") / Path(args.dir)
+runs = 100 if args.runs is None else int(args.runs)
 
 df = (
-    pl.read_parquet(path / "*data.parquet")
+    pl.concat(
+        [
+            pl.read_parquet(path / f"run_{i}_data.parquet")
+            for i in range(runs)
+        ],
+        how="horizontal",
+    )
     .with_columns(
         pl.concat_list("^run_.*_total_rewards$").list.eval(
             pl.element().std()
@@ -42,9 +50,10 @@ plt.fill_between(
     mean + std,
     alpha=0.3,
 )
+plt.ylim((-1750, 0))
 plt.xlabel("Episode")
 plt.ylabel("Total reward")
-plt.title("Learning Curve")
+plt.title(f"Learning Curve (n_runs={runs})")
 
 plt.savefig(path / f"{args.dir}.png")
 print("Success")
