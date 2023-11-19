@@ -72,7 +72,7 @@ where
     // query the actor for the next action according to the goal given by the plan
 
     // pub fn remember
-    // probably do something like HER here, where we pretend the goal was what the next step in the plan was?
+    // probably do something like HER here, just store the transitions with the goal it was conditioned on
 
     // pub fn train
     // same same
