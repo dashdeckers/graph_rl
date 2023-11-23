@@ -31,6 +31,10 @@ use {
     std::ops::RangeInclusive,
 };
 
+pub fn preprocess(value: f64) -> f64 {
+    (2.0 * value).clamp(-2.0, 2.0)
+}
+
 pub struct PendulumEnv {
     config: PendulumConfig,
     env: PyObject,
@@ -74,7 +78,7 @@ impl VectorConvertible for PendulumAction {
         debug_assert!(value.len() == 1);
         Self {
             // Preprocess the action
-            tau: OrderedFloat((2.0 * value[0]).clamp(-2.0, 2.0)),
+            tau: OrderedFloat(preprocess(value[0])),
         }
     }
     fn to_vec(value: Self) -> Vec<f64> {
