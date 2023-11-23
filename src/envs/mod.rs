@@ -31,6 +31,7 @@ pub use crate::envs::{
 };
 
 pub trait TensorConvertible: VectorConvertible {
+    fn from_tensor_pp(value: Tensor) -> Self;
     fn from_tensor(value: Tensor) -> Self;
     fn to_tensor(
         value: Self,
@@ -39,6 +40,7 @@ pub trait TensorConvertible: VectorConvertible {
 }
 
 pub trait VectorConvertible {
+    fn from_vec_pp(value: Vec<f64>) -> Self;
     fn from_vec(value: Vec<f64>) -> Self;
     fn to_vec(value: Self) -> Vec<f64>;
 }
