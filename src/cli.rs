@@ -13,7 +13,6 @@ use {
             Environment,
             Sampleable,
             TensorConvertible,
-            VectorConvertible,
             Renderable,
         },
         engine::run_n,
@@ -119,7 +118,7 @@ where
     Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
     Env::Config: Clone + Serialize + 'static,
     Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
-    Act: Clone + VectorConvertible + Sampleable + 'static,
+    Act: Clone + TensorConvertible + Sampleable + 'static,
 {
     let name = if let Some(name) = args.output.clone() {
         name

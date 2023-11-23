@@ -59,7 +59,7 @@ where
     Env: Environment<Action = Act, Observation = Obs>,
     Env::Config: Clone + Serialize,
     Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure,
-    Act: Clone + VectorConvertible + Sampleable,
+    Act: Clone + TensorConvertible + Sampleable,
 {
     let path = Path::new("data/").join(path);
 
@@ -130,7 +130,7 @@ where
     Alg::Config: AlgorithmConfig + OffPolicyConfig + SgmConfig,
     Env: Environment<Action = Act, Observation = Obs>,
     Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure,
-    Act: Clone + VectorConvertible + Sampleable,
+    Act: Clone + TensorConvertible + Sampleable,
 {
     warn!("action space: {:?}", env.action_space());
     warn!("observation space: {:?}", env.observation_space());

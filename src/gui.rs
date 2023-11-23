@@ -14,7 +14,6 @@ use {
             Renderable,
             Sampleable,
             TensorConvertible,
-            VectorConvertible,
         },
         engine::{
             train,
@@ -74,7 +73,7 @@ where
     Alg::Config: AlgorithmConfig + ActorCriticConfig + OffPolicyConfig + SgmConfig + Clone,
     Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
     Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
-    Act: Clone + VectorConvertible + Sampleable + 'static,
+    Act: Clone + TensorConvertible + Sampleable + 'static,
 {
     env: Env,
     agent: Alg,
@@ -99,7 +98,7 @@ where
     Alg::Config: AlgorithmConfig + ActorCriticConfig + OffPolicyConfig + SgmConfig + Clone,
     Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
     Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
-    Act: Clone + VectorConvertible + Sampleable + 'static,
+    Act: Clone + TensorConvertible + Sampleable + 'static,
 {
     fn update(
         &mut self,
@@ -171,7 +170,7 @@ where
     Alg::Config: AlgorithmConfig + ActorCriticConfig + OffPolicyConfig + SgmConfig + Clone,
     Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
     Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
-    Act: Clone + VectorConvertible + Sampleable + 'static,
+    Act: Clone + TensorConvertible + Sampleable + 'static,
 {
     pub fn open(
         env: Env,
