@@ -6,54 +6,88 @@ from pathlib import Path
 import argparse
 import sys
 
-parser = argparse.ArgumentParser()
+plt.rcParams["figure.dpi"] = 300
+plt.rcParams["figure.figsize"] = (12, 8)
 
-parser.add_argument('-d', "--dir")
-parser.add_argument('-n', "--runs")
+root_path = Path("data")
+recognized_envs = [
+    "pendulum",
+    "pointmaze",
+    "pointenv",
+]
+
+parser = argparse.ArgumentParser()
+parser.add_argument('-d', "--dirs", nargs='+', default=[])
 args = parser.parse_args()
-if args.dir is None:
-    print("No path provided")
+if not args.dirs:
+    print("No paths provided")
     sys.exit()
 
-path = Path("data") / Path(args.dir)
-runs = 100 if args.runs is None else int(args.runs)
+environment = [
+    envname for envname in recognized_envs
+    if all(envname in dirname for dirname in args.dirs)
+]
+if len(environment) != 1:
+    print("All provided paths must contain the same (unique) environment name")
+    sys.exit()
+environment = environment[0]
 
-df = (
-    pl.concat(
-        [
-            pl.read_parquet(path / f"run_{i}_data.parquet")
-            for i in range(runs)
-        ],
-        how="horizontal",
+
+episode_nums = []
+for directory, color in zip(args.dirs, sns.color_palette(n_colors=len(args.dirs))):
+    files = list((root_path / Path(directory)).glob("run_*_data.parquet"))
+
+    df = (
+        pl.concat(
+            [
+                pl.read_parquet(filepath)
+                for filepath in files
+            ],
+            how="horizontal",
+        )
+        .with_columns(
+            pl.concat_list("^run_.*_total_rewards$").list.eval(
+                pl.element().std()
+            ).list.first().alias("std"),
+
+            pl.concat_list("^run_.*_total_rewards$").list.eval(
+                pl.element().mean()
+            ).list.first().alias("mean"),
+        )
     )
-    .with_columns(
-        pl.concat_list("^run_.*_total_rewards$").list.eval(
-            pl.element().std()
-        ).list.first().alias("std"),
 
-        pl.concat_list("^run_.*_total_rewards$").list.eval(
-            pl.element().mean()
-        ).list.first().alias("mean"),
+    mean = df["mean"].to_numpy()
+    std = df["std"].to_numpy()
+    episode_nums.append(len(mean))
+
+    sns.lineplot(
+        x=range(1, len(mean) + 1),
+        y=mean,
+        color=color,
+        label=f"{directory} (n_runs={len(files)})",
     )
-)
+    plt.fill_between(
+        range(1, len(mean) + 1),
+        mean - std,
+        mean + std,
+        color=color,
+        alpha=0.3,
+    )
 
-mean = df["mean"].to_numpy()
-std = df["std"].to_numpy()
+plt.xlim((1, max(episode_nums)))
+if environment == "pendulum":
+    plt.ylim((-1750, 0))
 
-sns.lineplot(
-    x=range(len(mean)),
-    y=mean,
-)
-plt.fill_between(
-    range(len(mean)),
-    mean - std,
-    mean + std,
-    alpha=0.3,
-)
-plt.ylim((-1750, 0))
 plt.xlabel("Episode")
 plt.ylabel("Total reward")
-plt.title(f"Learning Curve (n_runs={runs})")
+plt.grid()
+plt.legend(loc="lower right")
+plt.title(f"Learning Curves for {environment}")
 
-plt.savefig(path / f"{args.dir}.png")
+stripped = [dirname.replace(f"{environment}_", "", 1) for dirname in args.dirs]
+if len(args.dirs) == 1:
+    plt.savefig(root_path / args.dirs[0] / f"{stripped[0]}.png")
+else:
+    plt.savefig(root_path / f"{'_'.join(stripped)}.png")
+
 print("Success")
