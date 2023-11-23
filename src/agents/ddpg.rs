@@ -365,18 +365,23 @@ impl Algorithm for DDPG<'_> {
     fn actions(
         &mut self,
         state: &Tensor,
-    ) -> Result<Vec<f64>> {
-        let actions = self
-            .actor
-            .forward(&state.detach()?.unsqueeze(0)?)?
-            .squeeze(0)?;
+    ) -> Result<Tensor> {
+        // Candle assumes a batch dimension, so when we don't have one we need
+        // to pretend we do by un- and resqueezing the state tensor.
+        let actions = if state.dims().len() == 1 {
+            self.actor
+                .forward(&state.detach()?.unsqueeze(0)?)?
+                .squeeze(0)?
+        } else {
+            self.actor
+                .forward(&state.detach()?)?
+        };
 
-        let actions = if let RunMode::Train = self.run_mode {
+        Ok(if let RunMode::Train = self.run_mode {
             (actions + self.ou_noise.sample()?)?
         } else {
             actions
-        };
-        actions.to_vec1::<f64>()
+        })
     }
 
     fn train(&mut self) -> Result<()> {

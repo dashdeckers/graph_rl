@@ -67,7 +67,7 @@ impl Sampleable for PointAction {
         rng: &mut dyn RngCore,
         domain: &[std::ops::RangeInclusive<f64>],
     ) -> Self {
-        debug_assert!(domain.len() == 1);
+        assert!(domain.len() == 1);
 
         let radius = domain[0].end();
         let r: f64 = radius * f64::sqrt(rng.gen_range(0.0..=1.0));
@@ -79,9 +79,12 @@ impl Sampleable for PointAction {
 
 // Convert PointAction from/into Vec<f64>
 impl VectorConvertible for PointAction {
+    fn from_vec_pp(_: Vec<f64>) -> Self {
+        todo!()
+    }
     fn from_vec(value: Vec<f64>) -> Self {
         // Make sure the number of elements in the Vec makes sense
-        debug_assert!(value.len() == 2);
+        assert!(value.len() == 2);
         Self::from((value[0], value[1]))
     }
     fn to_vec(value: Self) -> Vec<f64> {
@@ -91,6 +94,9 @@ impl VectorConvertible for PointAction {
 
 // Convert PointAction from/into Tensor
 impl TensorConvertible for PointAction {
+    fn from_tensor_pp(_: Tensor) -> Self {
+        todo!()
+    }
     fn from_tensor(value: Tensor) -> Self {
         let values = value.squeeze(0).unwrap().to_vec1::<f64>().unwrap();
         Self::from_vec(values)

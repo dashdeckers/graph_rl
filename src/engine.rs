@@ -12,7 +12,7 @@ use {
             Environment,
             Sampleable,
             TensorConvertible,
-            VectorConvertible,
+            Step,
         },
         RunMode,
     },
@@ -54,10 +54,10 @@ pub fn run_n<Alg, Env, Obs, Act>(
     device: &Device,
 ) -> Result<()>
 where
-    Alg: Algorithm + OffPolicyAlgorithm,
-    Alg::Config: Clone + Serialize + AlgorithmConfig + OffPolicyConfig + SgmConfig,
     Env: Environment<Action = Act, Observation = Obs>,
     Env::Config: Clone + Serialize,
+    Alg: Algorithm + OffPolicyAlgorithm,
+    Alg::Config: Clone + Serialize + AlgorithmConfig + OffPolicyConfig + SgmConfig,
     Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure,
     Act: Clone + TensorConvertible + Sampleable,
 {
@@ -126,10 +126,10 @@ pub fn train<Alg, Env, Obs, Act>(
     device: &Device,
 ) -> Result<(Vec<f64>, Vec<bool>)>
 where
-    Alg: Algorithm + OffPolicyAlgorithm,
-    Alg::Config: AlgorithmConfig + OffPolicyConfig + SgmConfig,
     Env: Environment<Action = Act, Observation = Obs>,
-    Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure,
+    Alg: Algorithm + OffPolicyAlgorithm,
+    Alg::Config: AlgorithmConfig,
+    Obs: Clone + TensorConvertible,
     Act: Clone + TensorConvertible + Sampleable,
 {
     warn!("action space: {:?}", env.action_space());
@@ -149,19 +149,19 @@ where
             let state = &<Obs>::to_tensor(observation, device)?;
 
             // select an action, or randomly sample one
-            let action = if steps_taken < config.initial_random_actions() {
-                <Act>::to_vec(<Act>::sample(&mut rng, &env.action_domain()))
+            let action = &if steps_taken < config.initial_random_actions() {
+                <Act>::to_tensor(<Act>::sample(&mut rng, &env.action_domain()), device)?
             } else {
                 agent.actions(state)?
             };
 
-            let step = env.step(<Act>::from_vec(action.clone()))?;
+            let step = env.step(<Act>::from_tensor_pp(action.clone()))?;
             total_reward += step.reward;
             steps_taken += 1;
 
             agent.remember(
                 state,
-                &Tensor::new(action, device)?,
+                action,
                 &Tensor::new(vec![step.reward], device)?,
                 &<Obs>::to_tensor(step.observation, device)?,
                 step.terminated,
@@ -183,7 +183,6 @@ where
             }
         }
     }
-    env.reset(rng.gen::<u64>())?;
     Ok((mc_returns, successes))
 }
 
@@ -193,23 +192,24 @@ pub fn tick<Alg, Env, Obs, Act>(
     device: &Device,
 ) -> Result<()>
 where
-    Alg: Algorithm + OffPolicyAlgorithm,
-    Alg::Config: AlgorithmConfig + OffPolicyConfig + SgmConfig,
     Env: Environment<Action = Act, Observation = Obs>,
+    Alg: Algorithm,
+    Alg::Config: AlgorithmConfig,
     Obs: Clone + TensorConvertible,
-    Act: Clone + VectorConvertible,
+    Act: Clone + TensorConvertible,
 {
-    let action = agent.actions(&<Obs>::to_tensor(env.current_observation(), device)?)?;
-    let step = if let Ok(step) = env.step(<Act>::from_vec(action.clone())) {
+    let do_step = |env: &mut Env, agent: &mut Alg, device: &Device| -> Result<Step<Obs, Act>> {
+        let observation = &<Obs>::to_tensor(env.current_observation(), device)?;
+        let action = agent.actions(observation)?;
+        env.step(<Act>::from_tensor_pp(action))
+    };
+
+    if let Ok(step) = do_step(env, agent, device) {
         step
     } else {
         env.reset(thread_rng().gen::<u64>())?;
-        env.step(<Act>::from_vec(action))?
+        do_step(env, agent, device)?
     };
 
-    if step.terminated || step.truncated {
-        env.reset(thread_rng().gen::<u64>())?;
-    }
     Ok(())
 }
-

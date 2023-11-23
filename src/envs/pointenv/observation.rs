@@ -34,6 +34,9 @@ impl From<(PointState, PointState, &[PointLine])> for PointObs {
 
 // Convert PointObs from/into Vec<f64>
 impl VectorConvertible for PointObs {
+    fn from_vec_pp(_: Vec<f64>) -> Self {
+        todo!()
+    }
     fn from_vec(value: Vec<f64>) -> Self {
         let state = PointState::from((value[0], value[1]));
         let goal = PointState::from((value[2], value[3]));
@@ -65,6 +68,9 @@ impl VectorConvertible for PointObs {
 
 // Convert PointObs from/into Tensor
 impl TensorConvertible for PointObs {
+    fn from_tensor_pp(_: Tensor) -> Self {
+        todo!()
+    }
     fn from_tensor(value: Tensor) -> Self {
         let values = value.squeeze(0).unwrap().to_vec1::<f64>().unwrap();
         Self::from_vec(values)

@@ -32,6 +32,31 @@ use {
     std::ops::RangeInclusive,
 };
 
+fn preprocess_action(mut value: Vec<f64>) -> Vec<f64> {
+    value[0] = value[0].clamp(-1.0, 1.0);
+    value[1] = value[1].clamp(-1.0, 1.0);
+    value
+}
+
+#[allow(unused_mut)]
+fn preprocess_state(mut value: Vec<f64>) -> Vec<f64> {
+    value
+}
+
+#[allow(unused_mut)]
+fn preprocess_view(mut value: Vec<f64>) -> Vec<f64> {
+    value
+}
+
+fn tensor_to_vec(value: Tensor) -> candle_core::Result<Vec<f64>> {
+    let dims = value.dims();
+    if dims.len() == 1 {
+        value.to_vec1::<f64>()
+    } else {
+        value.squeeze(0)?.to_vec1::<f64>()
+    }
+}
+
 pub struct PointMazeEnv {
     config: PointMazeConfig,
     env: PyObject,
@@ -122,7 +147,7 @@ impl Sampleable for PointMazeAction {
         rng: &mut dyn rand::RngCore,
         domain: &[RangeInclusive<f64>],
     ) -> Self {
-        debug_assert!(domain.len() == 2);
+        assert!(domain.len() == 2);
         Self {
             force_x: OrderedFloat(rng.gen_range(domain[0].clone())),
             force_y: OrderedFloat(rng.gen_range(domain[1].clone())),
@@ -130,13 +155,16 @@ impl Sampleable for PointMazeAction {
     }
 }
 impl VectorConvertible for PointMazeAction {
+    fn from_vec_pp(value: Vec<f64>) -> Self {
+        Self::from_vec(preprocess_action(value))
+    }
     fn from_vec(value: Vec<f64>) -> Self {
         // Make sure the number of elements in the Vec makes sense
-        debug_assert!(value.len() == 2);
+        assert!(value.len() == 2);
         Self {
             // Preprocess the action
-            force_x: OrderedFloat(value[0].clamp(-1.0, 1.0)),
-            force_y: OrderedFloat(value[1].clamp(-1.0, 1.0)),
+            force_x: OrderedFloat(value[0]),
+            force_y: OrderedFloat(value[1]),
         }
     }
     fn to_vec(value: Self) -> Vec<f64> {
@@ -144,9 +172,11 @@ impl VectorConvertible for PointMazeAction {
     }
 }
 impl TensorConvertible for PointMazeAction {
+    fn from_tensor_pp(value: Tensor) -> Self {
+        Self::from_vec_pp(tensor_to_vec(value).unwrap())
+    }
     fn from_tensor(value: Tensor) -> Self {
-        let values = value.squeeze(0).unwrap().to_vec1::<f64>().unwrap();
-        Self::from_vec(values)
+        Self::from_vec(tensor_to_vec(value).unwrap())
     }
     fn to_tensor(
         value: Self,
@@ -163,9 +193,12 @@ pub struct PointMazeState {
     y: OrderedFloat<f64>,
 }
 impl VectorConvertible for PointMazeState {
+    fn from_vec_pp(value: Vec<f64>) -> Self {
+        Self::from_vec(preprocess_state(value))
+    }
     fn from_vec(value: Vec<f64>) -> Self {
         // Make sure the number of elements in the Vec makes sense
-        debug_assert!(value.len() == 2);
+        assert!(value.len() == 2);
         Self {
             x: OrderedFloat(value[0]),
             y: OrderedFloat(value[1]),
@@ -176,9 +209,11 @@ impl VectorConvertible for PointMazeState {
     }
 }
 impl TensorConvertible for PointMazeState {
+    fn from_tensor_pp(value: Tensor) -> Self {
+        Self::from_vec_pp(tensor_to_vec(value).unwrap())
+    }
     fn from_tensor(value: Tensor) -> Self {
-        let values = value.squeeze(0).unwrap().to_vec1::<f64>().unwrap();
-        Self::from_vec(values)
+        Self::from_vec(tensor_to_vec(value).unwrap())
     }
     fn to_tensor(
         value: Self,
@@ -206,9 +241,12 @@ pub struct PointMazeView {
     velocity_y: OrderedFloat<f64>,
 }
 impl VectorConvertible for PointMazeView {
+    fn from_vec_pp(value: Vec<f64>) -> Self {
+        Self::from_vec(preprocess_view(value))
+    }
     fn from_vec(value: Vec<f64>) -> Self {
         // Make sure the number of elements in the Vec makes sense
-        debug_assert!(value.len() == 4);
+        assert!(value.len() == 4);
         Self {
             x: OrderedFloat(value[0]),
             y: OrderedFloat(value[1]),
@@ -221,9 +259,11 @@ impl VectorConvertible for PointMazeView {
     }
 }
 impl TensorConvertible for PointMazeView {
+    fn from_tensor_pp(value: Tensor) -> Self {
+        Self::from_vec_pp(tensor_to_vec(value).unwrap())
+    }
     fn from_tensor(value: Tensor) -> Self {
-        let values = value.squeeze(0).unwrap().to_vec1::<f64>().unwrap();
-        Self::from_vec(values)
+        Self::from_vec(tensor_to_vec(value).unwrap())
     }
     fn to_tensor(
         value: Self,
@@ -240,9 +280,18 @@ pub struct PointMazeObservation {
     achieved_goal: PointMazeState,
 }
 impl VectorConvertible for PointMazeObservation {
+    fn from_vec_pp(value: Vec<f64>) -> Self {
+        // Make sure the number of elements in the Vec makes sense
+        assert!(value.len() == 8);
+        Self {
+            observation: PointMazeView::from_vec_pp(value[0..4].to_vec()),
+            desired_goal: PointMazeState::from_vec_pp(value[4..6].to_vec()),
+            achieved_goal: PointMazeState::from_vec_pp(value[6..8].to_vec()),
+        }
+    }
     fn from_vec(value: Vec<f64>) -> Self {
         // Make sure the number of elements in the Vec makes sense
-        debug_assert!(value.len() == 8);
+        assert!(value.len() == 8);
         Self {
             observation: PointMazeView::from_vec(value[0..4].to_vec()),
             desired_goal: PointMazeState::from_vec(value[4..6].to_vec()),
@@ -258,9 +307,11 @@ impl VectorConvertible for PointMazeObservation {
     }
 }
 impl TensorConvertible for PointMazeObservation {
+    fn from_tensor_pp(value: Tensor) -> Self {
+        Self::from_vec_pp(tensor_to_vec(value).unwrap())
+    }
     fn from_tensor(value: Tensor) -> Self {
-        let values = value.squeeze(0).unwrap().to_vec1::<f64>().unwrap();
-        Self::from_vec(values)
+        Self::from_vec(tensor_to_vec(value).unwrap())
     }
     fn to_tensor(
         value: Self,

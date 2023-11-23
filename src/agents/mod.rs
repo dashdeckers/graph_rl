@@ -64,7 +64,7 @@ pub trait Algorithm {
     fn run_mode(&self) -> RunMode;
     fn set_run_mode(&mut self, mode: RunMode);
 
-    fn actions(&mut self, state: &Tensor) -> Result<Vec<f64>>;
+    fn actions(&mut self, state: &Tensor) -> Result<Tensor>;
     fn train(&mut self) -> Result<()>;
 }
 

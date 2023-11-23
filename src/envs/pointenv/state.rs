@@ -89,6 +89,9 @@ impl Sampleable for PointState {
 
 // Convert PointState from/into Vec<f64>
 impl VectorConvertible for PointState {
+    fn from_vec_pp(_: Vec<f64>) -> Self {
+        todo!()
+    }
     fn from_vec(value: Vec<f64>) -> Self {
         // Make sure the number of elements in the Vec makes sense
         debug_assert!(value.len() == 2);
@@ -101,6 +104,9 @@ impl VectorConvertible for PointState {
 
 // Convert PointState from/into Tensor
 impl TensorConvertible for PointState {
+    fn from_tensor_pp(_: Tensor) -> Self {
+        todo!()
+    }
     fn from_tensor(value: Tensor) -> Self {
         let values = value.squeeze(0).unwrap().to_vec1::<f64>().unwrap();
         Self::from_vec(values)

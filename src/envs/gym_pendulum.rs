@@ -233,8 +233,7 @@ impl TensorConvertible for PendulumState {
     /// the Tensor is not either 1-dimensional or has a 0-sized batch dimension.
     /// It then passes the result to [`PendulumState::from_vec(value: Vec<f64>)`].
     fn from_tensor(value: Tensor) -> Self {
-        let values = value.squeeze(0).unwrap().to_vec1::<f64>().unwrap();
-        Self::from_vec(values)
+        Self::from_vec(tensor_to_vec(value).unwrap())
     }
 
     /// Convert a PendulumState to a Tensor (with no batch dimension) on

@@ -155,6 +155,9 @@ impl From<((f64, f64), (f64, f64))> for PointLine {
 
 // Convert PointLine from/into Vec<f64>
 impl VectorConvertible for PointLine {
+    fn from_vec_pp(_: Vec<f64>) -> Self {
+        todo!()
+    }
     fn from_vec(value: Vec<f64>) -> Self {
         // Make sure the number of elements in the Vec makes sense
         debug_assert!(value.len() == 4);
@@ -170,6 +173,9 @@ impl VectorConvertible for PointLine {
 
 // Convert PointLine from/into Tensor
 impl TensorConvertible for PointLine {
+    fn from_tensor_pp(_: Tensor) -> Self {
+        todo!()
+    }
     fn from_tensor(value: Tensor) -> Self {
         let values = value.squeeze(0).unwrap().to_vec1::<f64>().unwrap();
         Self::from_vec(values)
