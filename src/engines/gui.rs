@@ -465,7 +465,7 @@ where
         ui.separator();
         ui.label("Run Agent");
         ui.add(
-            Slider::new(&mut max_episodes, 1..=1001)
+            Slider::new(&mut max_episodes, 1..=501)
                 .step_by(1.0)
                 .text("n_episodes"),
         );
@@ -486,5 +486,21 @@ where
                 self.play_mode = PlayMode::Episodes;
             };
         });
+
+        self.config.set_max_episodes(max_episodes);
+        self.config.set_training_iterations(train_iterations);
+        self.config.set_initial_random_actions(init_random_actions);
+
+        self.config.set_actor_lr(actor_lr);
+        self.config.set_critic_lr(critic_lr);
+        self.config.set_gamma(gamma);
+        self.config.set_tau(tau);
+
+        self.config.set_replay_buffer_capacity(buffer_size);
+        self.config.set_training_batch_size(batch_size);
+
+        self.config.set_sgm_freq(sgm_freq);
+        self.config.set_sgm_maxdist(sgm_maxdist);
+        self.config.set_sgm_tau(sgm_tau);
     }
 }
