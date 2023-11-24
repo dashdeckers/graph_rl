@@ -21,7 +21,7 @@ use {
 
 /// The action type for the PointEnv environment
 ///
-/// A PointAction is a 2-dimensional vector of the form `[dx, dy]` which
+/// A [PointAction] is a 2-dimensional vector of the form `[dx, dy]` which
 /// describes the change in position relative to the current position in
 /// 2-dimensional space.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash)]
@@ -38,7 +38,7 @@ impl PointAction {
         self.dy.into_inner()
     }
 
-    /// Restrict the PointAction to a circle of radius `radius`
+    /// Restrict the [PointAction] to a circle of radius `radius`
     pub fn restrict(
         self,
         radius: f64,
@@ -58,7 +58,7 @@ impl PointAction {
 }
 
 impl From<(f64, f64)> for PointAction {
-    /// Convert `(f64, f64)` into PointAction
+    /// Convert `(f64, f64)` into a [PointAction]
     fn from(value: (f64, f64)) -> Self {
         Self {
             dx: OrderedFloat(value.0),
@@ -68,9 +68,9 @@ impl From<(f64, f64)> for PointAction {
 }
 
 impl Sampleable for PointAction {
-    /// Sample a random PointAction
+    /// Sample a random [PointAction]
     ///
-    /// The PointAction is sampled uniformly from a circle of radius `radius`
+    /// The [PointAction] is sampled uniformly from a circle of radius `radius`
     /// which is given by the `end` of the given domain (`start` is assumed
     /// to be 0.0).
     ///
@@ -90,38 +90,41 @@ impl Sampleable for PointAction {
 }
 
 impl VectorConvertible for PointAction {
-    /// Convert a Vec<f64> into a PointAction with preprocessing
+    /// Convert a [`Vec<f64>`] into a [PointAction] with preprocessing
     ///
     /// Preprocessing is currently a no-op
     ///
-    /// Panics if the Vec does not have exactly 2 elements
+    /// Panics if the Vec does not have exactly 2 elements.
+    ///
+    /// The elements are assumed to be in the form `[dx, dy]`.
     fn from_vec_pp(value: Vec<f64>) -> Self {
         Self::from_vec(value)
     }
 
-    /// Convert a Vec<f64> into a PointAction
+    /// Convert a [`Vec<f64>`] into a [PointAction]
     ///
-    /// Panics if the Vec does not have exactly 2 elements
+    /// Panics if the Vec does not have exactly 2 elements.
+    ///
+    /// The elements are assumed to be in the form `[dx, dy]`.
     fn from_vec(value: Vec<f64>) -> Self {
-        // Make sure the number of elements in the Vec makes sense
         assert!(value.len() == 2);
         Self::from((value[0], value[1]))
     }
 
-    /// Convert a PointAction into a Vec<f64> of the form `[dx, dy]`
+    /// Convert a PointAction into a [`Vec<f64>`] of the form `[dx, dy]`
     fn to_vec(value: Self) -> Vec<f64> {
         vec![value.dx(), value.dy()]
     }
 }
 
 impl TensorConvertible for PointAction {
-    /// Convert a Tensor into a PointAction with preprocessing
-    ///
-    /// This function tries to convert the Tensor to a Vec<f64>, which panics if
-    /// the Tensor is not either 1-dimensional or has a 0-sized batch dimension.
-    /// It then passes the result to [`VectorConvertible::from_vec_pp(value: Vec<f64>)`].
+    /// Convert a [Tensor] into a [PointAction] with preprocessing
     ///
     /// Preprocessing is currently a no-op
+    ///
+    /// This function tries to convert the [Tensor] to a [`Vec<f64>`], which panics if
+    /// the [Tensor] is not either 1-dimensional or has a 0-sized batch dimension.
+    /// It then passes the result to [`VectorConvertible::from_vec_pp(value: Vec<f64>)`].
     ///
     /// For a detailed description of the preprocessing applied, see
     /// [`VectorConvertible::from_vec_pp(value: Vec<f64>)`].
@@ -129,16 +132,16 @@ impl TensorConvertible for PointAction {
         Self::from_tensor(value)
     }
 
-    /// Convert a Tensor into a PointAction
+    /// Convert a [Tensor] into a [PointAction]
     ///
-    /// This function tries to convert the Tensor to a Vec<f64>, which panics if
-    /// the Tensor is not either 1-dimensional or has a 0-sized batch dimension.
+    /// This function tries to convert the [Tensor] to a [`Vec<f64>`], which panics if
+    /// the [Tensor] is not either 1-dimensional or has a 0-sized batch dimension.
     /// It then passes the result to [`VectorConvertible::from_vec(value: Vec<f64>)`].
     fn from_tensor(value: Tensor) -> Self {
         Self::from_vec(value.to_vec1::<f64>().unwrap())
     }
 
-    /// Convert a PointAction to a Tensor (with no batch dimension) on
+    /// Convert a [PointAction] to a [Tensor] (with no batch dimension) on
     /// the given device.
     fn to_tensor(
         value: Self,

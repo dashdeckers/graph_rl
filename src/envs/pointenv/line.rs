@@ -15,14 +15,16 @@ use {
     ordered_float::OrderedFloat,
 };
 
+/// The line type for the PointEnv environment, consisting of two PointStates
+///
+/// We assume a directionality from A -> B where it makes sense
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct PointLine {
-    // Let's assume a directionality from A -> B where it makes sense
     pub A: PointState,
     pub B: PointState,
 }
 impl PointLine {
-    /// Check whether the Line contains the point P.
+    /// Check whether the PointLine contains the PointState P.
     pub fn contains(
         &self,
         P: &PointState,
@@ -33,14 +35,17 @@ impl PointLine {
             && P.y() <= self.A.y().max(self.B.y())
     }
 
-    /// Returns the collision point between two lines, if any. \
+    /// Returns the collision point between two lines, if any.
+    ///
     /// If the two lines cross, return the collision point and otherwise return None.
     ///
-    /// If the two lines are collinear and overlapping, we return the following: \
-    /// (self.A --- other.A --- self.B --- other.B) -->  other.A \
-    /// (self.A --- other.B --- self.B --- other.A) -->  other.B \
-    /// (self.A --- other.A --- other.B --- self.B) -->  other.A \
-    /// (self.A --- other.B --- other.A --- self.B) -->  other.B \
+    /// If the two lines are collinear and overlapping, we return the following:
+    /// ```text
+    /// (self.A --- other.A --- self.B --- other.B) -->  other.A
+    /// (self.A --- other.B --- self.B --- other.A) -->  other.B
+    /// (self.A --- other.A --- other.B --- self.B) -->  other.A
+    /// (self.A --- other.B --- other.A --- self.B) -->  other.B
+    /// ```
     ///
     /// If the two lines are collinear and not overlapping, or parallel, we return None.
     pub fn collision_with(
@@ -97,7 +102,9 @@ impl PointLine {
         }
     }
 
-    /// Bounce back from obstacle in opposite direction, but no further than starting point
+    /// Bounce back from an obstacle in opposite direction, but no further than starting point.
+    ///
+    /// The percentage of traveled distance to bounce back is given by the bounce_factor.
     pub fn bounce_from_obstacle(
         position: PointState,
         collision: PointState,
@@ -133,8 +140,8 @@ impl PointLine {
     }
 }
 
-// Convert (PointState, PointState) into PointLine
 impl From<(PointState, PointState)> for PointLine {
+    /// Convert (PointState, PointState) into a PointLine
     fn from(value: (PointState, PointState)) -> Self {
         Self {
             A: value.0,
@@ -143,8 +150,8 @@ impl From<(PointState, PointState)> for PointLine {
     }
 }
 
-// Convert ((f64, f64), (f64, f64)) into PointLine
 impl From<((f64, f64), (f64, f64))> for PointLine {
+    /// Convert ((f64, f64), (f64, f64)) into a PointLine
     fn from(value: ((f64, f64), (f64, f64))) -> Self {
         Self {
             A: PointState::from(value.0),
@@ -153,32 +160,63 @@ impl From<((f64, f64), (f64, f64))> for PointLine {
     }
 }
 
-// Convert PointLine from/into Vec<f64>
 impl VectorConvertible for PointLine {
-    fn from_vec_pp(_: Vec<f64>) -> Self {
-        todo!()
+    /// Convert a PointLine into a Vec<f64> with preprocessing
+    ///
+    /// Preprocessing is currently a no-op
+    ///
+    /// Panics if the Vec<f64> does not have exactly 4 elements.
+    ///
+    /// The elements are assumed to be in the form `[Ax, Ay, Bx, By]`.
+    fn from_vec_pp(value: Vec<f64>) -> Self {
+        Self::from_vec(value)
     }
+
+    /// Convert a Vec<f64> into a PointLine
+    ///
+    /// Panics if the Vec<f64> does not have exactly 4 elements.
+    ///
+    /// The elements are assumed to be in the form `[Ax, Ay, Bx, By]`.
     fn from_vec(value: Vec<f64>) -> Self {
-        // Make sure the number of elements in the Vec makes sense
-        debug_assert!(value.len() == 4);
+        assert!(value.len() == 4);
         Self::from((
             PointState::from((value[0], value[1])),
             PointState::from((value[2], value[3])),
         ))
     }
+
+    /// Convert a PointLine into a Vec<f64> of the form `[Ax, Ay, Bx, By]`
     fn to_vec(value: Self) -> Vec<f64> {
         vec![value.A.x(), value.A.y(), value.B.x(), value.B.y()]
     }
 }
 
-// Convert PointLine from/into Tensor
 impl TensorConvertible for PointLine {
-    fn from_tensor_pp(_: Tensor) -> Self {
-        todo!()
+    /// Convert a PointLine into a Tensor with preprocessing
+    ///
+    /// Preprocessing is currently a no-op
+    ///
+    /// This function tries to convert the Tensor to a Vec<f64>, which panics if
+    /// the Tensor is not either 1-dimensional or has a 0-sized batch dimension.
+    /// It then passes the result to [`VectorConvertible::from_vec_pp(value: Vec<f64>)`].
+    ///
+    /// For a detailed description of the preprocessing applied, see
+    /// [`VectorConvertible::from_vec_pp(value: Vec<f64>)`].
+    fn from_tensor_pp(value: Tensor) -> Self {
+        Self::from_tensor(value)
     }
+
+    /// Convert a Tensor into a PointLine
+    ///
+    /// This function tries to convert the Tensor to a Vec<f64>, which panics if
+    /// the Tensor is not either 1-dimensional or has a 0-sized batch dimension.
+    /// It then passes the result to [`VectorConvertible::from_vec(value: Vec<f64>)`].
     fn from_tensor(value: Tensor) -> Self {
         Self::from_vec(value.to_vec1::<f64>().unwrap())
     }
+
+    /// Convert a PointLine into a Tensor (with no batch dimension) on
+    /// the given device.
     fn to_tensor(
         value: Self,
         device: &Device,

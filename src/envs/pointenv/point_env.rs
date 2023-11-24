@@ -31,9 +31,11 @@ use {
     tracing::info,
 };
 
-/// Generate a valid pair of (start, goal). \
-/// A pair is valid if the goal is not reachable from the start within a single step,
-/// and there are no wall collisions (i.e. start or goal is contained within a wall).
+/// Generate a valid `(start, goal)` pair of [PointState]s.
+///
+/// A pair is valid if the goal is not reachable from the start within a single
+/// step, and there are no wall collisions i.e. neither start nor goal is
+/// contained within a wall / [PointLine].
 fn generate_start_goal(
     width: usize,
     height: usize,
@@ -55,7 +57,8 @@ fn generate_start_goal(
     }
 }
 
-/// The goal is reachable from state if they are within step_radius of each other and no wall is in the way
+/// The goal is reachable from state if they are within `step_radius` of each
+/// other and none of the `walls` would block a straight line between them.
 pub fn reachable(
     state: &PointState,
     goal: &PointState,
@@ -69,7 +72,8 @@ pub fn reachable(
         });
 }
 
-/// Compute the next_state after taking action in state, considering any possible collisions with walls.
+/// Compute the `next_state` after taking `action` in `state`, considering any
+/// possible collisions with `walls`.
 fn compute_next_state(
     width: usize,
     height: usize,
@@ -132,6 +136,16 @@ fn compute_next_state(
     next_state.restrict(width as f64, height as f64)
 }
 
+/// A [PointEnv] is a 2D continuous action environment where the agent is a
+/// point in space, and the goal is to reach another point in space.
+///
+/// The agent can move in any direction, but only within a radius given by
+/// step size. The environment is bounded by walls, and more walls can be added
+/// to the environment to make it more difficult.
+///
+/// If the agent collides with a wall, it will bounce off the wall by a factor
+/// of the travelled distance. The angle of incidence here is equal to the angle
+/// of reflection.
 pub struct PointEnv {
     config: PointEnvConfig,
     width: usize,
@@ -157,13 +171,13 @@ pub struct PointEnv {
 impl PointEnv {
     fn new(config: PointEnvConfig) -> Result<Box<Self>> {
         // assertion guards for valid parameter values
-        debug_assert!(config.step_radius > 0.0 && config.step_radius <= 1.0);
-        debug_assert!(config.bounce_factor > 0.0 && config.bounce_factor <= 1.0);
-        debug_assert!(config.bounce_factor <= (config.step_radius / 10.0));
+        assert!(config.step_radius > 0.0 && config.step_radius <= 1.0);
+        assert!(config.bounce_factor > 0.0 && config.bounce_factor <= 1.0);
+        assert!(config.bounce_factor <= (config.step_radius / 10.0));
         // assertion guards for minimum map-size compared to step_radius
-        debug_assert!(
-            config.step_radius < (4.0 * config.width as f64)
-                && config.step_radius < (4.0 * config.height as f64)
+        assert!(
+            (config.step_radius * 4.0) < config.width as f64
+                && (config.step_radius * 4.0) < config.height as f64
         );
 
         // add walls for the borders around the map
@@ -249,10 +263,25 @@ impl Environment for PointEnv {
     type Action = PointAction;
     type Observation = PointObs;
 
+    /// Create a new [PointEnv] with the given [PointEnvConfig].
+    ///
+    /// # Panics
+    ///
+    /// Panics if any of the following conditions are not met:
+    /// - `config.step_radius` is in `(0.0, 1.0]`
+    /// - `config.bounce_factor` is in `(0.0, 1.0]`
+    /// - `config.bounce_factor` is less than `config.step_radius / 10.0`
+    /// - `config.step_radius * 4.0` is less than `config.width`
+    /// - `config.step_radius * 4.0` is less than `config.height`
+    ///
+    /// # Errors
+    ///
+    /// Returns an error if the `config.walls` are not valid.
     fn new(config: Self::Config) -> Result<Box<Self>> {
         Self::new(config)
     }
 
+    /// Reset the environment to a new episode, with a new random start and goal.
     fn reset(
         &mut self,
         seed: u64,
@@ -275,6 +304,14 @@ impl Environment for PointEnv {
         Ok(PointObs::from((self.start, self.goal, self.walls.as_ref())))
     }
 
+    /// Take a step in the environment, returning the new observation and reward.
+    ///
+    /// The return type is a [Step] struct, which contains the following fields:
+    /// - `observation`: the new observation after taking the step
+    /// - `action`: the action that was taken
+    /// - `reward`: the reward for taking the action
+    /// - `terminated`: whether the episode is terminated
+    /// - `truncated`: whether the episode is truncated
     fn step(
         &mut self,
         action: Self::Action,
@@ -325,30 +362,42 @@ impl Environment for PointEnv {
         })
     }
 
+    /// Return the maximum number of steps allowed before the episode is truncated.
     fn timelimit(&self) -> usize {
         self.timelimit
     }
 
+    /// The action space of [PointEnv] is `[2]` (2D continuous actions).
     fn action_space(&self) -> Vec<usize> {
         vec![2]
     }
 
+    /// The action domain of [PointEnv] is `[0.0..=step_radius]`
     fn action_domain(&self) -> Vec<RangeInclusive<f64>> {
         vec![0.0..=self.step_radius]
     }
 
+    /// The observation space of [PointEnv] is `[2 + 2 + 4 * n]`, where `n` is
+    /// the number of walls in the environment.
+    ///
+    /// - `2`: the x and y coordinates of the agent
+    /// - `2`: the x and y coordinates of the goal
+    /// - `4 * n`: the x and y coordinates of the start and end points of each wall
     fn observation_space(&self) -> Vec<usize> {
         vec![2 + 2] // + 4 * self.walls.len()]
     }
 
+    /// The observation domain of [PointEnv] is `[0.0..=width, 0.0..=height; 4 + 4 * n]`,
     fn observation_domain(&self) -> Vec<RangeInclusive<f64>> {
         vec![0.0..=(self.width as f64), 0.0..=(self.height as f64)]
     }
 
+    /// Return the current observation of the environment.
     fn current_observation(&self) -> Self::Observation {
         PointObs::from((self.state, self.goal, self.walls.as_ref()))
     }
 
+    /// Return the value range of the reward function, with a 40% padding on the upper bound.
     fn value_range(&self) -> (f64, f64) {
         let (lo, hi) = self
             .reward
@@ -360,6 +409,7 @@ impl Environment for PointEnv {
         (lo, hi + padding)
     }
 
+    /// Return the [PointEnvConfig] used to create this environment.
     fn config(&self) -> Self::Config {
         self.config.clone()
     }

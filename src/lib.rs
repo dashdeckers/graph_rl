@@ -8,6 +8,7 @@ pub mod components;
 pub mod agents;
 pub mod engines;
 
+/// The execution mode of an agent is either training or testing.
 #[derive(Clone, Copy)]
 pub enum RunMode {
     Train,

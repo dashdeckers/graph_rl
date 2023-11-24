@@ -254,6 +254,9 @@ impl Environment for PendulumEnv {
     type Action = PendulumAction;
     type Observation = PendulumState;
 
+    /// Create a new [PendulumEnv] with the given [PendulumConfig]
+    ///
+    /// This function panics if the Gymnasium environment cannot be created.
     fn new(config: Self::Config) -> Result<Box<Self>> {
         let (env, action_space, observation_space) = gym_create_env(&config.name, false)?;
         Ok(Box::new(Self {
@@ -270,6 +273,7 @@ impl Environment for PendulumEnv {
         }))
     }
 
+    /// Reset the environment with the given seed
     fn reset(
         &mut self,
         seed: u64,
@@ -278,6 +282,13 @@ impl Environment for PendulumEnv {
         Ok(self.current_observation())
     }
 
+    /// Step the environment with the given action
+    ///
+    /// The return type is a [Step] struct, which contains the following fields:
+    /// - `observation`: the new observation after the step
+    /// - `reward`: the reward for taking the action
+    /// - `terminated`: whether the episode is terminated
+    /// - `truncated`: whether the episode is truncated
     fn step(
         &mut self,
         action: Self::Action,
@@ -287,30 +298,39 @@ impl Environment for PendulumEnv {
         Ok(step)
     }
 
+    /// Return the maximum number of steps allowed before the episode is truncated.
     fn timelimit(&self) -> usize {
         self.timelimit
     }
 
+    /// The action space of [PendulumEnv] is a single f64 value in the range `[-2.0, 2.0]`.
     fn action_space(&self) -> Vec<usize> {
         self.action_space.clone()
     }
 
+    /// The action domain of [PendulumEnv] is a single range `[-2.0, 2.0]`.
     fn action_domain(&self) -> Vec<RangeInclusive<f64>> {
         vec![-2.0..=2.0]
     }
 
+    /// The observation space of [PendulumEnv] is a 3-dimensional vector of f64 values.
     fn observation_space(&self) -> Vec<usize> {
         self.observation_space.clone()
     }
 
+    /// The observation domain of [PendulumEnv] is a 3-dimensional vector of ranges:
+    /// - `[-1.0, 1.0]`: the `(x, y)` coordinates of the free end of the pendulum
+    /// - `[-8.0, 8.0]`: the angular velocity of the pendulum
     fn observation_domain(&self) -> Vec<RangeInclusive<f64>> {
         vec![-1.0..=1.0, -1.0..=1.0, -8.0..=8.0]
     }
 
+    /// Return the current observation of the [PendulumEnv]
     fn current_observation(&self) -> Self::Observation {
         self.current_observation.clone()
     }
 
+    /// Return the value range of the reward function, with a 40% padding on the upper bound.
     fn value_range(&self) -> (f64, f64) {
         // the reward per timestep is in [-16.2736044, 0.0]
         // the environment is reset after 200 timesteps
@@ -323,6 +343,7 @@ impl Environment for PendulumEnv {
         (lo, hi + padding)
     }
 
+    /// Return the [PendulumConfig] used to create this [PendulumEnv]
     fn config(&self) -> Self::Config {
         self.config.clone()
     }
