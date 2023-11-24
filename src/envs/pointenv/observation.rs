@@ -72,8 +72,7 @@ impl TensorConvertible for PointObs {
         todo!()
     }
     fn from_tensor(value: Tensor) -> Self {
-        let values = value.squeeze(0).unwrap().to_vec1::<f64>().unwrap();
-        Self::from_vec(values)
+        Self::from_vec(value.to_vec1::<f64>().unwrap())
     }
     fn to_tensor(
         value: Self,

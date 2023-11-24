@@ -41,15 +41,6 @@ fn preprocess_state(mut value: Vec<f64>) -> Vec<f64> {
     value
 }
 
-fn tensor_to_vec(value: Tensor) -> candle_core::Result<Vec<f64>> {
-    let dims = value.dims();
-    if dims.len() == 1 {
-        value.to_vec1::<f64>()
-    } else {
-        value.squeeze(0)?.to_vec1::<f64>()
-    }
-}
-
 /// A wrapper around the Gymnasium Pendulum-v1 environment originally from OpenAI
 ///
 /// For more details, see the Gymnasium Pendulum-v1
@@ -146,7 +137,7 @@ impl TensorConvertible for PendulumAction {
     /// For a detailed description of the preprocessing applied, see
     /// [`PendulumAction::from_vec_pp(value: Vec<f64>)`].
     fn from_tensor_pp(value: Tensor) -> Self {
-        Self::from_vec_pp(tensor_to_vec(value).unwrap())
+        Self::from_vec_pp(value.to_vec1::<f64>().unwrap())
     }
 
     /// Convert a Tensor to a PendulumAction without preprocessing
@@ -155,7 +146,7 @@ impl TensorConvertible for PendulumAction {
     /// the Tensor is not either 1-dimensional or has a 0-sized batch dimension.
     /// It then passes the result to [`PendulumAction::from_vec(value: Vec<f64>)`].
     fn from_tensor(value: Tensor) -> Self {
-        Self::from_vec(tensor_to_vec(value).unwrap())
+        Self::from_vec(value.to_vec1::<f64>().unwrap())
     }
 
     /// Convert a PendulumAction to a Tensor (with no batch dimension) on
@@ -224,7 +215,7 @@ impl TensorConvertible for PendulumState {
     /// For a detailed description of the preprocessing applied, see
     /// [`PendulumState::from_vec_pp(value: Vec<f64>)`].
     fn from_tensor_pp(value: Tensor) -> Self {
-        Self::from_vec_pp(tensor_to_vec(value).unwrap())
+        Self::from_vec_pp(value.to_vec1::<f64>().unwrap())
     }
 
     /// Convert a Tensor to a PendulumState without preprocessing
@@ -233,7 +224,7 @@ impl TensorConvertible for PendulumState {
     /// the Tensor is not either 1-dimensional or has a 0-sized batch dimension.
     /// It then passes the result to [`PendulumState::from_vec(value: Vec<f64>)`].
     fn from_tensor(value: Tensor) -> Self {
-        Self::from_vec(tensor_to_vec(value).unwrap())
+        Self::from_vec(value.to_vec1::<f64>().unwrap())
     }
 
     /// Convert a PendulumState to a Tensor (with no batch dimension) on

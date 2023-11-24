@@ -48,15 +48,6 @@ fn preprocess_view(mut value: Vec<f64>) -> Vec<f64> {
     value
 }
 
-fn tensor_to_vec(value: Tensor) -> candle_core::Result<Vec<f64>> {
-    let dims = value.dims();
-    if dims.len() == 1 {
-        value.to_vec1::<f64>()
-    } else {
-        value.squeeze(0)?.to_vec1::<f64>()
-    }
-}
-
 pub struct PointMazeEnv {
     config: PointMazeConfig,
     env: PyObject,
@@ -173,10 +164,10 @@ impl VectorConvertible for PointMazeAction {
 }
 impl TensorConvertible for PointMazeAction {
     fn from_tensor_pp(value: Tensor) -> Self {
-        Self::from_vec_pp(tensor_to_vec(value).unwrap())
+        Self::from_vec_pp(value.to_vec1::<f64>().unwrap())
     }
     fn from_tensor(value: Tensor) -> Self {
-        Self::from_vec(tensor_to_vec(value).unwrap())
+        Self::from_vec(value.to_vec1::<f64>().unwrap())
     }
     fn to_tensor(
         value: Self,
@@ -210,10 +201,10 @@ impl VectorConvertible for PointMazeState {
 }
 impl TensorConvertible for PointMazeState {
     fn from_tensor_pp(value: Tensor) -> Self {
-        Self::from_vec_pp(tensor_to_vec(value).unwrap())
+        Self::from_vec_pp(value.to_vec1::<f64>().unwrap())
     }
     fn from_tensor(value: Tensor) -> Self {
-        Self::from_vec(tensor_to_vec(value).unwrap())
+        Self::from_vec(value.to_vec1::<f64>().unwrap())
     }
     fn to_tensor(
         value: Self,
@@ -260,10 +251,10 @@ impl VectorConvertible for PointMazeView {
 }
 impl TensorConvertible for PointMazeView {
     fn from_tensor_pp(value: Tensor) -> Self {
-        Self::from_vec_pp(tensor_to_vec(value).unwrap())
+        Self::from_vec_pp(value.to_vec1::<f64>().unwrap())
     }
     fn from_tensor(value: Tensor) -> Self {
-        Self::from_vec(tensor_to_vec(value).unwrap())
+        Self::from_vec(value.to_vec1::<f64>().unwrap())
     }
     fn to_tensor(
         value: Self,
@@ -308,10 +299,10 @@ impl VectorConvertible for PointMazeObservation {
 }
 impl TensorConvertible for PointMazeObservation {
     fn from_tensor_pp(value: Tensor) -> Self {
-        Self::from_vec_pp(tensor_to_vec(value).unwrap())
+        Self::from_vec_pp(value.to_vec1::<f64>().unwrap())
     }
     fn from_tensor(value: Tensor) -> Self {
-        Self::from_vec(tensor_to_vec(value).unwrap())
+        Self::from_vec(value.to_vec1::<f64>().unwrap())
     }
     fn to_tensor(
         value: Self,

@@ -366,17 +366,9 @@ impl Algorithm for DDPG<'_> {
         &mut self,
         state: &Tensor,
     ) -> Result<Tensor> {
-        // Candle assumes a batch dimension, so when we don't have one we need
-        // to pretend we do by un- and resqueezing the state tensor.
-        let actions = if state.dims().len() == 1 {
-            self.actor
-                .forward(&state.detach()?.unsqueeze(0)?)?
-                .squeeze(0)?
-        } else {
-            self.actor
-                .forward(&state.detach()?)?
-        };
-
+        // // Candle assumes a batch dimension, so when we don't have one we need
+        // // to pretend we do by un- and resqueezing the state tensor.
+        let actions = self.actor.forward(&state.detach()?.unsqueeze(0)?)?.squeeze(0)?;
         Ok(if let RunMode::Train = self.run_mode {
             (actions + self.ou_noise.sample()?)?
         } else {
