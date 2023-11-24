@@ -3,16 +3,10 @@
 
 use simple_mermaid::mermaid;
 
-pub mod logging;
-
 pub mod envs;
 pub mod components;
 pub mod agents;
-
-pub mod cli;
-pub mod gui;
-pub mod engine;
-
+pub mod engines;
 
 #[derive(Clone, Copy)]
 pub enum RunMode {

@@ -1,4 +1,8 @@
 use {
+    super::{
+        tick,
+        training_loop_off_policy,
+    },
     crate::{
         agents::{
             Algorithm,
@@ -14,10 +18,6 @@ use {
             Renderable,
             Sampleable,
             TensorConvertible,
-        },
-        engine::{
-            train,
-            tick,
         },
         RunMode,
     },
@@ -236,8 +236,12 @@ where
                 let mut config = self.config.clone();
                 config.set_max_episodes(1);
                 config.set_initial_random_actions(0);
-                let (mc_returns, successes) =
-                    train(&mut self.env, &mut self.agent, config, &self.device)?;
+                let (mc_returns, successes) = training_loop_off_policy(
+                    &mut self.env,
+                    &mut self.agent,
+                    config,
+                    &self.device,
+                )?;
                 self.run_data
                     .push((self.agent.run_mode(), mc_returns[0], successes[0]));
             }
@@ -246,7 +250,7 @@ where
     }
 
     fn run_agent(&mut self) -> Result<()> {
-        let (mc_returns, successes) = train(
+        let (mc_returns, successes) = training_loop_off_policy(
             &mut self.env,
             &mut self.agent,
             self.config.clone(),
