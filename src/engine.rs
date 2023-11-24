@@ -118,7 +118,6 @@ where
     }
     Ok(())
 }
-
 pub fn train<Alg, Env, Obs, Act>(
     env: &mut Env,
     agent: &mut Alg,
@@ -164,8 +163,8 @@ where
                 action,
                 &Tensor::new(vec![step.reward], device)?,
                 &<Obs>::to_tensor(step.observation, device)?,
-                step.terminated,
-                step.truncated,
+                &Tensor::new(vec![step.terminated as u8], device)?,
+                &Tensor::new(vec![step.truncated as u8], device)?,
             );
 
             if step.terminated || step.truncated {

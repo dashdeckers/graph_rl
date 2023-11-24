@@ -75,8 +75,8 @@ pub trait OffPolicyAlgorithm: Algorithm {
         action: &Tensor,
         reward: &Tensor,
         next_state: &Tensor,
-        terminated: bool,
-        truncated: bool,
+        terminated: &Tensor,
+        truncated: &Tensor,
     );
 
     fn replay_buffer(&self) -> &ReplayBuffer;

@@ -431,8 +431,8 @@ impl OffPolicyAlgorithm for DDPG<'_> {
         action: &Tensor,
         reward: &Tensor,
         next_state: &Tensor,
-        terminated: bool,
-        truncated: bool,
+        terminated: &Tensor,
+        truncated: &Tensor,
     ) {
         info!(
             concat!(

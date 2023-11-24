@@ -10,7 +10,10 @@ use {
         Rng,
     },
     std::collections::VecDeque,
+    unzip_n::unzip_n,
 };
+
+unzip_n!(6);
 
 #[derive(Clone)]
 struct Transition {
@@ -18,8 +21,8 @@ struct Transition {
     action: Tensor,
     reward: Tensor,
     next_state: Tensor,
-    terminated: bool,
-    truncated: bool,
+    terminated: Tensor,
+    truncated: Tensor,
 }
 impl Transition {
     fn new(
@@ -27,16 +30,16 @@ impl Transition {
         action: &Tensor,
         reward: &Tensor,
         next_state: &Tensor,
-        terminated: bool,
-        truncated: bool,
+        terminated: &Tensor,
+        truncated: &Tensor,
     ) -> Self {
         Self {
             state: state.clone(),
             action: action.clone(),
             reward: reward.clone(),
             next_state: next_state.clone(),
-            terminated,
-            truncated,
+            terminated: terminated.clone(),
+            truncated: truncated.clone(),
         }
     }
 }
@@ -65,8 +68,8 @@ impl ReplayBuffer {
         action: &Tensor,
         reward: &Tensor,
         next_state: &Tensor,
-        terminated: bool,
-        truncated: bool,
+        terminated: &Tensor,
+        truncated: &Tensor,
     ) {
         if self.size == self.capacity {
             self.buffer.pop_front();
@@ -82,42 +85,43 @@ impl ReplayBuffer {
     pub fn random_batch(
         &self,
         batch_size: usize,
-    ) -> Result<Option<(Tensor, Tensor, Tensor, Tensor, Vec<bool>, Vec<bool>)>> {
+    ) -> Result<Option<(Tensor, Tensor, Tensor, Tensor, Tensor, Tensor)>> {
         if self.size < batch_size {
             Ok(None)
         } else {
+            let transition_to_tuple =
+                |t: &Transition| -> Result<(Tensor, Tensor, Tensor, Tensor, Tensor, Tensor)> {
+                    Ok((
+                        t.state.unsqueeze(0)?,
+                        t.action.unsqueeze(0)?,
+                        t.reward.unsqueeze(0)?,
+                        t.next_state.unsqueeze(0)?,
+                        t.terminated.unsqueeze(0)?,
+                        t.truncated.unsqueeze(0)?,
+                    ))
+                };
+
             let transitions: Vec<&Transition> = thread_rng()
                 .sample_iter(Uniform::from(0..self.size))
                 .take(batch_size)
                 .map(|i| self.buffer.get(i).unwrap())
                 .collect();
 
-            let states: Vec<Tensor> = transitions
-                .iter()
-                .map(|t| t.state.unsqueeze(0))
-                .collect::<Result<_>>()?;
-            let actions: Vec<Tensor> = transitions
-                .iter()
-                .map(|t| t.action.unsqueeze(0))
-                .collect::<Result<_>>()?;
-            let rewards: Vec<Tensor> = transitions
-                .iter()
-                .map(|t| t.reward.unsqueeze(0))
-                .collect::<Result<_>>()?;
-            let next_states: Vec<Tensor> = transitions
-                .iter()
-                .map(|t| t.next_state.unsqueeze(0))
-                .collect::<Result<_>>()?;
-            let terminateds: Vec<bool> = transitions.iter().map(|t| t.terminated).collect();
-            let truncateds: Vec<bool> = transitions.iter().map(|t| t.truncated).collect();
+            let (states, actions, rewards, next_states, terminateds, truncateds) =
+                transitions
+                .into_iter()
+                .map(transition_to_tuple)
+                .collect::<Result<Vec<(Tensor, Tensor, Tensor, Tensor, Tensor, Tensor)>>>()?
+                .into_iter()
+                .unzip_n_vec();
 
             Ok(Some((
                 Tensor::cat(&states, 0)?,
                 Tensor::cat(&actions, 0)?,
                 Tensor::cat(&rewards, 0)?,
                 Tensor::cat(&next_states, 0)?,
-                terminateds,
-                truncateds,
+                Tensor::cat(&terminateds, 0)?,
+                Tensor::cat(&truncateds, 0)?,
             )))
         }
     }
