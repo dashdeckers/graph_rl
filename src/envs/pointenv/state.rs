@@ -18,6 +18,10 @@ use {
     },
 };
 
+/// The state type for the PointEnv environment
+///
+/// A PointState is a 2-dimensional vector of the form `[x, y]` which describes
+/// the position in 2-dimensional space.
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
 pub struct PointState {
     x: OrderedFloat<f64>,
@@ -32,6 +36,7 @@ impl PointState {
         self.y.into_inner()
     }
 
+    /// Restrict the PointState to a rectangle of size `width` x `height`
     pub fn restrict(
         self,
         width: f64,
@@ -40,6 +45,7 @@ impl PointState {
         Self::from((self.x().clamp(0.0, width), self.y().clamp(0.0, height)))
     }
 
+    /// Calculate the squared distance to another PointState
     pub fn squared_distance_to(
         &self,
         other: &Self,
@@ -49,6 +55,8 @@ impl PointState {
         dx.powi(2) + dy.powi(2)
     }
 
+    /// Check if the PointState is within a circle of radius `radius` around
+    /// another PointState
     pub fn in_radius_of(
         &self,
         other: &Self,
@@ -57,14 +65,15 @@ impl PointState {
         OrderedFloat(self.squared_distance_to(other)) <= OrderedFloat(radius.powi(2))
     }
 
+    /// Calculate the magnitude of the PointState vector
     pub fn magnitude(&self) -> f64 {
         self.squared_distance_to(&PointState::from((0.0, 0.0)))
             .sqrt()
     }
 }
 
-// Convert (f64, f64) into PointState
 impl From<(f64, f64)> for PointState {
+    /// Convert (f64, f64) into PointState
     fn from(value: (f64, f64)) -> Self {
         Self {
             x: OrderedFloat(value.0),
@@ -73,13 +82,18 @@ impl From<(f64, f64)> for PointState {
     }
 }
 
-// Sample a random PointState
 impl Sampleable for PointState {
+    /// Sample a random PointState within a rectangle given by the domain
+    ///
+    /// The domain is given by two ranges, one for the x-axis and one for the
+    /// y-axis.
+    ///
+    /// This function panics if the number of ranges in the domain is not 2.
     fn sample(
         rng: &mut dyn RngCore,
         domain: &[std::ops::RangeInclusive<f64>],
     ) -> Self {
-        debug_assert!(domain.len() == 2);
+        assert!(domain.len() == 2);
         Self::from((
             rng.gen_range(domain[0].clone()),
             rng.gen_range(domain[1].clone()),
@@ -87,29 +101,57 @@ impl Sampleable for PointState {
     }
 }
 
-// Convert PointState from/into Vec<f64>
 impl VectorConvertible for PointState {
-    fn from_vec_pp(_: Vec<f64>) -> Self {
-        todo!()
+    /// Convert PointState into Vec<f64>
+    ///
+    /// Preprocessing is currently a no-op
+    ///
+    /// This function panics if the number of elements in the Vec is not 2.
+    fn from_vec_pp(value: Vec<f64>) -> Self {
+        Self::from_vec(value)
     }
+
+    /// Convert Vec<f64> into PointState
+    ///
+    /// This function panics if the number of elements in the Vec is not 2.
     fn from_vec(value: Vec<f64>) -> Self {
         // Make sure the number of elements in the Vec makes sense
-        debug_assert!(value.len() == 2);
+        assert!(value.len() == 2);
         Self::from((value[0], value[1]))
     }
+
+    /// Convert PointState into Vec<f64> of the form `[x, y]`
     fn to_vec(value: Self) -> Vec<f64> {
         vec![value.x(), value.y()]
     }
 }
 
-// Convert PointState from/into Tensor
 impl TensorConvertible for PointState {
-    fn from_tensor_pp(_: Tensor) -> Self {
-        todo!()
+    /// Convert Tensor into PointState with preprocessing
+    ///
+    /// This function tries to convert the Tensor to a Vec<f64>, which panics if
+    /// the Tensor is not either 1-dimensional or has a 0-sized batch dimension.
+    /// It then passes the result to [`VectorConvertible::from_vec_pp(value: Vec<f64>)`].
+    ///
+    /// Preprocessing is currently a no-op
+    ///
+    /// For a detailed description of the preprocessing applied, see
+    /// [`VectorConvertible::from_vec_pp(value: Vec<f64>)`].
+    fn from_tensor_pp(value: Tensor) -> Self {
+        Self::from_tensor(value)
     }
+
+    /// Convert Tensor into PointState
+    ///
+    /// This function tries to convert the Tensor to a Vec<f64>, which panics if
+    /// the Tensor is not either 1-dimensional or has a 0-sized batch dimension.
+    /// It then passes the result to [`VectorConvertible::from_vec(value: Vec<f64>)`].
     fn from_tensor(value: Tensor) -> Self {
         Self::from_vec(value.to_vec1::<f64>().unwrap())
     }
+
+    /// Convert a PointState to a Tensor (with no batch dimension) on
+    /// the given device.
     fn to_tensor(
         value: Self,
         device: &Device,

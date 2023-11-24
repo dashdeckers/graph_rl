@@ -74,7 +74,7 @@ impl Default for PendulumConfig {
 ///
 /// The Pendulum environment has a single action, which is the torque applied
 /// to the free end of the pendulum. This is represented by a single f64 value:
-/// \[tau\].
+/// `[tau]`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PendulumAction {
     tau: OrderedFloat<f64>,
@@ -100,11 +100,11 @@ impl VectorConvertible for PendulumAction {
     /// Convert a Vec<f64> to a PendulumAction with preprocessing applied
     ///
     /// Preprocessing consists of multiplying the given value by 2.0 and
-    /// then clamping the value to the range \[-2.0, 2.0\].
+    /// then clamping the value to the range `[-2.0, 2.0]`.
     ///
     /// This helps a neural network based agent learn faster because it
     /// essentially normalizes the action space to the neural network
-    /// friendly range of \[-1.0, 1.0\].
+    /// friendly range of `[-1.0, 1.0]`.
     ///
     /// This function panics if the number of elements in the Vec is not 1.
     fn from_vec_pp(value: Vec<f64>) -> Self {
@@ -122,7 +122,7 @@ impl VectorConvertible for PendulumAction {
         }
     }
 
-    /// Convert a PendulumAction to a Vec<f64> of size 1.
+    /// Convert a PendulumAction to a Vec<f64> of the form `[tau]`.
     fn to_vec(value: Self) -> Vec<f64> {
         vec![*value.tau]
     }
@@ -132,10 +132,10 @@ impl TensorConvertible for PendulumAction {
     ///
     /// This function tries to convert the Tensor to a Vec<f64>, which panics if
     /// the Tensor is not either 1-dimensional or has a 0-sized batch dimension.
-    /// It then passes the result to [`PendulumAction::from_vec_pp(value: Vec<f64>)`].
+    /// It then passes the result to [`VectorConvertible::from_vec_pp(value: Vec<f64>)`].
     ///
     /// For a detailed description of the preprocessing applied, see
-    /// [`PendulumAction::from_vec_pp(value: Vec<f64>)`].
+    /// [`VectorConvertible::from_vec_pp(value: Vec<f64>)`].
     fn from_tensor_pp(value: Tensor) -> Self {
         Self::from_vec_pp(value.to_vec1::<f64>().unwrap())
     }
@@ -144,7 +144,7 @@ impl TensorConvertible for PendulumAction {
     ///
     /// This function tries to convert the Tensor to a Vec<f64>, which panics if
     /// the Tensor is not either 1-dimensional or has a 0-sized batch dimension.
-    /// It then passes the result to [`PendulumAction::from_vec(value: Vec<f64>)`].
+    /// It then passes the result to [`VectorConvertible::from_vec(value: Vec<f64>)`].
     fn from_tensor(value: Tensor) -> Self {
         Self::from_vec(value.to_vec1::<f64>().unwrap())
     }
@@ -161,10 +161,10 @@ impl TensorConvertible for PendulumAction {
 
 /// The observation type for the Pendulum environment
 ///
-/// The observation for the Pendulum environment consists of the (x, y)
+/// The observation for the Pendulum environment consists of the `(x, y)`
 /// coordinates of the free end of the pendulum and the angular velocity
 /// of the pendulum. These are represented by three f64 values:
-/// \[x, y, velocity\].
+/// `[x, y, velocity]`.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
 pub struct PendulumState {
     x: OrderedFloat<f64>,
@@ -174,13 +174,13 @@ pub struct PendulumState {
 impl VectorConvertible for PendulumState {
     /// Convert a Vec<f64> to a PendulumState with preprocessing
     ///
-    /// Because the observation domain is \[-1.0, 1.0\] for the (x, y)
-    /// coordinates, and \[-8.0, 8.0\] for the velocity, preprocessing
-    /// consists of dividing the last value by 8.0.
+    /// Because the observation domain is `[-1.0, 1.0]` for the `(x, y)`
+    /// coordinates, and `[-8.0, 8.0]` for the velocity, preprocessing
+    /// consists of dividing the last value by `8.0`.
     ///
     /// This helps a neural network based agent learn faster because it
     /// essentially normalizes the action space to the neural network
-    /// friendly range of \[-1.0, 1.0\].
+    /// friendly range of `[-1.0, 1.0]`.
     ///
     /// This function panics if the number of elements in the Vec is not 3.
     fn from_vec_pp(value: Vec<f64>) -> Self {
@@ -210,10 +210,10 @@ impl TensorConvertible for PendulumState {
     ///
     /// This function tries to convert the Tensor to a Vec<f64>, which panics if
     /// the Tensor is not either 1-dimensional or has a 0-sized batch dimension.
-    /// It then passes the result to [`PendulumState::from_vec_pp(value: Vec<f64>)`].
+    /// It then passes the result to [`VectorConvertible::from_vec_pp(value: Vec<f64>)`].
     ///
     /// For a detailed description of the preprocessing applied, see
-    /// [`PendulumState::from_vec_pp(value: Vec<f64>)`].
+    /// [`VectorConvertible::from_vec_pp(value: Vec<f64>)`].
     fn from_tensor_pp(value: Tensor) -> Self {
         Self::from_vec_pp(value.to_vec1::<f64>().unwrap())
     }
@@ -222,7 +222,7 @@ impl TensorConvertible for PendulumState {
     ///
     /// This function tries to convert the Tensor to a Vec<f64>, which panics if
     /// the Tensor is not either 1-dimensional or has a 0-sized batch dimension.
-    /// It then passes the result to [`PendulumState::from_vec(value: Vec<f64>)`].
+    /// It then passes the result to [`VectorConvertible::from_vec(value: Vec<f64>)`].
     fn from_tensor(value: Tensor) -> Self {
         Self::from_vec(value.to_vec1::<f64>().unwrap())
     }
@@ -240,7 +240,7 @@ impl DistanceMeasure for PendulumState {
     /// Compute the distance between two PendulumStates
     ///
     /// The distance between two PendulumStates is defined as the 3-dimensional
-    /// Euclidean distance between their (x, y) coordinates and their velocities.
+    /// Euclidean distance between their `(x, y)` coordinates and their velocities.
     fn distance(
         s1: &Self,
         s2: &Self,
