@@ -2,11 +2,11 @@ use {
     anyhow::Result,
     graph_rl::{
         agents::{
-            DDPG,
+            DDPG_SGM,
             Algorithm,
             OffPolicyAlgorithm,
             configs::{
-                DDPGConfig,
+                DDPG_SGM_Config,
                 AlgorithmConfig,
                 ActorCriticConfig,
                 OffPolicyConfig,
@@ -232,15 +232,15 @@ fn main() -> Result<()> {
 
     match args.env {
         Env::Pendulum => {
-            do_stuff::<DDPG, PendulumEnv, _, _>(
+            do_stuff::<DDPG_SGM<PendulumEnv>, PendulumEnv, _, _>(
                 *PendulumEnv::new(Default::default())?,
-                DDPGConfig::pendulum(),
+                DDPG_SGM_Config::pendulum(),
                 args.clone(),
             )?;
         }
 
         Env::Pointenv => {
-            do_stuff::<DDPG, PointEnv, _, _>(
+            do_stuff::<DDPG_SGM<PointEnv>, PointEnv, _, _>(
                 *PointEnv::new(PointEnvConfig::new(
                     5,
                     5,
@@ -252,15 +252,15 @@ fn main() -> Result<()> {
                     PointReward::Distance,
                     42,
                 ))?,
-                DDPGConfig::pointenv(),
+                DDPG_SGM_Config::pointenv(),
                 args.clone(),
             )?;
         }
 
         Env::Pointmaze => {
-            do_stuff::<DDPG, PointMazeEnv, _, _>(
+            do_stuff::<DDPG_SGM<PointMazeEnv>, PointMazeEnv, _, _>(
                 *PointMazeEnv::new(Default::default())?,
-                DDPGConfig::pointmaze(),
+                DDPG_SGM_Config::pointmaze(),
                 args.clone(),
             )?;
         }

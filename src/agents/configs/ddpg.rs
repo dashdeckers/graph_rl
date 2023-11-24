@@ -3,12 +3,12 @@ use super::{
     AlgorithmConfig,
     ActorCriticConfig,
     OffPolicyConfig,
-    SgmConfig,
 };
 
 
+#[allow(non_camel_case_types)]
 #[derive(Clone, Serialize)]
-pub struct DDPGConfig {
+pub struct DDPG_Config {
     // The learning rates for the Actor and Critic networks
     pub actor_learning_rate: f64,
     pub critic_learning_rate: f64,
@@ -33,12 +33,8 @@ pub struct DDPGConfig {
     pub ou_mu: f64,
     pub ou_theta: f64,
     pub ou_sigma: f64,
-    // Sparse Graphical Memory parameters
-    pub sgm_freq: usize,
-    pub sgm_maxdist: f64,
-    pub sgm_tau: f64,
 }
-impl DDPGConfig {
+impl DDPG_Config {
     pub fn pendulum() -> Self {
         Self {
             actor_learning_rate: 1e-4,
@@ -55,9 +51,6 @@ impl DDPGConfig {
             ou_mu: 0.0,
             ou_theta: 0.15,
             ou_sigma: 0.1,
-            sgm_freq: 0,
-            sgm_maxdist: 1.0,
-            sgm_tau: 0.4,
         }
     }
 
@@ -77,9 +70,6 @@ impl DDPGConfig {
             ou_mu: 0.0,
             ou_theta: 0.15, //2.0, //0.15,
             ou_sigma: 0.2,  //0.8, //0.1,
-            sgm_freq: 0,
-            sgm_maxdist: 1.0,
-            sgm_tau: 0.4,
         }
     }
 
@@ -99,15 +89,12 @@ impl DDPGConfig {
             ou_mu: 0.0,
             ou_theta: 0.15, //2.0, //0.15,
             ou_sigma: 0.1,  //0.8, //0.1,
-            sgm_freq: 0,
-            sgm_maxdist: 1.0,
-            sgm_tau: 0.4,
         }
     }
 }
 
 
-impl AlgorithmConfig for DDPGConfig {
+impl AlgorithmConfig for DDPG_Config {
     fn max_episodes(&self) -> usize {
         self.max_episodes
     }
@@ -128,7 +115,7 @@ impl AlgorithmConfig for DDPGConfig {
     }
 }
 
-impl ActorCriticConfig for DDPGConfig {
+impl ActorCriticConfig for DDPG_Config {
     fn actor_lr(&self) -> f64 {
         self.actor_learning_rate
     }
@@ -155,7 +142,7 @@ impl ActorCriticConfig for DDPGConfig {
     }
 }
 
-impl OffPolicyConfig for DDPGConfig {
+impl OffPolicyConfig for DDPG_Config {
     fn replay_buffer_capacity(&self) -> usize {
         self.replay_buffer_capacity
     }
@@ -167,26 +154,5 @@ impl OffPolicyConfig for DDPGConfig {
     }
     fn set_training_batch_size(&mut self, batch_size: usize) {
         self.training_batch_size = batch_size;
-    }
-}
-
-impl SgmConfig for DDPGConfig {
-    fn sgm_freq(&self) -> usize {
-        self.sgm_freq
-    }
-    fn sgm_maxdist(&self) -> f64 {
-        self.sgm_maxdist
-    }
-    fn sgm_tau(&self) -> f64 {
-        self.sgm_tau
-    }
-    fn set_sgm_freq(&mut self, freq: usize) {
-        self.sgm_freq = freq;
-    }
-    fn set_sgm_maxdist(&mut self, maxdist: f64) {
-        self.sgm_maxdist = maxdist;
-    }
-    fn set_sgm_tau(&mut self, tau: f64) {
-        self.sgm_tau = tau;
     }
 }

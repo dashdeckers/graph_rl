@@ -1,6 +1,6 @@
 use {
     super::{
-        configs::DDPGConfig,
+        configs::DDPG_Config,
         Algorithm,
         OffPolicyAlgorithm,
     },
@@ -331,11 +331,11 @@ impl DDPG<'_> {
 }
 
 impl Algorithm for DDPG<'_> {
-    type Config = DDPGConfig;
+    type Config = DDPG_Config;
 
     fn from_config(
         device: &Device,
-        config: &DDPGConfig,
+        config: &DDPG_Config,
         size_state: usize,
         size_action: usize,
     ) -> Result<Box<Self>> {
@@ -366,8 +366,8 @@ impl Algorithm for DDPG<'_> {
         &mut self,
         state: &Tensor,
     ) -> Result<Tensor> {
-        // // Candle assumes a batch dimension, so when we don't have one we need
-        // // to pretend we do by un- and resqueezing the state tensor.
+        // Candle assumes a batch dimension, so when we don't have one we need
+        // to pretend we do by un- and resqueezing the state tensor.
         let actions = self.actor.forward(&state.detach()?.unsqueeze(0)?)?.squeeze(0)?;
         Ok(if let RunMode::Train = self.run_mode {
             (actions + self.ou_noise.sample()?)?

@@ -1,6 +1,8 @@
 mod ddpg;
+mod ddpg_sgm;
 
-pub use ddpg::DDPGConfig;
+pub use ddpg::DDPG_Config;
+pub use ddpg_sgm::DDPG_SGM_Config;
 
 
 pub trait AlgorithmConfig {
