@@ -18,6 +18,7 @@ recognized_envs = [
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', "--dirs", nargs='+', default=[])
+parser.add_argument('-s', "--successes", default=False, action=argparse.BooleanOptionalAction)
 args = parser.parse_args()
 if not args.dirs:
     print("No paths provided")
@@ -32,6 +33,7 @@ if len(environment) != 1:
     sys.exit()
 environment = environment[0]
 
+suffix = "successes" if args.successes else "total_rewards"
 
 episode_nums = []
 for directory, color in zip(args.dirs, sns.color_palette(n_colors=len(args.dirs))):
@@ -46,11 +48,11 @@ for directory, color in zip(args.dirs, sns.color_palette(n_colors=len(args.dirs)
             how="horizontal",
         )
         .with_columns(
-            pl.concat_list("^run_.*_total_rewards$").list.eval(
+            pl.concat_list(f"^run_.*_{suffix}$").list.eval(
                 pl.element().std()
             ).list.first().alias("std"),
 
-            pl.concat_list("^run_.*_total_rewards$").list.eval(
+            pl.concat_list(f"^run_.*_{suffix}$").list.eval(
                 pl.element().mean()
             ).list.first().alias("mean"),
         )
@@ -75,19 +77,23 @@ for directory, color in zip(args.dirs, sns.color_palette(n_colors=len(args.dirs)
     )
 
 plt.xlim((1, max(episode_nums)))
-if environment == "pendulum":
-    plt.ylim((-1750, 0))
+if args.successes:
+    plt.ylim((0, 1))
+else:
+    if environment == "pendulum":
+        plt.ylim((-1750, 0))
 
 plt.xlabel("Episode")
-plt.ylabel("Total reward")
+plt.ylabel("Total reward" if not args.successes else "Success rate")
 plt.grid()
 plt.legend(loc="lower right")
 plt.title(f"Learning Curves for {environment}")
 
 stripped = [dirname.replace(f"{environment}_", "", 1) for dirname in args.dirs]
+filename = f"{'s' if args.successes else 'r'}_{'_'.join(stripped)}.png"
 if len(args.dirs) == 1:
-    plt.savefig(root_path / args.dirs[0] / f"{stripped[0]}.png")
+    plt.savefig(root_path / args.dirs[0] / filename)
 else:
-    plt.savefig(root_path / f"{'_'.join(stripped)}.png")
+    plt.savefig(root_path / filename)
 
 print("Success")
