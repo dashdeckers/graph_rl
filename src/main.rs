@@ -3,13 +3,15 @@ use {
     graph_rl::{
         agents::{
             DDPG,
-            DDPGConfig,
             Algorithm,
-            AlgorithmConfig,
-            ActorCriticConfig,
             OffPolicyAlgorithm,
-            OffPolicyConfig,
-            SgmConfig,
+            configs::{
+                DDPGConfig,
+                AlgorithmConfig,
+                ActorCriticConfig,
+                OffPolicyConfig,
+                SgmConfig,
+            },
         },
         envs::{
             Environment,

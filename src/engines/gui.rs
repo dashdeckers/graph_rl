@@ -7,10 +7,12 @@ use {
         agents::{
             Algorithm,
             OffPolicyAlgorithm,
-            AlgorithmConfig,
-            ActorCriticConfig,
-            OffPolicyConfig,
-            SgmConfig,
+            configs::{
+                AlgorithmConfig,
+                ActorCriticConfig,
+                OffPolicyConfig,
+                SgmConfig,
+            },
         },
         envs::{
             DistanceMeasure,

@@ -4,9 +4,11 @@ use {
         agents::{
             Algorithm,
             OffPolicyAlgorithm,
-            AlgorithmConfig,
-            OffPolicyConfig,
-            SgmConfig,
+            configs::{
+                AlgorithmConfig,
+                OffPolicyConfig,
+                SgmConfig,
+            },
         },
         envs::{
             DistanceMeasure,

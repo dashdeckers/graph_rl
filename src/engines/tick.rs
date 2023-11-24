@@ -2,7 +2,7 @@ use {
     crate::{
         agents::{
             Algorithm,
-            AlgorithmConfig,
+            configs::AlgorithmConfig,
         },
         envs::{
             Environment,

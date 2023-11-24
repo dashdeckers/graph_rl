@@ -1,7 +1,7 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 use {
-    super::DDPGConfig,
+    super::configs::DDPGConfig,
     crate::{
         agents::{
             DDPG,

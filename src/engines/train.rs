@@ -3,7 +3,7 @@ use {
         agents::{
             Algorithm,
             OffPolicyAlgorithm,
-            AlgorithmConfig,
+            configs::AlgorithmConfig,
         },
         envs::{
             Environment,

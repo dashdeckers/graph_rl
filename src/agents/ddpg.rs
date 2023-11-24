@@ -1,6 +1,6 @@
 use {
     super::{
-        DDPGConfig,
+        configs::DDPGConfig,
         Algorithm,
         OffPolicyAlgorithm,
     },
