@@ -9,7 +9,7 @@ use {
 };
 
 
-/// The reward type for the PointEnv environment
+/// The reward type for the [`PointEnv`](super::point_env::PointEnv) environment
 ///
 /// The possible reward functions are:
 /// - Euclidean: The negative Euclidean distance to the goal

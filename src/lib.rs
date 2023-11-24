@@ -1,3 +1,4 @@
+#![allow(rustdoc::private_intra_doc_links)]
 //! Some doc text
 #![ doc=mermaid!( "../docs/example.mmd" ) ]
 

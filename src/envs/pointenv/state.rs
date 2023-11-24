@@ -18,7 +18,7 @@ use {
     },
 };
 
-/// The state type for the PointEnv environment
+/// The state type for the [`PointEnv`](super::point_env::PointEnv) environment
 ///
 /// A [PointState] is a 2-dimensional vector of the form `[x, y]` which describes
 /// the position in 2-dimensional space.

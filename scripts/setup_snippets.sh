@@ -62,9 +62,9 @@ export LD_LIBRARY_PATH=/home/travis/.pyenv/versions/3.10.13/lib:$LD_LIBRARY_PATH
 
 
 # View the docs (windows)
-$env:RUSTDOCFLAGS="--html-in-header katex-header.html"; cargo doc --no-deps --open
+$env:RUSTDOCFLAGS="--html-in-header katex-header.html"; cargo doc --document-private-items --no-deps --open
 # View the docs (linux)
-RUSTDOCFLAGS="--html-in-header katex-header.html" cargo doc --no-deps --open
+RUSTDOCFLAGS="--html-in-header katex-header.html" cargo doc --document-private-items --no-deps --open
 
 
 # Misc

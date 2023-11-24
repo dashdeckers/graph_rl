@@ -14,7 +14,7 @@ use {
     },
 };
 
-/// The observation type for the PointEnv environment
+/// The observation type for the [`PointEnv`](super::point_env::PointEnv) environment
 ///
 /// A [PointObs] is a Goal-Aware observation which consists of the current
 /// [PointState], the goal [PointState] and a list of [PointLine]s which

@@ -15,7 +15,8 @@ use {
     ordered_float::OrderedFloat,
 };
 
-/// The line type for the PointEnv environment, consisting of two PointStates
+/// The line type for the [`PointEnv`](super::point_env::PointEnv) environment,
+/// consisting of two [PointState]s
 ///
 /// We assume a directionality from A -> B where it makes sense
 #[derive(Debug, Clone, Copy, PartialEq, Eq, Hash, Serialize)]
@@ -24,7 +25,7 @@ pub struct PointLine {
     pub B: PointState,
 }
 impl PointLine {
-    /// Check whether the PointLine contains the PointState P.
+    /// Check whether the [PointLine] contains the [PointState] P.
     pub fn contains(
         &self,
         P: &PointState,
@@ -35,7 +36,7 @@ impl PointLine {
             && P.y() <= self.A.y().max(self.B.y())
     }
 
-    /// Returns the collision point between two lines, if any.
+    /// Returns the collision point between two [PointLine]s, if any.
     ///
     /// If the two lines cross, return the collision point and otherwise return None.
     ///
@@ -141,7 +142,7 @@ impl PointLine {
 }
 
 impl From<(PointState, PointState)> for PointLine {
-    /// Convert (PointState, PointState) into a PointLine
+    /// Convert `(PointState, PointState)` into a PointLine
     fn from(value: (PointState, PointState)) -> Self {
         Self {
             A: value.0,
@@ -151,7 +152,7 @@ impl From<(PointState, PointState)> for PointLine {
 }
 
 impl From<((f64, f64), (f64, f64))> for PointLine {
-    /// Convert ((f64, f64), (f64, f64)) into a PointLine
+    /// Convert `((f64, f64), (f64, f64))` into a PointLine
     fn from(value: ((f64, f64), (f64, f64))) -> Self {
         Self {
             A: PointState::from(value.0),
@@ -161,20 +162,20 @@ impl From<((f64, f64), (f64, f64))> for PointLine {
 }
 
 impl VectorConvertible for PointLine {
-    /// Convert a PointLine into a Vec<f64> with preprocessing
+    /// Convert a [PointLine] into a [`Vec<f64>`] with preprocessing
     ///
     /// Preprocessing is currently a no-op
     ///
-    /// Panics if the Vec<f64> does not have exactly 4 elements.
+    /// Panics if the [`Vec<f64>`] does not have exactly 4 elements.
     ///
     /// The elements are assumed to be in the form `[Ax, Ay, Bx, By]`.
     fn from_vec_pp(value: Vec<f64>) -> Self {
         Self::from_vec(value)
     }
 
-    /// Convert a Vec<f64> into a PointLine
+    /// Convert a [`Vec<f64>`] into a [PointLine]
     ///
-    /// Panics if the Vec<f64> does not have exactly 4 elements.
+    /// Panics if the [`Vec<f64>`] does not have exactly 4 elements.
     ///
     /// The elements are assumed to be in the form `[Ax, Ay, Bx, By]`.
     fn from_vec(value: Vec<f64>) -> Self {
@@ -185,19 +186,19 @@ impl VectorConvertible for PointLine {
         ))
     }
 
-    /// Convert a PointLine into a Vec<f64> of the form `[Ax, Ay, Bx, By]`
+    /// Convert a [PointLine] into a [`Vec<f64>`] of the form `[Ax, Ay, Bx, By]`
     fn to_vec(value: Self) -> Vec<f64> {
         vec![value.A.x(), value.A.y(), value.B.x(), value.B.y()]
     }
 }
 
 impl TensorConvertible for PointLine {
-    /// Convert a PointLine into a Tensor with preprocessing
+    /// Convert a [PointLine] into a [Tensor] with preprocessing
     ///
     /// Preprocessing is currently a no-op
     ///
-    /// This function tries to convert the Tensor to a Vec<f64>, which panics if
-    /// the Tensor is not either 1-dimensional or has a 0-sized batch dimension.
+    /// This function tries to convert the [Tensor] to a [`Vec<f64>`], which panics if
+    /// the [Tensor] is not either 1-dimensional or has a 0-sized batch dimension.
     /// It then passes the result to [`VectorConvertible::from_vec_pp(value: Vec<f64>)`].
     ///
     /// For a detailed description of the preprocessing applied, see
@@ -206,16 +207,16 @@ impl TensorConvertible for PointLine {
         Self::from_tensor(value)
     }
 
-    /// Convert a Tensor into a PointLine
+    /// Convert a [Tensor] into a PointLine
     ///
-    /// This function tries to convert the Tensor to a Vec<f64>, which panics if
-    /// the Tensor is not either 1-dimensional or has a 0-sized batch dimension.
+    /// This function tries to convert the [Tensor] to a[`Vec<f64>`], which panics if
+    /// the [Tensor] is not either 1-dimensional or has a 0-sized batch dimension.
     /// It then passes the result to [`VectorConvertible::from_vec(value: Vec<f64>)`].
     fn from_tensor(value: Tensor) -> Self {
         Self::from_vec(value.to_vec1::<f64>().unwrap())
     }
 
-    /// Convert a PointLine into a Tensor (with no batch dimension) on
+    /// Convert a [PointLine] into a [Tensor] (with no batch dimension) on
     /// the given device.
     fn to_tensor(
         value: Self,

@@ -19,7 +19,7 @@ use {
     },
 };
 
-/// The action type for the PointEnv environment
+/// The action type for the [`PointEnv`](super::point_env::PointEnv) environment
 ///
 /// A [PointAction] is a 2-dimensional vector of the form `[dx, dy]` which
 /// describes the change in position relative to the current position in
@@ -111,7 +111,7 @@ impl VectorConvertible for PointAction {
         Self::from((value[0], value[1]))
     }
 
-    /// Convert a PointAction into a [`Vec<f64>`] of the form `[dx, dy]`
+    /// Convert a [PointAction] into a [`Vec<f64>`] of the form `[dx, dy]`
     fn to_vec(value: Self) -> Vec<f64> {
         vec![value.dx(), value.dy()]
     }

@@ -11,7 +11,7 @@ use {
     },
 };
 
-/// The configuration struct for the PointEnv environment.
+/// The configuration struct for the [`PointEnv`](super::point_env::PointEnv) environment.
 ///
 /// # Fields
 /// * `width` - The width of the environment.
@@ -69,7 +69,7 @@ impl Default for PointEnvConfig {
     }
 }
 impl PointEnvConfig {
-    /// Creates a new PointEnvConfig.
+    /// Creates a new [PointEnvConfig].
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         width: usize,
