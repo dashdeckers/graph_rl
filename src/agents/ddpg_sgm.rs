@@ -1,5 +1,3 @@
-#![allow(unused_imports)]
-#![allow(dead_code)]
 use {
     super::configs::{
         DDPG_SGM_Config,
@@ -18,48 +16,130 @@ use {
             TensorConvertible,
             GoalAwareObservation,
         },
-        components::sgm,
     },
     candle_core::{
         Device,
         Result,
+        Tensor,
     },
     ordered_float::OrderedFloat,
     petgraph::{
-        stable_graph::StableGraph,
-        visit::{
-            EdgeRef,
-            IntoEdgeReferences,
+        stable_graph::{
+            StableGraph,
+            NodeIndex,
         },
+        algo::astar,
         Undirected,
     },
+    tracing::warn,
     std::{
+        collections::HashMap,
         fmt::Debug,
         hash::Hash,
     },
 };
 
+fn tensor_with_goal<Env>(
+    state: &Env::Observation,
+    goal: &Env::Observation,
+    device: &Device,
+) -> Result<candle_core::Tensor>
+where
+    Env: Environment,
+    Env::Observation: Clone + TensorConvertible + GoalAwareObservation,
+{
+    let mut state = state.clone();
+    state.set_desired_goal(goal.desired_goal());
+    <Env::Observation>::to_tensor(state, device)
+}
+
+
 #[allow(non_camel_case_types)]
 pub struct DDPG_SGM<'a, Env>
 where
     Env: Environment,
-    Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation,
+    Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation + DistanceMeasure,
+    <Env::Observation as GoalAwareObservation>::State: Clone,
 {
     ddpg: DDPG<'a>,
+    device: Device,
 
     sgm: StableGraph<Env::Observation, OrderedFloat<f64>, Undirected>,
-    pub plan: Vec<Env::Observation>,
+    indices: HashMap<Env::Observation, NodeIndex>,
+    plan: Vec<Env::Observation>,
+
+    state: Option<Env::Observation>,
+    goal: Option<Env::Observation>,
     dist_mode: DistanceMode,
+    close_enough: f64,
 
     sgm_freq: usize,
     sgm_maxdist: f64,
     sgm_tau: f64,
 }
 
+impl<'a, Env> DDPG_SGM<'a, Env>
+where
+    Env: Environment,
+    Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation + DistanceMeasure,
+    <Env::Observation as GoalAwareObservation>::State: Clone + Eq + DistanceMeasure,
+{
+    fn d(
+        dist_mode: &DistanceMode,
+        s1: &<Env::Observation as GoalAwareObservation>::State,
+        s2: &<Env::Observation as GoalAwareObservation>::State,
+    ) -> f64 {
+        match dist_mode {
+            DistanceMode::True => <Env::Observation as GoalAwareObservation>::State::distance(s1, s2),
+            DistanceMode::Estimated => todo!(),
+        }
+    }
+
+    fn get_candidate(&self) -> Option<Env::Observation> {
+        let mut candidate = None;
+        let mut min_distance = f64::INFINITY;
+
+        if let Some(goal) = &self.goal {
+            for node in self.sgm.node_indices() {
+
+                // We use the true distances here!! (i.e. Oracle)
+
+                let node = self.sgm.node_weight(node).unwrap();
+                let distance = DDPG_SGM::<Env>::d(&DistanceMode::True, node.achieved_goal(), goal.desired_goal());
+
+                if distance <= self.close_enough && (candidate.is_none() || distance < min_distance) {
+                    candidate = Some(node.clone());
+                    min_distance = distance;
+                }
+            }
+        }
+
+        candidate
+    }
+
+    fn generate_plan(&mut self) {
+        if let (Some(candidate), Some(start)) = (self.get_candidate(), self.state.clone()) {
+            let path = astar(
+                &self.sgm,
+                self.indices[&start],
+                |n| n == self.indices[&candidate],
+                |e| *e.weight(),
+                |_| OrderedFloat(0.0),
+            );
+
+            self.plan = match path {
+                Some((_, path)) => path.into_iter().map(|n| self.sgm.node_weight(n).unwrap().clone()).collect(),
+                None => Vec::new(),
+            }
+        }
+    }
+}
+
 impl<'a, Env> Algorithm for DDPG_SGM<'a, Env>
 where
     Env: Environment,
-    Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation,
+    Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation + DistanceMeasure,
+    <Env::Observation as GoalAwareObservation>::State: Clone + Debug + Eq + Hash + TensorConvertible + DistanceMeasure,
 {
     type Config = DDPG_SGM_Config;
 
@@ -73,9 +153,17 @@ where
 
         Ok(Box::new(Self {
             ddpg: *ddpg,
+            device: device.clone(),
+
             sgm: StableGraph::default(),
+            indices: HashMap::new(),
             plan: Vec::new(),
+
+            state: None,
+            goal: None,
             dist_mode: config.distance_mode.clone(),
+            close_enough: config.close_enough,
+
             sgm_freq: config.sgm_freq,
             sgm_maxdist: config.sgm_maxdist,
             sgm_tau: config.sgm_tau,
@@ -86,8 +174,87 @@ where
         &mut self,
         state: &candle_core::Tensor,
     ) -> Result<candle_core::Tensor> {
+        // let state_obs = <Env::Observation>::from_tensor(state.clone());
+
+        // if let Some(goal) = &self.goal.clone() {
+        //     if state_obs.desired_goal() != goal.desired_goal() {
+        //         // This should only happen at the beginning of each episode
+        //         self.goal = Some(state_obs.clone());
+        //         self.construct_graph();
+        //         self.generate_plan();
+        //         self.ddpg.actions(&tensor_with_goal::<Env>(&state_obs, goal, &self.device)?)
+        //     } else {
+        //         // This should happen at every step
+        //         if self.plan.is_empty() {
+        //             // Without a plan, we default to the DDPG policy
+        //             self.ddpg.actions(state)
+        //         } else {
+        //             let distance_to_waypoint = DDPG_SGM::<Env>::d(
+        //                 &self.dist_mode,
+        //                 state_obs.achieved_goal(),
+        //                 self.plan.last().unwrap().achieved_goal(),
+        //             );
+        //             if distance_to_waypoint <= self.close_enough {
+        //                 // If we have reached the next step of the plan, we pop it
+        //                 self.plan.pop();
+        //             }
+
+        //             if self.plan.is_empty() {
+        //                 // If the plan is now empty, we default to the DDPG policy
+        //                 self.ddpg.actions(state)
+        //             } else {
+        //                 // Otherwise, we continue to follow the plan
+        //                 self.ddpg.actions(&tensor_with_goal::<Env>(&state_obs, self.plan.last().unwrap(), &self.device)?)
+        //             }
+        //         }
+        //     }
+        // } else {
+        //     // This should only happen at the very beginning of training
+        //     self.goal = Some(state_obs);
+        //     self.ddpg.actions(state)
+        // }
 
 
+        // Check if we have not yet initialized the goal.
+        // This should only happen at the very beginning of training
+        if self.goal.is_none() {
+            self.goal = Some(<Env::Observation>::from_tensor(state.clone()));
+            warn!("Initialized goal: {:?}", self.goal);
+            return self.ddpg.actions(state);
+        }
+
+        let state_obs = <Env::Observation>::from_tensor(state.clone());
+
+        // Check if the environment has given us a new objective, and if so, update the graph and plan
+        // This should happen at the beginning of each episode
+        if state_obs.desired_goal() != self.goal.as_ref().unwrap().desired_goal() {
+            self.goal = Some(state_obs.clone());
+            self.construct_graph();
+            self.generate_plan();
+            warn!("New goal: {:?}", self.goal);
+            warn!("New plan: {:?}", self.plan);
+        }
+
+        // Check if we have already reached the next step of the plan
+        if !self.plan.is_empty() {
+            let distance_to_waypoint = DDPG_SGM::<Env>::d(
+                &self.dist_mode,
+                state_obs.achieved_goal(),
+                self.plan.last().unwrap().achieved_goal(),
+            );
+            // warn!("Distance to waypoint: {:?}", distance_to_waypoint);
+            if distance_to_waypoint <= self.close_enough {
+                let popped = self.plan.pop();
+                warn!("Reached waypoint ({:?}), new plan: {:?}", popped, self.plan);
+            }
+        }
+
+        // If the plan is now empty, we default to the DDPG policy, otherwise, we continue to follow the plan
+        if self.plan.is_empty() {
+            self.ddpg.actions(state)
+        } else {
+            self.ddpg.actions(&tensor_with_goal::<Env>(&state_obs, self.plan.last().unwrap(), &self.device)?)
+        }
 
         // if we are failing to reach the next step of the plan:
         //
@@ -124,8 +291,7 @@ where
 
 
 
-
-        self.ddpg.actions(state)
+        // self.ddpg.actions(state)
     }
 
     fn train(&mut self) -> candle_core::Result<()> {
@@ -144,7 +310,8 @@ where
 impl<'a, Env> OffPolicyAlgorithm for DDPG_SGM<'a, Env>
 where
     Env: Environment,
-    Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation,
+    Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation + DistanceMeasure,
+    <Env::Observation as GoalAwareObservation>::State: Clone + Debug + Eq + Hash + TensorConvertible + DistanceMeasure,
 {
     fn remember(
         &mut self,
@@ -157,16 +324,40 @@ where
     ) {
 
 
-
-
         // if the plan is NOT empty:
         //
         //   - for both state and next_state, override the encoded goal with plan[0]
 
+        // self.state = Some(<Env::Observation>::from_tensor(next_state.clone()));
 
+        // if !self.plan.is_empty() {
+        //     let state_obs = <Env::Observation>::from_tensor(state.clone());
+        //     let next_state_obs = <Env::Observation>::from_tensor(next_state.clone());
 
+        //     // We use the true distances here!! (i.e. Oracle, or as if this was the Environment talking)
 
-        self.ddpg.remember(state, action, reward, next_state, terminated, truncated)
+        //     let distance_to_waypoint = DDPG_SGM::<Env>::d(
+        //         &DistanceMode::True,
+        //         next_state_obs.achieved_goal(),
+        //         self.plan.last().unwrap().achieved_goal(),
+        //     );
+        //     let (reward, terminated) = if distance_to_waypoint <= self.close_enough {
+        //         (0.0, true)
+        //     } else {
+        //         (-1.0, false)
+        //     };
+
+        //     self.ddpg.remember(
+        //         &tensor_with_goal::<Env>(&state_obs, self.plan.last().unwrap(), &self.device).unwrap(),
+        //         action,
+        //         &Tensor::new(vec![reward], &self.device).unwrap(),
+        //         &tensor_with_goal::<Env>(&next_state_obs, self.plan.last().unwrap(), &self.device).unwrap(),
+        //         &Tensor::new(vec![terminated as u8], &self.device).unwrap(),
+        //         truncated,
+        //     );
+        // } else {
+        // }
+        self.ddpg.remember(state, action, reward, next_state, terminated, truncated);
     }
 
     fn replay_buffer(&self) -> &crate::components::ReplayBuffer {
@@ -178,6 +369,7 @@ impl<'a, Env> SgmAlgorithm<Env> for DDPG_SGM<'a, Env>
 where
     Env: Environment,
     Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation + DistanceMeasure,
+    <Env::Observation as GoalAwareObservation>::State: Clone + Debug + Eq + Hash + TensorConvertible + DistanceMeasure,
 {
     fn graph(&self) -> &StableGraph<Env::Observation, OrderedFloat<f64>, Undirected> {
         &self.sgm
@@ -188,24 +380,18 @@ where
     }
 
     fn construct_graph(&mut self) {
-        self.sgm = self
+        (self.sgm, self.indices) = self
             .replay_buffer()
             .construct_sgm(
                 match self.dist_mode {
-                    DistanceMode::True => <Env::Observation>::distance,
-                    DistanceMode::Estimated => |_s1, _s2| {
-                        // let goal_conditioned_state = s1.clone();
-                        // goal_conditioned_state.set_goal_from(s2);
-                        // let best_estimated_action = self.ddpg.actor_forward_item(&goal_conditioned_state).unwrap();
-                        // let best_estimated_distance = self.ddpg.critic_forward_item(goal_conditioned_state, best_estimated_action).unwrap();
-                        // best_estimated_distance.to_vec1::<f64>()[0]
+                    DistanceMode::True => Env::Observation::distance,
+                    DistanceMode::Estimated => {
                         todo!()
                     },
                 },
                 self.sgm_maxdist,
                 self.sgm_tau,
-            )
-            .0;
+            );
     }
 }
 

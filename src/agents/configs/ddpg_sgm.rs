@@ -16,6 +16,7 @@ pub struct DDPG_SGM_Config {
     pub ddpg: DDPG_Config,
     // Whether to use true or estimated distances
     pub distance_mode: DistanceMode,
+    pub close_enough: f64,
     // Sparse Graphical Memory parameters
     pub sgm_freq: usize,
     pub sgm_maxdist: f64,
@@ -26,6 +27,7 @@ impl DDPG_SGM_Config {
         Self {
             ddpg: DDPG_Config::pendulum(),
             distance_mode: DistanceMode::True,
+            close_enough: 0.5,
             sgm_freq: 0,
             sgm_maxdist: 1.0,
             sgm_tau: 0.4,
@@ -36,6 +38,7 @@ impl DDPG_SGM_Config {
         Self {
             ddpg: DDPG_Config::pointenv(),
             distance_mode: DistanceMode::True,
+            close_enough: 0.5,
             sgm_freq: 0,
             sgm_maxdist: 1.0,
             sgm_tau: 0.4,
@@ -46,6 +49,7 @@ impl DDPG_SGM_Config {
         Self {
             ddpg: DDPG_Config::pointmaze(),
             distance_mode: DistanceMode::True,
+            close_enough: 0.5,
             sgm_freq: 0,
             sgm_maxdist: 1.0,
             sgm_tau: 0.4,
