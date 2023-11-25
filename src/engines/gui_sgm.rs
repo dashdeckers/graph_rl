@@ -70,7 +70,7 @@ enum PlayMode {
     Episodes,
 }
 
-pub struct OffPolicyGUI<Alg, Env, Obs, Act>
+pub struct SgmGUI<Alg, Env, Obs, Act>
 where
     Alg: Algorithm,
     Alg::Config: AlgorithmConfig,
@@ -92,7 +92,7 @@ where
     render_fancy: bool,
 }
 
-impl<Alg, Env, Obs, Act> eframe::App for OffPolicyGUI<Alg, Env, Obs, Act>
+impl<Alg, Env, Obs, Act> eframe::App for SgmGUI<Alg, Env, Obs, Act>
 where
     Alg: Algorithm + OffPolicyAlgorithm + SgmAlgorithm<Env> + 'static,
     Alg::Config: Clone + AlgorithmConfig + ActorCriticConfig + OffPolicyConfig + SgmConfig,
@@ -105,7 +105,7 @@ where
         ctx: &egui::Context,
         _frame: &mut eframe::Frame,
     ) {
-        // run the OffPolicyGUI logic
+        // run the SgmGUI logic
         self.run_gui_logic().unwrap();
 
         // render the settings and options
@@ -167,7 +167,7 @@ where
     }
 }
 
-impl<Alg, Env, Obs, Act> OffPolicyGUI<Alg, Env, Obs, Act>
+impl<Alg, Env, Obs, Act> SgmGUI<Alg, Env, Obs, Act>
 where
     Alg: Algorithm + OffPolicyAlgorithm + SgmAlgorithm<Env> + 'static,
     Alg::Config: Clone + AlgorithmConfig + ActorCriticConfig + OffPolicyConfig + SgmConfig,

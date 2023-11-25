@@ -26,6 +26,7 @@ use {
         engines::{
             run_experiment_off_policy,
             OffPolicyGUI,
+            SgmGUI,
         }
     },
     candle_core::{
@@ -189,12 +190,12 @@ fn main() -> Result<()> {
                 env.action_space().iter().product::<usize>(),
             )?;
             if args.gui {
-                // GUI::open(
-                //     env,
-                //     alg,
-                //     alg_config,
-                //     device,
-                // );
+                OffPolicyGUI::open(
+                    env,
+                    alg,
+                    alg_config,
+                    device,
+                );
             } else {
                 run_experiment_off_policy::<DDPG, PendulumEnv, _, _>(
                     &name,
@@ -221,14 +222,14 @@ fn main() -> Result<()> {
             );
 
             let mut env = *PointEnv::new(env_config)?;
-            let alg = *DDPG_SGM::from_config(
+            let alg = *DDPG_SGM::<PointEnv>::from_config(
                 &device,
                 &alg_config,
                 env.observation_space().iter().product::<usize>(),
                 env.action_space().iter().product::<usize>(),
             )?;
             if args.gui {
-                OffPolicyGUI::open(
+                SgmGUI::open(
                     env,
                     alg,
                     alg_config,
@@ -257,12 +258,12 @@ fn main() -> Result<()> {
                 env.action_space().iter().product::<usize>(),
             )?;
             if args.gui {
-                // GUI::open(
-                //     env,
-                //     alg,
-                //     alg_config,
-                //     device,
-                // );
+                OffPolicyGUI::open(
+                    env,
+                    alg,
+                    alg_config,
+                    device,
+                );
             } else {
                 run_experiment_off_policy::<DDPG, PointMazeEnv, _, _>(
                     &name,
