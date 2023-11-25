@@ -16,6 +16,7 @@ use {
             TensorConvertible,
             GoalAwareObservation,
         },
+        components::sgm::dot,
     },
     candle_core::{
         Device,
@@ -94,21 +95,22 @@ where
         }
     }
 
-    fn get_candidate(&self) -> Option<Env::Observation> {
+    fn get_closest_to(&self, obs: Option<Env::Observation>) -> Option<Env::Observation> {
         let mut candidate = None;
         let mut min_distance = f64::INFINITY;
 
-        if let Some(goal) = &self.goal {
+        if let Some(obs) = obs {
             for node in self.sgm.node_indices() {
 
                 // We use the true distances here!! (i.e. Oracle)
 
                 let node = self.sgm.node_weight(node).unwrap();
-                let distance = DDPG_SGM::<Env>::d(&DistanceMode::True, node.achieved_goal(), goal.desired_goal());
+                let distance = DDPG_SGM::<Env>::d(&DistanceMode::True, node.achieved_goal(), obs.desired_goal());
 
                 if distance <= self.sgm_close_enough && (candidate.is_none() || distance < min_distance) {
                     candidate = Some(node.clone());
                     min_distance = distance;
+                    warn!("At distance: {:?}, found candidate: {:?}", min_distance, candidate);
                 }
             }
         }
@@ -117,11 +119,12 @@ where
     }
 
     fn generate_plan(&mut self) {
-        if let (Some(candidate), Some(start)) = (self.get_candidate(), self.state.clone()) {
+        if let (Some(goal), Some(start)) = (self.get_closest_to(self.goal.clone()), self.get_closest_to(self.state.clone())) {
+            warn!("Generating plan from {:?} to {:?}", start, goal);
             let path = astar(
                 &self.sgm,
                 self.indices[&start],
-                |n| n == self.indices[&candidate],
+                |n| n == self.indices[&goal],
                 |e| *e.weight(),
                 |_| OrderedFloat(0.0),
             );
@@ -228,6 +231,7 @@ where
         if state_obs.desired_goal() != self.goal.as_ref().unwrap().desired_goal() {
             self.goal = Some(state_obs.clone());
             self.construct_graph();
+            // warn!("Graph: {}", dot(&self.sgm));
             self.generate_plan();
             warn!("New goal: {:?}", self.goal);
             warn!("New plan: {:?}", self.plan);
@@ -326,7 +330,7 @@ where
         //
         //   - for both state and next_state, override the encoded goal with plan[0]
 
-        // self.state = Some(<Env::Observation>::from_tensor(next_state.clone()));
+        self.state = Some(<Env::Observation>::from_tensor(state.clone()));
 
         // if !self.plan.is_empty() {
         //     let state_obs = <Env::Observation>::from_tensor(state.clone());
