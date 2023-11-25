@@ -71,9 +71,8 @@ where
     state: Option<Env::Observation>,
     goal: Option<Env::Observation>,
     dist_mode: DistanceMode,
-    close_enough: f64,
+    sgm_close_enough: f64,
 
-    sgm_freq: usize,
     sgm_maxdist: f64,
     sgm_tau: f64,
 }
@@ -107,7 +106,7 @@ where
                 let node = self.sgm.node_weight(node).unwrap();
                 let distance = DDPG_SGM::<Env>::d(&DistanceMode::True, node.achieved_goal(), goal.desired_goal());
 
-                if distance <= self.close_enough && (candidate.is_none() || distance < min_distance) {
+                if distance <= self.sgm_close_enough && (candidate.is_none() || distance < min_distance) {
                     candidate = Some(node.clone());
                     min_distance = distance;
                 }
@@ -162,9 +161,8 @@ where
             state: None,
             goal: None,
             dist_mode: config.distance_mode.clone(),
-            close_enough: config.close_enough,
 
-            sgm_freq: config.sgm_freq,
+            sgm_close_enough: config.sgm_close_enough,
             sgm_maxdist: config.sgm_maxdist,
             sgm_tau: config.sgm_tau,
         }))
@@ -194,7 +192,7 @@ where
         //                 state_obs.achieved_goal(),
         //                 self.plan.last().unwrap().achieved_goal(),
         //             );
-        //             if distance_to_waypoint <= self.close_enough {
+        //             if distance_to_waypoint <= self.sgm_close_enough {
         //                 // If we have reached the next step of the plan, we pop it
         //                 self.plan.pop();
         //             }
@@ -243,7 +241,7 @@ where
                 self.plan.last().unwrap().achieved_goal(),
             );
             // warn!("Distance to waypoint: {:?}", distance_to_waypoint);
-            if distance_to_waypoint <= self.close_enough {
+            if distance_to_waypoint <= self.sgm_close_enough {
                 let popped = self.plan.pop();
                 warn!("Reached waypoint ({:?}), new plan: {:?}", popped, self.plan);
             }
@@ -341,7 +339,7 @@ where
         //         next_state_obs.achieved_goal(),
         //         self.plan.last().unwrap().achieved_goal(),
         //     );
-        //     let (reward, terminated) = if distance_to_waypoint <= self.close_enough {
+        //     let (reward, terminated) = if distance_to_waypoint <= self.sgm_close_enough {
         //         (0.0, true)
         //     } else {
         //         (-1.0, false)

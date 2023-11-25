@@ -66,7 +66,7 @@ impl DDPG_Config {
             training_batch_size: 256,         //100,
             max_episodes: 200,
             training_iterations: 200,      //200,
-            initial_random_actions: 1000, //100,
+            initial_random_actions: 0, //100,
             ou_mu: 0.0,
             ou_theta: 0.15, //2.0, //0.15,
             ou_sigma: 0.2,  //0.8, //0.1,

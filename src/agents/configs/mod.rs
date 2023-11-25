@@ -39,10 +39,10 @@ pub trait OffPolicyConfig: AlgorithmConfig {
     fn set_training_batch_size(&mut self, batch_size: usize);
 }
 pub trait SgmConfig: AlgorithmConfig {
-    fn sgm_freq(&self) -> usize;
+    fn sgm_close_enough(&self) -> f64;
     fn sgm_maxdist(&self) -> f64;
     fn sgm_tau(&self) -> f64;
-    fn set_sgm_freq(&mut self, freq: usize);
+    fn set_sgm_close_enough(&mut self, close_enough: f64);
     fn set_sgm_maxdist(&mut self, maxdist: f64);
     fn set_sgm_tau(&mut self, tau: f64);
 }

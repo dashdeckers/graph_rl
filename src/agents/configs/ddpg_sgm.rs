@@ -16,9 +16,8 @@ pub struct DDPG_SGM_Config {
     pub ddpg: DDPG_Config,
     // Whether to use true or estimated distances
     pub distance_mode: DistanceMode,
-    pub close_enough: f64,
     // Sparse Graphical Memory parameters
-    pub sgm_freq: usize,
+    pub sgm_close_enough: f64,
     pub sgm_maxdist: f64,
     pub sgm_tau: f64,
 }
@@ -27,8 +26,7 @@ impl DDPG_SGM_Config {
         Self {
             ddpg: DDPG_Config::pendulum(),
             distance_mode: DistanceMode::True,
-            close_enough: 0.5,
-            sgm_freq: 0,
+            sgm_close_enough: 0.5,
             sgm_maxdist: 1.0,
             sgm_tau: 0.4,
         }
@@ -38,8 +36,7 @@ impl DDPG_SGM_Config {
         Self {
             ddpg: DDPG_Config::pointenv(),
             distance_mode: DistanceMode::True,
-            close_enough: 0.5,
-            sgm_freq: 0,
+            sgm_close_enough: 0.5,
             sgm_maxdist: 1.0,
             sgm_tau: 0.4,
         }
@@ -49,8 +46,7 @@ impl DDPG_SGM_Config {
         Self {
             ddpg: DDPG_Config::pointmaze(),
             distance_mode: DistanceMode::True,
-            close_enough: 0.5,
-            sgm_freq: 0,
+            sgm_close_enough: 0.5,
             sgm_maxdist: 1.0,
             sgm_tau: 0.4,
         }
@@ -122,8 +118,8 @@ impl OffPolicyConfig for DDPG_SGM_Config {
 }
 
 impl SgmConfig for DDPG_SGM_Config {
-    fn sgm_freq(&self) -> usize {
-        self.sgm_freq
+    fn sgm_close_enough(&self) -> f64 {
+        self.sgm_close_enough
     }
     fn sgm_maxdist(&self) -> f64 {
         self.sgm_maxdist
@@ -131,8 +127,8 @@ impl SgmConfig for DDPG_SGM_Config {
     fn sgm_tau(&self) -> f64 {
         self.sgm_tau
     }
-    fn set_sgm_freq(&mut self, freq: usize) {
-        self.sgm_freq = freq;
+    fn set_sgm_close_enough(&mut self, sgm_close_enough: f64) {
+        self.sgm_close_enough = sgm_close_enough;
     }
     fn set_sgm_maxdist(&mut self, maxdist: f64) {
         self.sgm_maxdist = maxdist;

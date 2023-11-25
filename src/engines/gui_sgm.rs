@@ -371,7 +371,7 @@ where
         let mut buffer_size = self.config.replay_buffer_capacity();
         let mut batch_size = self.config.training_batch_size();
 
-        let mut sgm_freq = self.config.sgm_freq();
+        let mut sgm_close_enough = self.config.sgm_close_enough();
         let mut sgm_maxdist = self.config.sgm_maxdist();
         let mut sgm_tau = self.config.sgm_tau();
 
@@ -423,9 +423,9 @@ where
         ui.separator();
         ui.label("SGM Options");
         ui.add(
-            Slider::new(&mut sgm_freq, 0..=20)
-                .step_by(1.0)
-                .text("Rebuilding freq"),
+            Slider::new(&mut sgm_close_enough, 0.0..=2.0)
+                .step_by(0.1)
+                .text("Close enough"),
         );
         ui.add(
             Slider::new(&mut sgm_maxdist, 0.0..=1.0)
@@ -504,7 +504,7 @@ where
         self.config.set_replay_buffer_capacity(buffer_size);
         self.config.set_training_batch_size(batch_size);
 
-        self.config.set_sgm_freq(sgm_freq);
+        self.config.set_sgm_close_enough(sgm_close_enough);
         self.config.set_sgm_maxdist(sgm_maxdist);
         self.config.set_sgm_tau(sgm_tau);
     }
