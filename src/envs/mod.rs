@@ -45,6 +45,19 @@ pub trait VectorConvertible {
     fn to_vec(value: Self) -> Vec<f64>;
 }
 
+pub trait GoalAwareObservation {
+    type State;
+    type View;
+
+    fn observation(&self) -> &Self::View;
+    fn desired_goal(&self) -> &Self::State;
+    fn achieved_goal(&self) -> &Self::State;
+
+    fn set_observation(&mut self, value: &Self::View);
+    fn set_desired_goal(&mut self, value: &Self::State);
+    fn set_achieved_goal(&mut self, value: &Self::State);
+}
+
 pub trait Sampleable {
     fn sample(
         rng: &mut dyn RngCore,

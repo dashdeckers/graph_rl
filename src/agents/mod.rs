@@ -7,15 +7,22 @@ pub use ddpg_sgm::DDPG_SGM;
 
 
 use crate::{
+    envs::Environment,
     components::ReplayBuffer,
     RunMode,
 };
-use candle_core::{
-    Tensor,
-    Result,
-    Device,
+use {
+    ordered_float::OrderedFloat,
+    petgraph::{
+        stable_graph::StableGraph,
+        Undirected,
+    },
+    candle_core::{
+        Tensor,
+        Result,
+        Device,
+    }
 };
-
 
 pub trait Algorithm {
     type Config;
@@ -46,4 +53,10 @@ pub trait OffPolicyAlgorithm: Algorithm {
     );
 
     fn replay_buffer(&self) -> &ReplayBuffer;
+}
+
+pub trait SgmAlgorithm<Env: Environment>: Algorithm {
+    fn plan(&self) -> &Vec<Env::Observation>;
+    fn graph(&self) -> &StableGraph<Env::Observation, OrderedFloat<f64>, Undirected>;
+    fn construct_graph(&mut self);
 }

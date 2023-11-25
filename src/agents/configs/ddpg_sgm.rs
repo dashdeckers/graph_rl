@@ -5,6 +5,7 @@ use super::{
     ActorCriticConfig,
     OffPolicyConfig,
     SgmConfig,
+    DistanceMode,
 };
 
 
@@ -13,6 +14,8 @@ use super::{
 pub struct DDPG_SGM_Config {
     // The base DDPG parameters
     pub ddpg: DDPG_Config,
+    // Whether to use true or estimated distances
+    pub distance_mode: DistanceMode,
     // Sparse Graphical Memory parameters
     pub sgm_freq: usize,
     pub sgm_maxdist: f64,
@@ -22,6 +25,7 @@ impl DDPG_SGM_Config {
     pub fn pendulum() -> Self {
         Self {
             ddpg: DDPG_Config::pendulum(),
+            distance_mode: DistanceMode::True,
             sgm_freq: 0,
             sgm_maxdist: 1.0,
             sgm_tau: 0.4,
@@ -31,6 +35,7 @@ impl DDPG_SGM_Config {
     pub fn pointenv() -> Self {
         Self {
             ddpg: DDPG_Config::pointenv(),
+            distance_mode: DistanceMode::True,
             sgm_freq: 0,
             sgm_maxdist: 1.0,
             sgm_tau: 0.4,
@@ -40,6 +45,7 @@ impl DDPG_SGM_Config {
     pub fn pointmaze() -> Self {
         Self {
             ddpg: DDPG_Config::pointmaze(),
+            distance_mode: DistanceMode::True,
             sgm_freq: 0,
             sgm_maxdist: 1.0,
             sgm_tau: 0.4,

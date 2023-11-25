@@ -1,17 +1,22 @@
 #![allow(unused_imports)]
 #![allow(dead_code)]
 use {
-    super::configs::DDPG_SGM_Config,
+    super::configs::{
+        DDPG_SGM_Config,
+        DistanceMode,
+    },
     crate::{
         agents::{
             DDPG,
             Algorithm,
             OffPolicyAlgorithm,
+            SgmAlgorithm,
         },
         envs::{
             Environment,
             DistanceMeasure,
             TensorConvertible,
+            GoalAwareObservation,
         },
         components::sgm,
     },
@@ -22,6 +27,10 @@ use {
     ordered_float::OrderedFloat,
     petgraph::{
         stable_graph::StableGraph,
+        visit::{
+            EdgeRef,
+            IntoEdgeReferences,
+        },
         Undirected,
     },
     std::{
@@ -34,10 +43,13 @@ use {
 pub struct DDPG_SGM<'a, Env>
 where
     Env: Environment,
-    Env::Observation: Debug + Clone + Eq + Hash + TensorConvertible,
+    Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation,
 {
     ddpg: DDPG<'a>,
+
     sgm: StableGraph<Env::Observation, OrderedFloat<f64>, Undirected>,
+    pub plan: Vec<Env::Observation>,
+    dist_mode: DistanceMode,
 
     sgm_freq: usize,
     sgm_maxdist: f64,
@@ -47,7 +59,7 @@ where
 impl<'a, Env> Algorithm for DDPG_SGM<'a, Env>
 where
     Env: Environment,
-    Env::Observation: Debug + Clone + Eq + Hash + TensorConvertible,
+    Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation,
 {
     type Config = DDPG_SGM_Config;
 
@@ -62,6 +74,8 @@ where
         Ok(Box::new(Self {
             ddpg: *ddpg,
             sgm: StableGraph::default(),
+            plan: Vec::new(),
+            dist_mode: config.distance_mode.clone(),
             sgm_freq: config.sgm_freq,
             sgm_maxdist: config.sgm_maxdist,
             sgm_tau: config.sgm_tau,
@@ -72,14 +86,45 @@ where
         &mut self,
         state: &candle_core::Tensor,
     ) -> Result<candle_core::Tensor> {
-        // here we get a goal-aware state
-        // if we dont already have a plan, we need to generate one
-        // query the sgm for the nearest state to the goal (either via a helper function or select goal from sgm)
-        // query a shortest path algorithm to generate a plan using the sgm. save this plan.
-        // if the last action did not succesfully result in the next step of the plan, perform cleanup
-        // remove that edge from the sgm
-        // generate a new plan
-        // query the actor for the next action according to the goal given by the plan
+
+
+
+        // if we are failing to reach the next step of the plan:
+        //
+        //   - search the sgm for a list of candidate observations that are 'close-enough' to the current goal
+        //   - if there are some:
+        //     - pick the closest candidate observation to the current goal
+        //     - generate a plan by A* from the current state to the closest candidate observation
+        //     - set the plan
+        //   - else:
+        //     - set the plan empty
+        //
+        // if the plan is empty:
+        //   - self.ddpg.actions(state)
+        // else:
+        //   - self.ddpg.actions(plan[0])
+        //
+        //
+        // notes:
+        //
+        // the current goal is encoded in the state
+        //
+        // we are failing to reach the next step of the plan if:
+        //  - it has been N steps with no progress
+        //  - OR we just wait for the episode to truncate
+        //
+        // candidates that are close enough to the goal are:
+        //  - within a certain distance D of the goal
+        //  - HOW is this distance determined? it needs to be strict but based on the evolving critic
+        //
+        // cleanup is a different step, during test-time in the paper
+        //  - but it seems like remove the 'faulty' edge can be integrated into the algo above
+        //
+        // precompute distances (based on the evolving critic || based on true euclidean) with Floyd-Warshall
+
+
+
+
         self.ddpg.actions(state)
     }
 
@@ -99,7 +144,7 @@ where
 impl<'a, Env> OffPolicyAlgorithm for DDPG_SGM<'a, Env>
 where
     Env: Environment,
-    Env::Observation: Debug + Clone + Eq + Hash + TensorConvertible,
+    Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation,
 {
     fn remember(
         &mut self,
@@ -110,7 +155,17 @@ where
         terminated: &candle_core::Tensor,
         truncated: &candle_core::Tensor,
     ) {
-        // probably do something like HER here, just store the transitions with the goal it was conditioned on
+
+
+
+
+        // if the plan is NOT empty:
+        //
+        //   - for both state and next_state, override the encoded goal with plan[0]
+
+
+
+
         self.ddpg.remember(state, action, reward, next_state, terminated, truncated)
     }
 
@@ -118,3 +173,39 @@ where
         self.ddpg.replay_buffer()
     }
 }
+
+impl<'a, Env> SgmAlgorithm<Env> for DDPG_SGM<'a, Env>
+where
+    Env: Environment,
+    Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation + DistanceMeasure,
+{
+    fn graph(&self) -> &StableGraph<Env::Observation, OrderedFloat<f64>, Undirected> {
+        &self.sgm
+    }
+
+    fn plan(&self) -> &Vec<Env::Observation> {
+        &self.plan
+    }
+
+    fn construct_graph(&mut self) {
+        self.sgm = self
+            .replay_buffer()
+            .construct_sgm(
+                match self.dist_mode {
+                    DistanceMode::True => <Env::Observation>::distance,
+                    DistanceMode::Estimated => |_s1, _s2| {
+                        // let goal_conditioned_state = s1.clone();
+                        // goal_conditioned_state.set_goal_from(s2);
+                        // let best_estimated_action = self.ddpg.actor_forward_item(&goal_conditioned_state).unwrap();
+                        // let best_estimated_distance = self.ddpg.critic_forward_item(goal_conditioned_state, best_estimated_action).unwrap();
+                        // best_estimated_distance.to_vec1::<f64>()[0]
+                        todo!()
+                    },
+                },
+                self.sgm_maxdist,
+                self.sgm_tau,
+            )
+            .0;
+    }
+}
+

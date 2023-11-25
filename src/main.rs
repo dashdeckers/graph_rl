@@ -2,31 +2,26 @@ use {
     anyhow::Result,
     graph_rl::{
         agents::{
+            DDPG,
             DDPG_SGM,
             Algorithm,
-            OffPolicyAlgorithm,
             configs::{
+                DDPG_Config,
                 DDPG_SGM_Config,
-                AlgorithmConfig,
-                ActorCriticConfig,
-                OffPolicyConfig,
-                SgmConfig,
             },
         },
         envs::{
             Environment,
-            DistanceMeasure,
-            Sampleable,
-            TensorConvertible,
-            Renderable,
 
             PendulumEnv,
+            PendulumConfig,
 
             PointEnv,
             PointEnvConfig,
             PointReward,
 
             PointMazeEnv,
+            PointMazeConfig,
         },
         engines::{
             run_experiment_off_policy,
@@ -42,11 +37,7 @@ use {
         Parser,
         ValueEnum,
     },
-    serde::Serialize,
-    std::{
-        fmt::Debug,
-        hash::Hash,
-    },
+    std::fmt::Debug,
     tracing::Level,
     std::{
         fs::{File, create_dir_all},
@@ -164,26 +155,9 @@ pub struct Args {
     pub runs: usize,
 }
 
-/// This handles setup up logging, the GUI, and/or training, which simplifies
-/// the main function, however it requires that the algorithm and environment
-/// all implement every possible trait that we support.
-///
-/// When we add a new algorithm or environment which doesn't (yet) support e.g.
-/// Renderable or ActorCriticConfig, we'll have to use the run_n() or GUI
-/// methods directly like before.
-pub fn do_stuff<Alg, Env, Obs, Act>(
-    mut env: Env,
-    config: Alg::Config,
-    args: Args,
-) -> Result<()>
-where
-    Alg: Algorithm + OffPolicyAlgorithm + 'static,
-    Alg::Config: AlgorithmConfig + ActorCriticConfig + OffPolicyConfig + SgmConfig + Clone + Serialize,
-    Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
-    Env::Config: Clone + Serialize + 'static,
-    Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
-    Act: Clone + TensorConvertible + Sampleable + 'static,
-{
+fn main() -> Result<()> {
+    let args = Args::parse();
+
     let name = if let Some(name) = args.output.clone() {
         name
     } else {
@@ -202,67 +176,102 @@ where
         Device::Cuda(CudaDevice::new(0)?)
     };
 
-    if args.gui {
-        let agent = *Alg::from_config(
-            &device,
-            &config,
-            env.observation_space().iter().product::<usize>(),
-            env.action_space().iter().product::<usize>(),
-        )?;
-        GUI::<Alg, Env, Obs, Act>::open(
-            env,
-            agent,
-            config,
-            device,
-        );
-    } else {
-        run_experiment_off_policy::<Alg, Env, Obs, Act>(
-            &name,
-            args.runs,
-            &mut env,
-            config,
-            &device,
-        )?;
-    }
-    Ok(())
-}
-
-fn main() -> Result<()> {
-    let args = Args::parse();
-
     match args.env {
         Env::Pendulum => {
-            do_stuff::<DDPG_SGM<PendulumEnv>, PendulumEnv, _, _>(
-                *PendulumEnv::new(Default::default())?,
-                DDPG_SGM_Config::pendulum(),
-                args.clone(),
+            let alg_config = DDPG_Config::pendulum();
+            let env_config = PendulumConfig::default();
+
+            let mut env = *PendulumEnv::new(env_config)?;
+            let alg = *DDPG::from_config(
+                &device,
+                &alg_config,
+                env.observation_space().iter().product::<usize>(),
+                env.action_space().iter().product::<usize>(),
             )?;
+            if args.gui {
+                // GUI::open(
+                //     env,
+                //     alg,
+                //     alg_config,
+                //     device,
+                // );
+            } else {
+                run_experiment_off_policy::<DDPG, PendulumEnv, _, _>(
+                    &name,
+                    args.runs,
+                    &mut env,
+                    alg_config,
+                    &device,
+                )?;
+            }
         }
 
         Env::Pointenv => {
-            do_stuff::<DDPG_SGM<PointEnv>, PointEnv, _, _>(
-                *PointEnv::new(PointEnvConfig::new(
-                    5,
-                    5,
-                    None,
-                    30,
-                    1.0,
-                    0.5,
-                    0.1,
-                    PointReward::Distance,
-                    42,
-                ))?,
-                DDPG_SGM_Config::pointenv(),
-                args.clone(),
+            let alg_config = DDPG_SGM_Config::pointenv();
+            let env_config = PointEnvConfig::new(
+                5,
+                5,
+                None,
+                30,
+                1.0,
+                0.5,
+                0.1,
+                PointReward::Distance,
+                42,
+            );
+
+            let mut env = *PointEnv::new(env_config)?;
+            let alg = *DDPG_SGM::from_config(
+                &device,
+                &alg_config,
+                env.observation_space().iter().product::<usize>(),
+                env.action_space().iter().product::<usize>(),
             )?;
+            if args.gui {
+                GUI::open(
+                    env,
+                    alg,
+                    alg_config,
+                    device,
+                );
+            } else {
+                run_experiment_off_policy::<DDPG_SGM<PointEnv>, PointEnv, _, _>(
+                    &name,
+                    args.runs,
+                    &mut env,
+                    alg_config,
+                    &device,
+                )?;
+            }
         }
 
         Env::Pointmaze => {
-            do_stuff::<DDPG_SGM<PointMazeEnv>, PointMazeEnv, _, _>(
-                *PointMazeEnv::new(Default::default())?,
-                DDPG_SGM_Config::pointmaze(),
-                args.clone(),
+            let alg_config = DDPG_Config::pointmaze();
+            let env_config = PointMazeConfig::default();
+
+            let mut env = *PointMazeEnv::new(env_config)?;
+            let alg = *DDPG::from_config(
+                &device,
+                &alg_config,
+                env.observation_space().iter().product::<usize>(),
+                env.action_space().iter().product::<usize>(),
             )?;
+            if args.gui {
+                // GUI::open(
+                //     env,
+                //     alg,
+                //     alg_config,
+                //     device,
+                // );
+            } else {
+                run_experiment_off_policy::<DDPG, PointMazeEnv, _, _>(
+                    &name,
+                    args.runs,
+                    &mut env,
+                    alg_config,
+                    &device,
+                )?;
+            }
         }
     }
     Ok(())

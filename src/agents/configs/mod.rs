@@ -5,6 +5,15 @@ pub use ddpg::DDPG_Config;
 pub use ddpg_sgm::DDPG_SGM_Config;
 
 
+use serde::Serialize;
+
+
+#[derive(Clone, Serialize)]
+pub enum DistanceMode {
+    True,
+    Estimated,
+}
+
 pub trait AlgorithmConfig {
     fn max_episodes(&self) -> usize;
     fn training_iterations(&self) -> usize;

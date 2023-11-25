@@ -7,6 +7,7 @@ use {
         agents::{
             Algorithm,
             OffPolicyAlgorithm,
+            SgmAlgorithm,
             configs::{
                 AlgorithmConfig,
                 ActorCriticConfig,
@@ -71,11 +72,10 @@ enum PlayMode {
 
 pub struct GUI<Alg, Env, Obs, Act>
 where
-    Alg: Algorithm + OffPolicyAlgorithm,
-    Alg::Config: AlgorithmConfig + ActorCriticConfig + OffPolicyConfig + SgmConfig + Clone,
-    Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
-    Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
-    Act: Clone + TensorConvertible + Sampleable + 'static,
+    Alg: Algorithm,
+    Alg::Config: AlgorithmConfig,
+    Env: Environment<Action = Act, Observation = Obs> + Renderable,
+    Obs: Clone,
 {
     env: Env,
     agent: Alg,
@@ -83,23 +83,21 @@ where
     device: Device,
 
     run_data: Vec<(RunMode, f64, bool)>,
-    graph: StableGraph<Obs, OrderedFloat<f64>, Undirected>,
-    graph_egui: Graph<Obs, OrderedFloat<f64>, Undirected>,
-
     play_mode: PlayMode,
-    last_graph_constructed_at: usize,
+    egui_graph: Graph<Obs, OrderedFloat<f64>, Undirected>,
 
     render_graph: bool,
+    render_plan: bool,
     render_buffer: bool,
     render_fancy: bool,
 }
 
 impl<Alg, Env, Obs, Act> eframe::App for GUI<Alg, Env, Obs, Act>
 where
-    Alg: Algorithm + OffPolicyAlgorithm + 'static,
-    Alg::Config: AlgorithmConfig + ActorCriticConfig + OffPolicyConfig + SgmConfig + Clone,
+    Alg: Algorithm + OffPolicyAlgorithm + SgmAlgorithm<Env> + 'static,
+    Alg::Config: Clone + AlgorithmConfig + ActorCriticConfig + OffPolicyConfig + SgmConfig,
     Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
-    Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
+    Obs: Clone + Debug + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
     Act: Clone + TensorConvertible + Sampleable + 'static,
 {
     fn update(
@@ -125,15 +123,15 @@ where
         // render the bottom panel in which we show the clicked on node's state
         egui::TopBottomPanel::bottom("inspect").show(ctx, |ui| {
             let node = self
-                .graph_egui
+                .egui_graph
                 .g
                 .node_indices()
-                .find(|e| self.graph_egui.g[*e].selected());
+                .find(|e| self.egui_graph.g[*e].selected());
 
             if let Some(node) = node {
                 ui.label(format!(
                     "Selected node: {:#?}",
-                    self.graph_egui.g[node].data()
+                    self.egui_graph.g[node].data()
                 ));
             } else {
                 ui.label("No node selected.");
@@ -150,6 +148,9 @@ where
                     self.env.render(plot_ui);
                     if self.render_graph {
                         self.render_graph(plot_ui);
+                    }
+                    if self.render_plan {
+                        self.render_plan(plot_ui);
                     }
                     if self.render_buffer {
                         self.render_buffer(plot_ui);
@@ -168,10 +169,10 @@ where
 
 impl<Alg, Env, Obs, Act> GUI<Alg, Env, Obs, Act>
 where
-    Alg: Algorithm + OffPolicyAlgorithm + 'static,
-    Alg::Config: AlgorithmConfig + ActorCriticConfig + OffPolicyConfig + SgmConfig + Clone,
+    Alg: Algorithm + OffPolicyAlgorithm + SgmAlgorithm<Env> + 'static,
+    Alg::Config: Clone + AlgorithmConfig + ActorCriticConfig + OffPolicyConfig + SgmConfig,
     Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
-    Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
+    Obs: Clone + Debug + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
     Act: Clone + TensorConvertible + Sampleable + 'static,
 {
     pub fn open(
@@ -187,13 +188,11 @@ where
             device,
 
             run_data: Vec::new(),
-            graph: StableGraph::default(),
-            graph_egui: Graph::from(&StableGraph::default()),
-
             play_mode: PlayMode::Pause,
-            last_graph_constructed_at: 0,
+            egui_graph: Graph::from(&StableGraph::default()),
 
             render_graph: false,
+            render_plan: false,
             render_buffer: false,
             render_fancy: false,
         };
@@ -209,25 +208,6 @@ where
     }
 
     fn run_gui_logic(&mut self) -> Result<()> {
-        #[allow(clippy::collapsible_if)]
-        // construct the graph every defined number of episodes
-        if self.config.sgm_freq() > 0 && (self.run_data.len() + 1) % self.config.sgm_freq() == 0 {
-            // but take care not to construct it constantly in this edge-case
-            if self.last_graph_constructed_at != self.run_data.len() {
-                self.graph = self
-                    .agent
-                    .replay_buffer()
-                    .construct_sgm(
-                        |o1, o2| <Obs>::distance(o1, o2),
-                        self.config.sgm_maxdist(),
-                        self.config.sgm_tau(),
-                    )
-                    .0;
-                self.graph_egui = Graph::from(&self.graph);
-                self.last_graph_constructed_at = self.run_data.len();
-            }
-        }
-
         // let it play to observe agent behavior!
         match self.play_mode {
             PlayMode::Pause => (),
@@ -276,12 +256,13 @@ where
         &self,
         plot_ui: &mut PlotUi,
     ) {
-        for edge in self.graph.edge_references() {
-            let s1 = &self.graph[edge.source()];
-            let s2 = &self.graph[edge.target()];
+        let graph = self.agent.graph();
+        for edge in graph.edge_references() {
+            let o1 = &graph[edge.source()];
+            let o2 = &graph[edge.target()];
 
-            let s1 = <Obs>::to_vec(s1.clone());
-            let s2 = <Obs>::to_vec(s2.clone());
+            let s1 = <Obs>::to_vec(o1.clone());
+            let s2 = <Obs>::to_vec(o2.clone());
 
             plot_ui.line(
                 Line::new(vec![[s1[0], s1[1]], [s2[0], s2[1]]])
@@ -289,6 +270,26 @@ where
                     .color(Color32::LIGHT_BLUE),
             )
         }
+    }
+
+    fn render_plan(
+        &self,
+        plot_ui: &mut PlotUi,
+    ) {
+        let series = self.agent
+            .plan()
+            .iter()
+            .map(|o| {
+                let obs = <Obs>::to_vec(o.clone());
+                [obs[0], obs[1]]
+            })
+            .collect::<Vec<[f64; 2]>>();
+
+        plot_ui.line(
+            Line::new(series)
+                .width(1.0)
+                .color(Color32::YELLOW),
+        )
     }
 
     fn render_buffer(
@@ -338,13 +339,16 @@ where
         &mut self,
         ui: &mut Ui,
     ) {
+        // construct the egui graph
+        self.egui_graph = Graph::from(self.agent.graph());
+
         let interaction_settings = &SettingsInteraction::new()
             .with_dragging_enabled(true)
             .with_clicking_enabled(true)
             .with_selection_enabled(true);
         let style_settings = &SettingsStyle::new().with_labels_always(true);
         ui.add(
-            &mut GraphView::new(&mut self.graph_egui)
+            &mut GraphView::new(&mut self.egui_graph)
                 .with_styles(style_settings)
                 .with_interactions(interaction_settings),
         );
@@ -437,6 +441,7 @@ where
         ui.separator();
         ui.label("Render Options");
         ui.add(Checkbox::new(&mut self.render_graph, "Show Graph"));
+        ui.add(Checkbox::new(&mut self.render_plan, "Show Plan"));
         ui.add(Checkbox::new(&mut self.render_buffer, "Show Buffer"));
         ui.add(Checkbox::new(&mut self.render_fancy, "Fancy GraphView"));
 

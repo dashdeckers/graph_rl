@@ -4,6 +4,7 @@ use {
             DistanceMeasure,
             TensorConvertible,
             VectorConvertible,
+            GoalAwareObservation,
         },
         line::PointLine,
         state::PointState,
@@ -16,7 +17,7 @@ use {
 
 /// The observation type for the [`PointEnv`](super::point_env::PointEnv) environment
 ///
-/// A [PointObs] is a Goal-Aware observation which consists of the current
+/// A [PointObs] is a [GoalAwareObservation] which consists of the current
 /// [PointState], the goal [PointState] and a list of [PointLine]s which
 /// represent the obstacles in the environment.
 #[derive(Debug, Clone, PartialEq, Eq, Hash)]
@@ -34,6 +35,41 @@ impl From<(PointState, PointState, &[PointLine])> for PointObs {
             goal: value.1,
             obs: value.2.to_vec(),
         }
+    }
+}
+
+impl GoalAwareObservation for PointObs {
+    type State = PointState;
+    type View = Vec<PointLine>;
+
+    /// The observation is the list of [PointLine]s representing the obstacles
+    fn observation(&self) -> &Self::View {
+        &self.obs
+    }
+
+    /// The desired goal is the goal [PointState]
+    fn desired_goal(&self) -> &Self::State {
+        &self.goal
+    }
+
+    /// The achieved goal is the current [PointState]
+    fn achieved_goal(&self) -> &Self::State {
+        &self.state
+    }
+
+    /// Set the observation to the given value
+    fn set_observation(&mut self, value: &Self::View) {
+        self.obs = value.clone();
+    }
+
+    /// Set the desired goal to the given value
+    fn set_desired_goal(&mut self, value: &Self::State) {
+        self.goal = *value;
+    }
+
+    /// Set the achieved goal to the given value
+    fn set_achieved_goal(&mut self, value: &Self::State) {
+        self.state = *value;
     }
 }
 

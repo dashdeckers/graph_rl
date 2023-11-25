@@ -4,14 +4,9 @@ use {
         agents::{
             Algorithm,
             OffPolicyAlgorithm,
-            configs::{
-                AlgorithmConfig,
-                OffPolicyConfig,
-                SgmConfig,
-            },
+            configs::AlgorithmConfig,
         },
         envs::{
-            DistanceMeasure,
             Environment,
             Sampleable,
             TensorConvertible,
@@ -33,8 +28,6 @@ use {
         path::Path,
         fs::{File, create_dir_all},
         io::Write,
-        fmt::Debug,
-        hash::Hash,
     },
     tracing::warn,
 };
@@ -49,10 +42,10 @@ pub fn run_experiment_off_policy<Alg, Env, Obs, Act>(
 ) -> Result<()>
 where
     Env: Environment<Action = Act, Observation = Obs>,
-    Env::Config: Clone + Serialize,
+    Env::Config: Serialize,
     Alg: Algorithm + OffPolicyAlgorithm,
-    Alg::Config: Clone + Serialize + AlgorithmConfig + OffPolicyConfig + SgmConfig,
-    Obs: Debug + Clone + Eq + Hash + TensorConvertible + DistanceMeasure,
+    Alg::Config: Clone + AlgorithmConfig + Serialize,
+    Obs: Clone + TensorConvertible,
     Act: Clone + TensorConvertible + Sampleable,
 {
     let path = Path::new("data/").join(path);
