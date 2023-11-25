@@ -25,7 +25,7 @@ use {
         },
         engines::{
             run_experiment_off_policy,
-            GUI,
+            OffPolicyGUI,
         }
     },
     candle_core::{
@@ -228,7 +228,7 @@ fn main() -> Result<()> {
                 env.action_space().iter().product::<usize>(),
             )?;
             if args.gui {
-                GUI::open(
+                OffPolicyGUI::open(
                     env,
                     alg,
                     alg_config,
