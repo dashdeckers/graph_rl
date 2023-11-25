@@ -19,7 +19,7 @@ use {
     },
 };
 
-pub fn dot<S: Debug>(graph: &StableGraph<S, OrderedFloat<f64>>) -> String {
+pub fn dot<S: Debug>(graph: &StableGraph<S, OrderedFloat<f64>, Undirected>) -> String {
     format!("{:?}", Dot::new(graph)).to_string()
 }
 
