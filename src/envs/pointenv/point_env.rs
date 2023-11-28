@@ -335,7 +335,7 @@ impl Environment for PointEnv {
             .reward
             .compute(&self.state, &self.goal, self.term_radius, &self.walls);
         let terminated = reachable(&self.state, &self.goal, self.term_radius, &self.walls);
-        let truncated = !terminated && (self.timestep == self.timelimit);
+        let truncated = !terminated && (self.timestep >= self.timelimit);
 
         info!(
             concat!(

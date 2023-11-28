@@ -6,11 +6,11 @@ use {
         },
         envs::{
             Environment,
-            Step,
             TensorConvertible,
         },
     },
     anyhow::Result,
+    tracing::warn,
     candle_core::Device,
     rand::{
         thread_rng,
@@ -31,18 +31,16 @@ where
     Obs: Clone + TensorConvertible,
     Act: Clone + TensorConvertible,
 {
-    let do_step = |env: &mut Env, agent: &mut Alg, device: &Device| -> Result<Step<Obs, Act>> {
-        let observation = &<Obs>::to_tensor(env.current_observation(), device)?;
-        let action = agent.actions(observation)?;
-        env.step(<Act>::from_tensor_pp(action))
-    };
+    let state = &<Obs>::to_tensor(env.current_observation(), device)?;
+    let action = agent.actions(state)?;
+    let step = env.step(<Act>::from_tensor_pp(action))?;
 
-    if let Ok(step) = do_step(env, agent, device) {
-        step
-    } else {
+    if step.terminated || step.truncated {
         env.reset(thread_rng().gen::<u64>())?;
-        do_step(env, agent, device)?
-    };
+    }
+
+    let x = (step.reward, step.terminated, step.truncated);
+    warn!("Environment has ticked with {x:?}");
 
     Ok(())
 }
