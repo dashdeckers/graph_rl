@@ -218,6 +218,7 @@ where
                 let mut config = self.config.clone();
                 config.set_max_episodes(1);
                 config.set_initial_random_actions(0);
+                config.set_training_iterations(0);
                 let (mc_returns, successes) = training_loop_off_policy(
                     &mut self.env,
                     &mut self.agent,
