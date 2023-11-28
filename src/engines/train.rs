@@ -48,8 +48,7 @@ where
         env.reset(rng.gen::<u64>())?;
 
         loop {
-            let observation = env.current_observation();
-            let state = &<Obs>::to_tensor(observation, device)?;
+            let state = &<Obs>::to_tensor(env.current_observation(), device)?;
 
             // select an action, or randomly sample one
             let action = &if steps_taken < config.initial_random_actions() {
