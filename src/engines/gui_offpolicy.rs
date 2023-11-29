@@ -1,6 +1,6 @@
 use {
     super::{
-        tick,
+        tick_off_policy,
         training_loop_off_policy,
     },
     crate::{
@@ -158,7 +158,7 @@ where
         match self.play_mode {
             PlayMode::Pause => (),
             PlayMode::Ticks => {
-                tick(&mut self.env, &mut self.agent, &self.device)?;
+                tick_off_policy(&mut self.env, &mut self.agent, &self.device)?;
             }
             PlayMode::Episodes => {
                 let mut config = self.config.clone();

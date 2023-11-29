@@ -1,6 +1,7 @@
 use {
     super::{
         tick,
+        tick_off_policy,
         training_loop_off_policy,
     },
     crate::{
@@ -66,7 +67,8 @@ use {
 
 enum PlayMode {
     Pause,
-    Ticks,
+    TicksStatic,
+    TicksPlastic,
     Episodes,
 }
 
@@ -211,8 +213,11 @@ where
         // let it play to observe agent behavior!
         match self.play_mode {
             PlayMode::Pause => (),
-            PlayMode::Ticks => {
+            PlayMode::TicksStatic => {
                 tick(&mut self.env, &mut self.agent, &self.device)?;
+            }
+            PlayMode::TicksPlastic => {
+                tick_off_policy(&mut self.env, &mut self.agent, &self.device)?;
             }
             PlayMode::Episodes => {
                 let mut config = self.config.clone();
@@ -485,8 +490,11 @@ where
             if ui.add(Button::new("Pause")).clicked() {
                 self.play_mode = PlayMode::Pause;
             };
-            if ui.add(Button::new("Play(t)")).clicked() {
-                self.play_mode = PlayMode::Ticks;
+            if ui.add(Button::new("Play(ts)")).clicked() {
+                self.play_mode = PlayMode::TicksStatic;
+            };
+            if ui.add(Button::new("Play(tp)")).clicked() {
+                self.play_mode = PlayMode::TicksPlastic;
             };
             if ui.add(Button::new("Play(e)")).clicked() {
                 self.play_mode = PlayMode::Episodes;
