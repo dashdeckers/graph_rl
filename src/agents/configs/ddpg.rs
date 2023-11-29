@@ -56,40 +56,25 @@ impl DDPG_Config {
 
     pub fn pointenv() -> Self {
         Self {
-            actor_learning_rate: 0.0003,     //1e-4,
-            critic_learning_rate: 0.0003,    //1e-3,
-            gamma: 1.0,                      //0.99,
-            tau: 0.005,                      //0.005,
-            hidden_1_size: 256,              //400,
-            hidden_2_size: 256,              //300,
-            replay_buffer_capacity: 100_000, //100,
-            training_batch_size: 256,         //100,
-            max_episodes: 200,
-            training_iterations: 200,      //200,
-            initial_random_actions: 0, //100,
+            actor_learning_rate: 1e-4, // 0.0003
+            critic_learning_rate: 1e-3, // 0.0003
+            gamma: 1.0, // 0.99
+            tau: 0.005,
+            hidden_1_size: 400, // 256
+            hidden_2_size: 300, // 256
+            replay_buffer_capacity: 10_000,
+            training_batch_size: 256,
+            max_episodes: 50,
+            training_iterations: 100,
+            initial_random_actions: 1000,
             ou_mu: 0.0,
-            ou_theta: 0.15, //2.0, //0.15,
-            ou_sigma: 0.2,  //0.8, //0.1,
+            ou_theta: 0.15,
+            ou_sigma: 0.2,
         }
     }
 
     pub fn pointmaze() -> Self {
-        Self {
-            actor_learning_rate: 0.0003,     //1e-4,
-            critic_learning_rate: 0.0003,    //1e-3,
-            gamma: 1.0,                      //0.99,
-            tau: 0.005,                      //0.005,
-            hidden_1_size: 256,              //400,
-            hidden_2_size: 256,              //300,
-            replay_buffer_capacity: 100_000, //100,
-            training_batch_size: 64,         //100,
-            max_episodes: 30,
-            training_iterations: 30,      //200,
-            initial_random_actions: 1000, //100,
-            ou_mu: 0.0,
-            ou_theta: 0.15, //2.0, //0.15,
-            ou_sigma: 0.1,  //0.8, //0.1,
-        }
+        Self::pointenv()
     }
 }
 
