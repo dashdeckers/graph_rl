@@ -56,16 +56,16 @@ impl DDPG_Config {
 
     pub fn pointenv() -> Self {
         Self {
-            actor_learning_rate: 1e-4, // 0.0003
-            critic_learning_rate: 1e-3, // 0.0003
-            gamma: 1.0, // 0.99
+            actor_learning_rate: 0.0003,
+            critic_learning_rate: 0.0003,
+            gamma: 1.0,
             tau: 0.005,
-            hidden_1_size: 400, // 256
-            hidden_2_size: 300, // 256
-            replay_buffer_capacity: 10_000,
-            training_batch_size: 256,
-            max_episodes: 50,
-            training_iterations: 100,
+            hidden_1_size: 256,
+            hidden_2_size: 256,
+            replay_buffer_capacity: 100_000,
+            training_batch_size: 64,
+            max_episodes: 300,
+            training_iterations: 30,
             initial_random_actions: 1000,
             ou_mu: 0.0,
             ou_theta: 0.15,
