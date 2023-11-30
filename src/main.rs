@@ -4,15 +4,12 @@ use {
         agents::{
             DDPG,
             DDPG_SGM,
-            Algorithm,
             configs::{
                 DDPG_Config,
                 DDPG_SGM_Config,
             },
         },
         envs::{
-            Environment,
-
             PendulumEnv,
             PendulumConfig,
 
@@ -182,17 +179,9 @@ fn main() -> Result<()> {
             let alg_config = DDPG_Config::pendulum();
             let env_config = PendulumConfig::default();
 
-            let mut env = *PendulumEnv::new(env_config)?;
-            let alg = *DDPG::from_config(
-                &device,
-                &alg_config,
-                env.observation_space().iter().product::<usize>(),
-                env.action_space().iter().product::<usize>(),
-            )?;
             if args.gui {
-                OffPolicyGUI::open(
-                    env,
-                    alg,
+                OffPolicyGUI::<DDPG, PendulumEnv, _, _>::open(
+                    env_config,
                     alg_config,
                     device,
                 );
@@ -200,7 +189,7 @@ fn main() -> Result<()> {
                 run_experiment_off_policy::<DDPG, PendulumEnv, _, _>(
                     &name,
                     args.runs,
-                    &mut env,
+                    env_config,
                     alg_config,
                     &device,
                 )?;
@@ -221,17 +210,9 @@ fn main() -> Result<()> {
                 42,
             );
 
-            let mut env = *PointEnv::new(env_config)?;
-            let alg = *DDPG_SGM::<PointEnv>::from_config(
-                &device,
-                &alg_config,
-                env.observation_space().iter().product::<usize>(),
-                env.action_space().iter().product::<usize>(),
-            )?;
             if args.gui {
-                SgmGUI::open(
-                    env,
-                    alg,
+                SgmGUI::<DDPG_SGM<PointEnv>, PointEnv, _, _>::open(
+                    env_config,
                     alg_config,
                     device,
                 );
@@ -239,7 +220,7 @@ fn main() -> Result<()> {
                 run_experiment_off_policy::<DDPG_SGM<PointEnv>, PointEnv, _, _>(
                     &name,
                     args.runs,
-                    &mut env,
+                    env_config,
                     alg_config,
                     &device,
                 )?;
@@ -250,17 +231,9 @@ fn main() -> Result<()> {
             let alg_config = DDPG_Config::pointmaze();
             let env_config = PointMazeConfig::default();
 
-            let mut env = *PointMazeEnv::new(env_config)?;
-            let alg = *DDPG::from_config(
-                &device,
-                &alg_config,
-                env.observation_space().iter().product::<usize>(),
-                env.action_space().iter().product::<usize>(),
-            )?;
             if args.gui {
-                OffPolicyGUI::open(
-                    env,
-                    alg,
+                OffPolicyGUI::<DDPG, PointMazeEnv, _, _>::open(
+                    env_config,
                     alg_config,
                     device,
                 );
@@ -268,7 +241,7 @@ fn main() -> Result<()> {
                 run_experiment_off_policy::<DDPG, PointMazeEnv, _, _>(
                     &name,
                     args.runs,
-                    &mut env,
+                    env_config,
                     alg_config,
                     &device,
                 )?;

@@ -74,9 +74,9 @@ enum PlayMode {
 
 pub struct SgmGUI<Alg, Env, Obs, Act>
 where
+    Env: Environment<Action = Act, Observation = Obs> + Renderable,
     Alg: Algorithm,
     Alg::Config: AlgorithmConfig,
-    Env: Environment<Action = Act, Observation = Obs> + Renderable,
     Obs: Clone,
 {
     env: Env,
@@ -96,9 +96,10 @@ where
 
 impl<Alg, Env, Obs, Act> eframe::App for SgmGUI<Alg, Env, Obs, Act>
 where
+    Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
+    Env::Config: Clone,
     Alg: Algorithm + OffPolicyAlgorithm + SgmAlgorithm<Env> + 'static,
     Alg::Config: Clone + AlgorithmConfig + ActorCriticConfig + OffPolicyConfig + SgmConfig,
-    Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
     Obs: Clone + Debug + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
     Act: Clone + TensorConvertible + Sampleable + 'static,
 {
@@ -171,22 +172,30 @@ where
 
 impl<Alg, Env, Obs, Act> SgmGUI<Alg, Env, Obs, Act>
 where
+    Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
+    Env::Config: Clone,
     Alg: Algorithm + OffPolicyAlgorithm + SgmAlgorithm<Env> + 'static,
     Alg::Config: Clone + AlgorithmConfig + ActorCriticConfig + OffPolicyConfig + SgmConfig,
-    Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
     Obs: Clone + Debug + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
     Act: Clone + TensorConvertible + Sampleable + 'static,
 {
     pub fn open(
-        env: Env,
-        agent: Alg,
-        config: Alg::Config,
+        env_config: Env::Config,
+        alg_config: Alg::Config,
         device: Device,
     ) {
+        let env = *Env::new(env_config.clone()).unwrap();
+        let agent = *Alg::from_config(
+            &device,
+            &alg_config,
+            env.observation_space().iter().product::<usize>(),
+            env.action_space().iter().product::<usize>(),
+        ).unwrap();
+
         let gui = Self {
             env,
             agent,
-            config,
+            config: alg_config,
             device,
 
             run_data: Vec::new(),

@@ -32,27 +32,37 @@ use {
     tracing::warn,
 };
 
-
+/// Run an experiment with an off-policy algorithm.
+///
+/// # Arguments
+///
+/// * `path` - The path to the directory where the collected data will be stored.
+/// * `n_runs` - The number of repeated, identical runs to perform.
+/// * `env_config` - The configuration for the environment.
+/// * `alg_config` - The configuration for the algorithm.
+/// * `device` - The device to run the experiment on.
 pub fn run_experiment_off_policy<Alg, Env, Obs, Act>(
     path: &dyn AsRef<Path>,
     n_runs: usize,
-    env: &mut Env,
-    config: Alg::Config,
+    env_config: Env::Config,
+    alg_config: Alg::Config,
     device: &Device,
 ) -> Result<()>
 where
     Env: Environment<Action = Act, Observation = Obs>,
-    Env::Config: Serialize,
+    Env::Config: Clone + Serialize,
     Alg: Algorithm + OffPolicyAlgorithm,
-    Alg::Config: Clone + AlgorithmConfig + Serialize,
+    Alg::Config: Clone + Serialize + AlgorithmConfig,
     Obs: Clone + TensorConvertible,
     Act: Clone + TensorConvertible + Sampleable,
 {
     let path = Path::new("data/").join(path);
 
-    if path.join("config_algorithm.ron").try_exists()? {
+    let alg_config_exists = path.join("config_algorithm.ron").try_exists()?;
+    let env_config_exists = path.join("config_environment.ron").try_exists()?;
+    if alg_config_exists || env_config_exists {
         Err(anyhow!(concat!(
-            "Algorithm config already exists in this directory!\n",
+            "Config files already exist in this directory!\n",
             "I am assuming I would be overwriting existing data!",
         )))?
     }
@@ -61,30 +71,31 @@ where
 
     File::create(path.join("config_algorithm.ron"))?.write_all(
         ron::ser::to_string_pretty(
-            &config,
+            &alg_config,
             ron::ser::PrettyConfig::default(),
         )?.as_bytes()
     )?;
 
     File::create(path.join("config_environment.ron"))?.write_all(
         ron::ser::to_string_pretty(
-            &env.config(),
+            &env_config,
             ron::ser::PrettyConfig::default(),
         )?.as_bytes()
     )?;
 
     for n in 0..n_runs {
         warn!("Collecting data, run {n}/{n_runs}");
+        let mut env = *Env::new(env_config.clone())?;
         let mut agent = *Alg::from_config(
             device,
-            &config,
+            &alg_config,
             env.observation_space().iter().product::<usize>(),
             env.action_space().iter().product::<usize>(),
         )?;
         let (mc_returns, successes) = training_loop_off_policy(
-            env,
+            &mut env,
             &mut agent,
-            config.clone(),
+            alg_config.clone(),
             device,
         )?;
 

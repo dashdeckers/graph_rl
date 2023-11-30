@@ -22,6 +22,14 @@ use {
 };
 
 
+/// Train a single run on an environment with an off-policy algorithm.
+///
+/// # Arguments
+///
+/// * `env` - The environment to train on.
+/// * `agent` - The agent to train with.
+/// * `config` - The configuration for the algorithm.
+/// * `device` - The device to run on.
 pub fn training_loop_off_policy<Alg, Env, Obs, Act>(
     env: &mut Env,
     agent: &mut Alg,

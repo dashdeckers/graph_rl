@@ -1,8 +1,8 @@
-mod ddpg;
-mod ddpg_sgm;
+mod conf_ddpg;
+mod conf_ddpg_sgm;
 
-pub use ddpg::DDPG_Config;
-pub use ddpg_sgm::DDPG_SGM_Config;
+pub use conf_ddpg::DDPG_Config;
+pub use conf_ddpg_sgm::DDPG_SGM_Config;
 
 
 use serde::Serialize;

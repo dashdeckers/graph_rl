@@ -23,6 +23,13 @@ use {
 };
 
 
+/// Run a single tick / step of an environment with any algorithm.
+///
+/// # Arguments
+///
+/// * `env` - The environment to step in.
+/// * `agent` - The agent to step with.
+/// * `device` - The device to run on.
 pub fn tick<Alg, Env, Obs, Act>(
     env: &mut Env,
     agent: &mut Alg,
@@ -49,7 +56,15 @@ where
     Ok(())
 }
 
-
+/// Run a single tick / step of an environment with an off-policy algorithm.
+///
+/// This function also calls `remember` on the agent.
+///
+/// # Arguments
+///
+/// * `env` - The environment to step in.
+/// * `agent` - The agent to step with.
+/// * `device` - The device to run on.
 pub fn tick_off_policy<Alg, Env, Obs, Act>(
     env: &mut Env,
     agent: &mut Alg,
