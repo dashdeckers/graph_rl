@@ -21,6 +21,7 @@ use {
             PointMazeConfig,
         },
         engines::{
+            setup_logging,
             run_experiment_off_policy,
             OffPolicyGUI,
             SgmGUI,
@@ -37,59 +38,7 @@ use {
     },
     std::fmt::Debug,
     tracing::Level,
-    std::{
-        fs::{File, create_dir_all},
-        path::Path,
-        sync::Arc,
-    },
-    tracing_subscriber::{
-        fmt::{
-            layer,
-            writer::MakeWriterExt,
-        },
-        layer::SubscriberExt,
-        util::SubscriberInitExt,
-    },
 };
-
-pub fn setup_logging(
-    path: &dyn AsRef<Path>,
-    min_level_file: Option<Level>,
-    // min_level_stdout: Option<Level>,
-) -> Result<()> {
-    let path = Path::new("data/").join(path);
-    create_dir_all(path.as_path())?;
-    let log_file = Arc::new(File::create(path.join("debug.log"))?);
-
-    tracing_subscriber::registry()
-        // File writer
-        .with(
-            layer()
-                .with_writer(log_file.with_max_level(match min_level_file {
-                    Some(level) => level,
-                    None => Level::INFO,
-                }))
-                .with_ansi(false),
-        )
-        // // Stdout writer
-        // .with(
-        //     layer()
-        //         .with_writer(std::io::stdout.with_max_level(match min_level_stdout {
-        //             Some(level) => level,
-        //             None => Level::INFO,
-        //         }))
-        //         .compact()
-        //         .pretty()
-        //         .with_line_number(true)
-        //         .with_thread_ids(false)
-        //         .with_target(false),
-        // )
-        // Create and set Subscriber
-        .init();
-
-    Ok(())
-}
-
 
 #[derive(ValueEnum, Debug, Clone)]
 pub enum Env {
@@ -136,7 +85,7 @@ pub struct Args {
     #[arg(long, value_enum, default_value_t=Loglevel::None)]
     pub log: Loglevel,
 
-    /// The environment to run.
+    /// The environment to run on.
     #[arg(long, value_enum)]
     pub env: Env,
 
@@ -144,9 +93,9 @@ pub struct Args {
     #[arg(long)]
     pub gui: bool,
 
-    /// File to write the results to.
+    /// Experiment name to use for logging / collecting data.
     #[arg(long)]
-    pub output: Option<String>,
+    pub name: Option<String>,
 
     /// Number of runs to collect data on.
     #[arg(long, default_value_t=10)]
@@ -156,16 +105,15 @@ pub struct Args {
 fn main() -> Result<()> {
     let args = Args::parse();
 
-    let name = if let Some(name) = args.output.clone() {
+    let experiment_name = if let Some(name) = args.name.clone() {
         name
     } else {
         args.env.name().to_owned()
     };
 
     setup_logging(
-        &name,
+        &experiment_name,
         args.log.level(),
-        // args.log.level(),
     )?;
 
     let device = if args.cpu {
@@ -187,7 +135,7 @@ fn main() -> Result<()> {
                 );
             } else {
                 run_experiment_off_policy::<DDPG, PendulumEnv, _, _>(
-                    &name,
+                    &experiment_name,
                     args.runs,
                     env_config,
                     alg_config,
@@ -218,7 +166,7 @@ fn main() -> Result<()> {
                 );
             } else {
                 run_experiment_off_policy::<DDPG_SGM<PointEnv>, PointEnv, _, _>(
-                    &name,
+                    &experiment_name,
                     args.runs,
                     env_config,
                     alg_config,
@@ -239,7 +187,7 @@ fn main() -> Result<()> {
                 );
             } else {
                 run_experiment_off_policy::<DDPG, PointMazeEnv, _, _>(
-                    &name,
+                    &experiment_name,
                     args.runs,
                     env_config,
                     alg_config,

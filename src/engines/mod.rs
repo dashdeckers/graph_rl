@@ -35,3 +35,46 @@ pub use tick::{tick, tick_off_policy};
 
 pub use gui_offpolicy::OffPolicyGUI;
 pub use gui_sgm::SgmGUI;
+
+
+use {
+    anyhow::Result,
+    tracing::Level,
+    std::{
+        fs::{File, create_dir_all},
+        path::Path,
+        sync::Arc,
+    },
+    tracing_subscriber::{
+        fmt::{
+            layer,
+            writer::MakeWriterExt,
+        },
+        layer::SubscriberExt,
+        util::SubscriberInitExt,
+    },
+};
+
+pub fn setup_logging(
+    path: &dyn AsRef<Path>,
+    min_level: Option<Level>,
+) -> Result<()> {
+    let path = Path::new("data/").join(path);
+    create_dir_all(path.as_path())?;
+    let log_file = Arc::new(File::create(path.join("debug.log"))?);
+
+    tracing_subscriber::registry()
+        // File writer
+        .with(
+            layer()
+                .with_writer(log_file.with_max_level(match min_level {
+                    Some(level) => level,
+                    None => Level::INFO,
+                }))
+                .with_ansi(false),
+        )
+        // Create and set Subscriber
+        .init();
+
+    Ok(())
+}
