@@ -15,8 +15,18 @@ use {
 
 unzip_n!(6);
 
+/// A transition in the replay buffer.
+///
+/// # Fields
+///
+/// * `state` - The state tensor.
+/// * `action` - The action tensor.
+/// * `reward` - The reward tensor.
+/// * `next_state` - The next state tensor.
+/// * `terminated` - The terminated tensor.
+/// * `truncated` - The truncated tensor.
 #[derive(Clone)]
-struct Transition {
+pub struct Transition {
     state: Tensor,
     action: Tensor,
     reward: Tensor,
@@ -44,12 +54,22 @@ impl Transition {
     }
 }
 
+/// A replay buffer for off-policy algorithms.
+///
+/// The replay buffer is implemented as a simple ring buffer / VecDeque.
+///
+/// # Fields
+///
+/// * `buffer` - The buffer of transitions.
+/// * `capacity` - The capacity of the buffer.
+/// * `size` - The current size of the buffer.
 pub struct ReplayBuffer {
     buffer: VecDeque<Transition>,
     capacity: usize,
     size: usize,
 }
 impl ReplayBuffer {
+    /// Create a new replay buffer with the given capacity.
     pub fn new(capacity: usize) -> Self {
         Self {
             buffer: VecDeque::with_capacity(capacity),
@@ -58,10 +78,15 @@ impl ReplayBuffer {
         }
     }
 
+    /// Check if the buffer is full.
     pub fn is_full(&self) -> bool {
         self.size == self.capacity
     }
 
+    /// Push a transition into the buffer.
+    ///
+    /// If the buffer is full, the oldest transition is removed to make room for
+    /// the new transition.
     pub fn push(
         &mut self,
         state: &Tensor,
@@ -81,6 +106,9 @@ impl ReplayBuffer {
         ));
     }
 
+    /// Sample a random batch of transitions from the buffer.
+    ///
+    /// When the size of the buffer is less than the batch size, `None` is returned.
     #[allow(clippy::type_complexity)]
     pub fn random_batch(
         &self,
@@ -126,6 +154,10 @@ impl ReplayBuffer {
         }
     }
 
+    /// Get all states in the buffer as `Observation`s.
+    ///
+    /// This collects all the [`Tensor`] states in the buffer and returns them
+    /// as `Observation`s.
     pub fn all_states<S: TensorConvertible>(&self) -> Vec<S> {
         let mut states: Vec<S> = self
             .buffer

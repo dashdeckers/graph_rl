@@ -1,3 +1,15 @@
+//! Sparse Graphical Model (SGM) implementation
+//!
+//! This module contains the implementation of Sparse Graphical Model (SGM) as
+//! described in the paper "Sparse Graphical Memory for Robust Planning" by
+//! Laskin et al. (2020).
+//!
+//! The SGM is implemented as a component that can be used in any off-policy
+//! algorithm, by simply providing a method on top of a [`ReplayBuffer`].
+//!
+//! The SGM is used in the [`crate::agents::DDPG_SGM`] algorithm.
+
+
 use {
     crate::{
         envs::TensorConvertible,
@@ -19,11 +31,19 @@ use {
     },
 };
 
+/// Return a dotviz representation of the given graph.
 pub fn dot<S: Debug>(graph: &StableGraph<S, OrderedFloat<f64>, Undirected>) -> String {
     format!("{:?}", Dot::new(graph)).to_string()
 }
 
 impl ReplayBuffer {
+    /// Construct a sparse graph from the replay buffer.
+    ///
+    /// # Arguments
+    ///
+    /// * `d` - The distance function.
+    /// * `maxdist` - The maximum distance between two nodes in the graph.
+    /// * `tau` - The tau parameter to vary the graph sparsity.
     pub fn construct_sgm<S>(
         &self,
         d: fn(&S, &S) -> f64,
