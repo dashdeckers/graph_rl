@@ -309,6 +309,13 @@ where
     Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation + DistanceMeasure,
     <Env::Observation as GoalAwareObservation>::State: Clone + Debug + Eq + Hash + TensorConvertible + DistanceMeasure,
 {
+    fn set_from_config(&mut self, config: &Self::Config) {
+        self.dist_mode = config.distance_mode;
+        self.sgm_close_enough = config.sgm_close_enough;
+        self.sgm_maxdist = config.sgm_maxdist;
+        self.sgm_tau = config.sgm_tau;
+    }
+
     fn graph(&self) -> &StableGraph<Env::Observation, OrderedFloat<f64>, Undirected> {
         &self.sgm
     }

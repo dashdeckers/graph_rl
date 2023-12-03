@@ -127,6 +127,9 @@ impl SgmConfig for DDPG_SGM_Config {
     fn sgm_tau(&self) -> f64 {
         self.sgm_tau
     }
+    fn sgm_dist_mode(&self) -> DistanceMode {
+        self.distance_mode
+    }
     fn set_sgm_close_enough(&mut self, sgm_close_enough: f64) {
         self.sgm_close_enough = sgm_close_enough;
     }
@@ -135,5 +138,8 @@ impl SgmConfig for DDPG_SGM_Config {
     }
     fn set_sgm_tau(&mut self, tau: f64) {
         self.sgm_tau = tau;
+    }
+    fn set_sgm_dist_mode(&mut self, dist_mode: DistanceMode) {
+        self.distance_mode = dist_mode;
     }
 }

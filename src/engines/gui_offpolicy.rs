@@ -29,6 +29,7 @@ use {
         Checkbox,
         Color32,
         Slider,
+        Label,
         Ui,
     },
     egui_plot::{
@@ -260,48 +261,22 @@ where
         let mut train_iterations = self.config.training_iterations();
         let mut init_random_actions = self.config.initial_random_actions();
 
-        let mut actor_lr = self.config.actor_lr();
-        let mut critic_lr = self.config.critic_lr();
-        let mut gamma = self.config.gamma();
-        let mut tau = self.config.tau();
+        let actor_lr = self.config.actor_lr();
+        let critic_lr = self.config.critic_lr();
+        let gamma = self.config.gamma();
+        let tau = self.config.tau();
 
-        let mut buffer_size = self.config.replay_buffer_capacity();
-        let mut batch_size = self.config.training_batch_size();
+        let buffer_size = self.config.replay_buffer_capacity();
+        let batch_size = self.config.training_batch_size();
 
         ui.separator();
         ui.label("DDPG Options");
-        ui.add(
-            Slider::new(&mut actor_lr, 0.00001..=0.1)
-                .logarithmic(true)
-                .fixed_decimals(5)
-                .text("Actor LR"),
-        );
-        ui.add(
-            Slider::new(&mut critic_lr, 0.00001..=0.1)
-                .logarithmic(true)
-                .fixed_decimals(5)
-                .text("Critic LR"),
-        );
-        ui.add(
-            Slider::new(&mut gamma, 0.0..=1.0)
-                .step_by(0.01)
-                .text("Gamma"),
-        );
-        ui.add(
-            Slider::new(&mut tau, 0.001..=1.0)
-                .logarithmic(true)
-                .text("Tau"),
-        );
-        ui.add(
-            Slider::new(&mut buffer_size, 10..=100_000)
-                .logarithmic(true)
-                .text("Buffer size"),
-        );
-        ui.add(
-            Slider::new(&mut batch_size, 1..=1024)
-                .step_by(1.0)
-                .text("Batch size"),
-        );
+        ui.add(Label::new(format!("Actor LR: {actor_lr:#.5}")));
+        ui.add(Label::new(format!("Critic LR: {critic_lr:#.5}")));
+        ui.add(Label::new(format!("Gamma: {gamma}")));
+        ui.add(Label::new(format!("Tau: {tau}")));
+        ui.add(Label::new(format!("Buffer size: {buffer_size}")));
+        ui.add(Label::new(format!("Batch size: {batch_size}")));
         ui.add(
             Slider::new(&mut train_iterations, 1..=200)
                 .step_by(1.0)
@@ -323,12 +298,9 @@ where
                 self.reset_agent().unwrap();
             };
 
-            let agent_mode = match self.agent.run_mode() {
-                RunMode::Test => "Test",
-                RunMode::Train => "Train",
-            };
+            let agent_mode = self.agent.run_mode();
             if ui
-                .add(Button::new(format!("Toggle Mode ({agent_mode})")))
+                .add(Button::new(format!("Toggle TrainMode ({agent_mode})")))
                 .clicked()
             {
                 self.agent.set_run_mode(match self.agent.run_mode() {
@@ -339,7 +311,7 @@ where
         });
 
         ui.separator();
-        ui.label("Run Agent");
+        ui.label("Train Agent");
         ui.add(
             Slider::new(&mut max_episodes, 1..=501)
                 .step_by(1.0)
@@ -350,7 +322,7 @@ where
         };
 
         ui.separator();
-        ui.label("Watch Agent");
+        ui.label("Test Agent");
         ui.horizontal(|ui| {
             if ui.add(Button::new("Pause")).clicked() {
                 self.play_mode = PlayMode::Pause;
@@ -366,13 +338,5 @@ where
         self.config.set_max_episodes(max_episodes);
         self.config.set_training_iterations(train_iterations);
         self.config.set_initial_random_actions(init_random_actions);
-
-        self.config.set_actor_lr(actor_lr);
-        self.config.set_critic_lr(critic_lr);
-        self.config.set_gamma(gamma);
-        self.config.set_tau(tau);
-
-        self.config.set_replay_buffer_capacity(buffer_size);
-        self.config.set_training_batch_size(batch_size);
     }
 }

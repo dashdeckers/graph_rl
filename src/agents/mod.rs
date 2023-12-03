@@ -59,4 +59,5 @@ pub trait SgmAlgorithm<Env: Environment>: Algorithm {
     fn plan(&self) -> &Vec<Env::Observation>;
     fn graph(&self) -> &StableGraph<Env::Observation, OrderedFloat<f64>, Undirected>;
     fn construct_graph(&mut self);
+    fn set_from_config(&mut self, config: &Self::Config);
 }
