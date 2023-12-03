@@ -92,6 +92,8 @@ where
     render_plan: bool,
     render_buffer: bool,
     render_fancy: bool,
+
+    tick_slowdown: u64,
 }
 
 impl<Alg, Env, Obs, Act> eframe::App for SgmGUI<Alg, Env, Obs, Act>
@@ -206,11 +208,13 @@ where
             render_plan: false,
             render_buffer: false,
             render_fancy: false,
+
+            tick_slowdown: 0,
         };
         eframe::run_native(
             "Actor-Critic Graph-Learner",
             eframe::NativeOptions {
-                min_window_size: Some(egui::vec2(800.0, 600.0)),
+                min_window_size: Some(egui::vec2(800.0 * 1.2, 600.0 * 1.2)),
                 ..Default::default()
             },
             Box::new(|_| Box::new(gui)),
@@ -224,9 +228,11 @@ where
             PlayMode::Pause => (),
             PlayMode::TicksStatic => {
                 tick(&mut self.env, &mut self.agent, &self.device)?;
+                thread::sleep(time::Duration::from_millis(self.tick_slowdown));
             }
             PlayMode::TicksPlastic => {
                 tick_off_policy(&mut self.env, &mut self.agent, &self.device)?;
+                thread::sleep(time::Duration::from_millis(self.tick_slowdown));
             }
             PlayMode::Episodes => {
                 let mut config = self.config.clone();
@@ -483,7 +489,7 @@ where
         });
 
         ui.separator();
-        ui.label("Run Agent");
+        ui.label("Train Agent");
         ui.add(
             Slider::new(&mut max_episodes, 1..=501)
                 .step_by(1.0)
@@ -494,7 +500,7 @@ where
         };
 
         ui.separator();
-        ui.label("Watch Agent");
+        ui.label("Test Agent");
         ui.horizontal(|ui| {
             if ui.add(Button::new("Pause")).clicked() {
                 self.play_mode = PlayMode::Pause;
@@ -509,6 +515,11 @@ where
                 self.play_mode = PlayMode::Episodes;
             };
         });
+        ui.add(
+            Slider::new(&mut self.tick_slowdown, 0..=501)
+                .step_by(1.0)
+                .text("Set Tick Slowdown"),
+        );
 
         self.config.set_max_episodes(max_episodes);
         self.config.set_training_iterations(train_iterations);
