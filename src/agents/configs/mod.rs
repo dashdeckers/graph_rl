@@ -6,12 +6,22 @@ pub use conf_ddpg_sgm::DDPG_SGM_Config;
 
 
 use serde::Serialize;
+use std::fmt::Display;
 
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Copy, Serialize)]
 pub enum DistanceMode {
     True,
     Estimated,
+}
+
+impl Display for DistanceMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DistanceMode::True => write!(f, "True"),
+            DistanceMode::Estimated => write!(f, "Estimated"),
+        }
+    }
 }
 
 pub trait AlgorithmConfig {
@@ -42,7 +52,9 @@ pub trait SgmConfig: AlgorithmConfig {
     fn sgm_close_enough(&self) -> f64;
     fn sgm_maxdist(&self) -> f64;
     fn sgm_tau(&self) -> f64;
+    fn sgm_dist_mode(&self) -> DistanceMode;
     fn set_sgm_close_enough(&mut self, close_enough: f64);
     fn set_sgm_maxdist(&mut self, maxdist: f64);
     fn set_sgm_tau(&mut self, tau: f64);
+    fn set_sgm_dist_mode(&mut self, dist_mode: DistanceMode);
 }
