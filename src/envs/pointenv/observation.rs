@@ -42,9 +42,9 @@ impl GoalAwareObservation for PointObs {
     type State = PointState;
     type View = Vec<PointLine>;
 
-    /// The observation is the list of [PointLine]s representing the obstacles
-    fn observation(&self) -> &Self::View {
-        &self.obs
+    /// The achieved goal is the current [PointState]
+    fn achieved_goal(&self) -> &Self::State {
+        &self.state
     }
 
     /// The desired goal is the goal [PointState]
@@ -52,14 +52,14 @@ impl GoalAwareObservation for PointObs {
         &self.goal
     }
 
-    /// The achieved goal is the current [PointState]
-    fn achieved_goal(&self) -> &Self::State {
-        &self.state
+    /// The observation is the list of [PointLine]s representing the obstacles
+    fn observation(&self) -> &Self::View {
+        &self.obs
     }
 
-    /// Set the observation to the given value
-    fn set_observation(&mut self, value: &Self::View) {
-        self.obs = value.clone();
+    /// Set the achieved goal to the given value
+    fn set_achieved_goal(&mut self, value: &Self::State) {
+        self.state = *value;
     }
 
     /// Set the desired goal to the given value
@@ -67,9 +67,23 @@ impl GoalAwareObservation for PointObs {
         self.goal = *value;
     }
 
-    /// Set the achieved goal to the given value
-    fn set_achieved_goal(&mut self, value: &Self::State) {
-        self.state = *value;
+    /// Set the observation to the given value
+    fn set_observation(&mut self, value: &Self::View) {
+        self.obs = value.clone();
+    }
+
+    /// Create a new [PointObs] from the given observation, desired goal and
+    /// achieved goal
+    fn new(
+        achieved_goal: &Self::State,
+        desired_goal: &Self::State,
+        observation: &Self::View,
+    ) -> Self {
+        Self {
+            state: *achieved_goal,
+            goal: *desired_goal,
+            obs: observation.clone(),
+        }
     }
 }
 

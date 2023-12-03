@@ -49,13 +49,19 @@ pub trait GoalAwareObservation {
     type State;
     type View;
 
-    fn observation(&self) -> &Self::View;
-    fn desired_goal(&self) -> &Self::State;
-    fn achieved_goal(&self) -> &Self::State;
+    fn new(
+        achieved_goal: &Self::State,
+        desired_goal: &Self::State,
+        observation: &Self::View,
+    ) -> Self;
 
-    fn set_observation(&mut self, value: &Self::View);
-    fn set_desired_goal(&mut self, value: &Self::State);
+    fn achieved_goal(&self) -> &Self::State;
+    fn desired_goal(&self) -> &Self::State;
+    fn observation(&self) -> &Self::View;
+
     fn set_achieved_goal(&mut self, value: &Self::State);
+    fn set_desired_goal(&mut self, value: &Self::State);
+    fn set_observation(&mut self, value: &Self::View);
 }
 
 pub trait Sampleable {
@@ -67,8 +73,8 @@ pub trait Sampleable {
 
 pub trait DistanceMeasure {
     fn distance(
-        s1: &Self,
-        s2: &Self,
+        from: &Self,
+        to: &Self,
     ) -> f64;
 }
 
