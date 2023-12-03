@@ -328,6 +328,24 @@ impl DDPG<'_> {
             run_mode,
         })
     }
+
+    pub fn actor_forward_item(
+        &self,
+        state: &Tensor,
+    ) -> Result<Tensor> {
+        self.actor.forward(&state.detach()?.unsqueeze(0)?)?.squeeze(0)
+    }
+
+    pub fn critic_forward_item(
+        &self,
+        state: &Tensor,
+        action: &Tensor,
+    ) -> Result<Tensor> {
+        self.critic.forward(
+            &state.detach()?.unsqueeze(0)?,
+            &action.detach()?.unsqueeze(0)?,
+        )?.squeeze(0)
+    }
 }
 
 impl Algorithm for DDPG<'_> {
