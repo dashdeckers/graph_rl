@@ -62,7 +62,7 @@ impl DDPG_Config {
             tau: 0.005,
             hidden_1_size: 256,
             hidden_2_size: 256,
-            replay_buffer_capacity: 100_000,
+            replay_buffer_capacity: 1_000,
             training_batch_size: 64,
             max_episodes: 300,
             training_iterations: 30,
