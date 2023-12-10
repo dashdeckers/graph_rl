@@ -155,7 +155,7 @@ where
         eframe::run_native(
             "Actor-Critic Graph-Learner",
             eframe::NativeOptions {
-                min_window_size: Some(egui::vec2(800.0, 600.0)),
+                min_window_size: Some(egui::vec2(800.0 * 1.2, 600.0 * 1.2)),
                 ..Default::default()
             },
             Box::new(|_| Box::new(gui)),
