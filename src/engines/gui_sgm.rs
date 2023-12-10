@@ -443,6 +443,9 @@ where
                 DistanceMode::Estimated => DistanceMode::True,
             });
         };
+        if ui.add(Button::new("Construct Graph")).clicked() {
+            self.agent.construct_graph();
+        };
 
         ui.separator();
         ui.label("Render Options");
