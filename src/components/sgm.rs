@@ -44,9 +44,9 @@ impl ReplayBuffer {
     /// * `d` - The distance function.
     /// * `maxdist` - The maximum distance between two nodes in the graph.
     /// * `tau` - The tau parameter to vary the graph sparsity.
-    pub fn construct_sgm<S>(
+    pub fn construct_sgm<S, D>(
         &self,
-        d: fn(&S, &S) -> f64,
+        d: D,
         maxdist: f64,
         tau: f64,
     ) -> (
@@ -55,6 +55,7 @@ impl ReplayBuffer {
     )
     where
         S: Clone + Eq + Hash + TensorConvertible,
+        D: Fn(&S, &S) -> f64,
     {
         let maxdist = OrderedFloat(maxdist);
         let tau = OrderedFloat(tau);
@@ -73,7 +74,7 @@ impl ReplayBuffer {
                 // check if new node is TWC consistent
                 let is_twc_consistent = graph
                     .node_weights()
-                    .all(|s2| Self::TWC(&s1, s2, tau, d, &graph));
+                    .all(|s2| Self::TWC(&s1, s2, tau, &d, &graph));
 
                 // info!(
                 //     concat!(
@@ -148,25 +149,25 @@ impl ReplayBuffer {
     /// where state_s2 is the results of taking action_a in state_s1
     #[allow(non_snake_case)]
     // #[instrument(skip(graph))]
-    fn TWC<S: Eq + Hash>(
+    fn TWC<S: Eq + Hash, D: Fn(&S, &S) -> f64>(
         s1: &S,
         s2: &S,
         tau: OrderedFloat<f64>,
-        d: fn(&S, &S) -> f64,
+        d: D,
         graph: &StableGraph<S, OrderedFloat<f64>, Undirected>,
     ) -> bool {
-        let c_in = Self::c_in(s1, s2, d, graph);
-        let c_out = Self::c_out(s1, s2, d, graph);
+        let c_in = Self::c_in(s1, s2, &d, graph);
+        let c_out = Self::c_out(s1, s2, &d, graph);
 
         // info!("\nC_out is {c_out:#} and C_in is {c_in:#}");
 
         c_out >= tau && c_in >= tau
     }
 
-    fn c_out<S: Eq + Hash>(
+    fn c_out<S: Eq + Hash, D: Fn(&S, &S) -> f64>(
         s1: &S,
         s2: &S,
-        d: fn(&S, &S) -> f64,
+        d: D,
         graph: &StableGraph<S, OrderedFloat<f64>, Undirected>,
     ) -> OrderedFloat<f64> {
         graph
@@ -176,10 +177,10 @@ impl ReplayBuffer {
             .expect("StableGraph cannot be empty because we always accept the first node")
     }
 
-    fn c_in<S: Eq + Hash>(
+    fn c_in<S: Eq + Hash, D: Fn(&S, &S) -> f64>(
         s1: &S,
         s2: &S,
-        d: fn(&S, &S) -> f64,
+        d: D,
         graph: &StableGraph<S, OrderedFloat<f64>, Undirected>,
     ) -> OrderedFloat<f64> {
         graph

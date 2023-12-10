@@ -42,6 +42,23 @@ use {
 };
 
 
+/// Goal-Aware Observations contain a notion of perspective.
+///
+/// For example, it matters whether the agent is looking at S2 from S1 or S1 from S2.
+/// When looking at S2 from S1, we keep the View of S1, the Achieved Goal of S1, and the Desired Goal of S2.
+#[allow(non_camel_case_types)]
+pub enum Direction {
+    S1_S2_achieved_desired,
+    S1_S2_desired_achieved,
+    S1_S2_achieved_achieved,
+    S1_S2_desired_desired,
+
+    S2_S1_achieved_desired,
+    S2_S1_desired_achieved,
+    S2_S1_achieved_achieved,
+    S2_S1_desired_desired,
+}
+
 #[allow(non_camel_case_types)]
 pub struct DDPG_SGM<'a, Env>
 where
@@ -55,8 +72,8 @@ where
     sgm: StableGraph<Env::Observation, OrderedFloat<f64>, Undirected>,
     indices: HashMap<Env::Observation, NodeIndex>,
     plan: Vec<Env::Observation>,
-
     goal_obs: Option<Env::Observation>,
+
     dist_mode: DistanceMode,
     sgm_close_enough: f64,
 
@@ -70,37 +87,107 @@ where
     Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation + DistanceMeasure,
     <Env::Observation as GoalAwareObservation>::State: Clone + Eq + DistanceMeasure,
 {
-    fn d(
-        dist_mode: &DistanceMode,
-        s1: &<Env::Observation as GoalAwareObservation>::State,
-        s2: &<Env::Observation as GoalAwareObservation>::State,
+    fn distance(
+        &self,
+        s1: &Env::Observation,
+        s2: &Env::Observation,
+        direction: &Direction,
     ) -> f64 {
-        match dist_mode {
-            DistanceMode::True => <Env::Observation as GoalAwareObservation>::State::distance(s1, s2),
-            DistanceMode::Estimated => todo!(),
+        match self.dist_mode {
+            DistanceMode::True => match direction {
+                Direction::S1_S2_achieved_desired => <Env::Observation as GoalAwareObservation>::State::distance(s1.achieved_goal(), s2.desired_goal()),
+                Direction::S1_S2_desired_achieved => <Env::Observation as GoalAwareObservation>::State::distance(s1.desired_goal(), s2.achieved_goal()),
+                Direction::S1_S2_achieved_achieved => <Env::Observation as GoalAwareObservation>::State::distance(s1.achieved_goal(), s2.achieved_goal()),
+                Direction::S1_S2_desired_desired => <Env::Observation as GoalAwareObservation>::State::distance(s1.desired_goal(), s2.desired_goal()),
+
+                Direction::S2_S1_achieved_desired => <Env::Observation as GoalAwareObservation>::State::distance(s2.achieved_goal(), s1.desired_goal()),
+                Direction::S2_S1_desired_achieved => <Env::Observation as GoalAwareObservation>::State::distance(s2.desired_goal(), s1.achieved_goal()),
+                Direction::S2_S1_achieved_achieved => <Env::Observation as GoalAwareObservation>::State::distance(s2.achieved_goal(), s1.achieved_goal()),
+                Direction::S2_S1_desired_desired => <Env::Observation as GoalAwareObservation>::State::distance(s2.desired_goal(), s1.desired_goal()),
+            },
+            DistanceMode::Estimated => {
+                match direction {
+                    Direction::S1_S2_achieved_desired => {
+                        let state = <Env::Observation>::to_tensor(
+                            Env::Observation::new(
+                                s1.achieved_goal(),
+                                s2.desired_goal(),
+                                s1.observation(),
+                            ),
+                            &self.device,
+                        ).unwrap();
+                        self.ddpg.critic_forward_item(
+                            &state,
+                            &self.ddpg.actor_forward_item(&state).unwrap(),
+                        ).unwrap().to_vec1::<f64>().unwrap()[0]
+                    },
+                    Direction::S1_S2_desired_achieved => {
+                        let state = <Env::Observation>::to_tensor(
+                            Env::Observation::new(
+                                s1.desired_goal(),
+                                s2.achieved_goal(),
+                                s1.observation(),
+                            ),
+                            &self.device,
+                        ).unwrap();
+                        self.ddpg.critic_forward_item(
+                            &state,
+                            &self.ddpg.actor_forward_item(&state).unwrap(),
+                        ).unwrap().to_vec1::<f64>().unwrap()[0]
+                    },
+                    Direction::S1_S2_achieved_achieved => {
+                        let state = <Env::Observation>::to_tensor(
+                            Env::Observation::new(
+                                s1.achieved_goal(),
+                                s2.achieved_goal(),
+                                s1.observation(),
+                            ),
+                            &self.device,
+                        ).unwrap();
+                        self.ddpg.critic_forward_item(
+                            &state,
+                            &self.ddpg.actor_forward_item(&state).unwrap(),
+                        ).unwrap().to_vec1::<f64>().unwrap()[0]
+                    },
+                    Direction::S1_S2_desired_desired => {
+                        let state = <Env::Observation>::to_tensor(
+                            Env::Observation::new(
+                                s1.desired_goal(),
+                                s2.desired_goal(),
+                                s1.observation(),
+                            ),
+                            &self.device,
+                        ).unwrap();
+                        self.ddpg.critic_forward_item(
+                            &state,
+                            &self.ddpg.actor_forward_item(&state).unwrap(),
+                        ).unwrap().to_vec1::<f64>().unwrap()[0]
+                    },
+                    _ => todo!(),
+                }
+            },
         }
     }
 
     fn get_closest_to(
         &self,
-        state: &<Env::Observation as GoalAwareObservation>::State,
+        s1: &Env::Observation,
+        direction: &Direction,
     ) -> Option<Env::Observation> {
         let mut candidate = None;
         let mut min_distance = f64::INFINITY;
 
-        for node in self.sgm.node_indices() {
+        for s2 in self.sgm.node_indices() {
 
-            // We use the true distances here!! (i.e. Oracle)
-
-            let node = self.sgm.node_weight(node).unwrap();
-            let distance = DDPG_SGM::<Env>::d(
-                &DistanceMode::True,
-                node.achieved_goal(),
-                state,
+            let s2 = self.sgm.node_weight(s2).unwrap();
+            let distance: f64 = self.distance(
+                s1,
+                s2,
+                direction,
             );
 
             if distance <= self.sgm_close_enough && (candidate.is_none() || distance < min_distance) {
-                candidate = Some(node.clone());
+                candidate = Some(s2.clone());
                 min_distance = distance;
             }
         }
@@ -110,10 +197,10 @@ where
 
     fn generate_plan(&mut self) {
         if let Some(obs) = &self.goal_obs {
-            let start = obs.achieved_goal();
-            let goal = obs.desired_goal();
+            let start = self.get_closest_to(obs, &Direction::S1_S2_achieved_achieved);
+            let goal = self.get_closest_to(obs, &Direction::S1_S2_desired_achieved);
 
-            if let (Some(start), Some(goal)) = (self.get_closest_to(start), self.get_closest_to(goal)) {
+            if let (Some(start), Some(goal)) = (start, goal) {
                 let path = astar(
                     &self.sgm,
                     self.indices[&start],
@@ -137,6 +224,9 @@ where
         state_is_state_from: &Env::Observation,
         goal_is_state_from: &Env::Observation,
     ) -> Env::Observation {
+
+        // TODO: consider all combinations with respect to obs (perspective!)
+
         let mut obs = state_is_state_from.clone();
         obs.set_desired_goal(goal_is_state_from.achieved_goal());
         obs
@@ -168,7 +258,7 @@ where
             plan: Vec::new(),
 
             goal_obs: None,
-            dist_mode: config.distance_mode.clone(),
+            dist_mode: config.distance_mode,
 
             sgm_close_enough: config.sgm_close_enough,
             sgm_maxdist: config.sgm_maxdist,
@@ -269,10 +359,10 @@ where
             warn!("Checking distance between: {:#?} and {:#?}", next_obs.achieved_goal(), waypoint.achieved_goal());
 
             // Then we check if we have reached the next waypoint
-            let distance_to_waypoint = DDPG_SGM::<Env>::d(
-                &self.dist_mode,
-                next_obs.achieved_goal(),
-                waypoint.achieved_goal(),
+            let distance_to_waypoint = self.distance(
+                &next_obs,
+                waypoint,
+                &Direction::S1_S2_achieved_achieved,
             );
 
             warn!("Distance is: {:#?}", distance_to_waypoint);
@@ -328,21 +418,12 @@ where
         (self.sgm, self.indices) = self
             .replay_buffer()
             .construct_sgm(
-                match self.dist_mode {
-                    DistanceMode::True => |s1: &Env::Observation, s2: &Env::Observation| {
-                        DDPG_SGM::<Env>::d(
-                            &DistanceMode::True,
-                            s1.achieved_goal(),
-                            s2.achieved_goal(),
-                        )
-                    },
-                    DistanceMode::Estimated => |s1: &Env::Observation, s2: &Env::Observation| {
-                        DDPG_SGM::<Env>::d(
-                            &DistanceMode::Estimated,
-                            s1.achieved_goal(),
-                            s2.achieved_goal(),
-                        )
-                    },
+                |s1: &Env::Observation, s2: &Env::Observation| {
+                    self.distance(
+                        s1,
+                        s2,
+                        &Direction::S1_S2_achieved_achieved,
+                    )
                 },
                 self.sgm_maxdist,
                 self.sgm_tau,
