@@ -186,15 +186,16 @@ where
     pub fn open(
         env_config: Env::Config,
         alg_config: Alg::Config,
+        agent: Option<Alg>,
         device: Device,
     ) {
         let env = *Env::new(env_config.clone()).unwrap();
-        let agent = *Alg::from_config(
+        let agent = agent.unwrap_or(*Alg::from_config(
             &device,
             &alg_config,
             env.observation_space().iter().product::<usize>(),
             env.action_space().iter().product::<usize>(),
-        ).unwrap();
+        ).unwrap());
 
         let gui = Self {
             env,
