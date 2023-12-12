@@ -15,6 +15,8 @@ use {
         envs::TensorConvertible,
         components::ReplayBuffer,
     },
+    // itertools::iproduct,
+    // rayon::prelude::*,
     ordered_float::OrderedFloat,
     petgraph::{
         dot::Dot,
@@ -39,9 +41,14 @@ pub fn dot<S: Debug>(graph: &StableGraph<S, OrderedFloat<f64>, Undirected>) -> S
 impl ReplayBuffer {
     /// Construct a sparse graph from the replay buffer.
     ///
+    /// The resulting graph can be seen as a tau-approximate, Q-irrelevant
+    /// abstraction. This means that as we vary tau, we vary the sparsity of
+    /// the graph in a way that is irrelevant for the Q-function, even in the
+    /// goal-conditioned setting.
+    ///
     /// # Arguments
     ///
-    /// * `d` - The distance function.
+    /// * `dist` - The distance function.
     /// * `maxdist` - The maximum distance between two nodes in the graph.
     /// * `tau` - The tau parameter to vary the graph sparsity.
     pub fn construct_sgm<S, D>(
@@ -60,34 +67,46 @@ impl ReplayBuffer {
         let maxdist = OrderedFloat(maxdist);
         let tau = OrderedFloat(tau);
 
-        // compute the sparse graph
+        let states = self.all_states::<S>();
+
+        // precompute all pairwise distances
+        // iproduct!(states, states).par_iter().for_each(|(s1, s2)| {
+        //     cache.insert((s1, s2), OrderedFloat(dist(s1, s2)));
+        // });
+        // let mut cache: HashMap<(&S, &S), OrderedFloat<f64>> = HashMap::new();
+        // for s1 in states.iter() {
+        //     for s2 in states.iter() {
+        //         cache.insert((s1, s2), OrderedFloat(dist(s1, s2)));
+        //     }
+        // }
+        let d = |s1: &S, s2: &S| OrderedFloat(d(s1, s2));
+
+        // initialize the SGM data structures
         let mut graph: StableGraph<S, OrderedFloat<f64>, Undirected> = StableGraph::default();
         let mut indices: HashMap<S, NodeIndex> = HashMap::new();
 
-        // iterate over nodes in the dense graph
-        for s1 in self.all_states::<S>() {
+        // iterate over the set of nodes in the buffer
+        for s1 in states.iter() {
+
             // always accept the first node
             if graph.node_count() == 0 {
                 let i1 = graph.add_node(s1.clone());
-                indices.insert(s1, i1);
+                indices.insert(s1.clone(), i1);
             } else {
+
                 // check if new node is TWC consistent
                 let is_twc_consistent = graph
                     .node_weights()
-                    .all(|s2| Self::TWC(&s1, s2, tau, &d, &graph));
+                    .all(|s2| {
+                        let c_out = graph.node_weights().map(|w|
+                            OrderedFloat((d(s1, w) - d(s2, w)).abs())
+                        ).max().unwrap();
+                        let c_in = graph.node_weights().map(|w|
+                            OrderedFloat((d(w, s1) - d(w, s2)).abs())
+                        ).max().unwrap();
 
-                // info!(
-                //     concat!(
-                //         "\nTWC consistency of {state:#} with respect to ",
-                //         "the graph so far: {consistent:#}.",
-                //         "\nThe graph currently has {n_nodes:#} Nodes and ",
-                //         "{n_edges:#} Edges.",
-                //     ),
-                //     state = s1,
-                //     consistent = is_twc_consistent,
-                //     n_nodes = graph.node_count(),
-                //     n_edges = graph.edge_count(),
-                // );
+                        c_out >= tau && c_in >= tau
+                    });
 
                 if is_twc_consistent {
                     // add node
@@ -98,95 +117,25 @@ impl ReplayBuffer {
                     let mut edges_to_add = Vec::new();
                     for s2 in graph.node_weights() {
                         // no self edges
-                        if &s1 == s2 {
+                        if s1 == s2 {
                             continue;
                         }
 
-                        let d_out = OrderedFloat(d(&s1, s2));
-                        let d_in = OrderedFloat(d(s2, &s1));
-
-                        // info!(
-                        //     concat!(
-                        //         "\nmaxdist = {dist}, ",
-                        //         "(d_out: {d_out}, d_in: {d_in})",
-                        //     ),
-                        //     dist = maxdist,
-                        //     d_out = d_out,
-                        //     d_in = d_in,
-                        // );
+                        let d_out = d(s1, s2);
+                        let d_in = d(s2, s1);
 
                         if d_out < maxdist && d_in < maxdist {
-                            edges_to_add.push((i1, indices[s2], d(&s1, s2)));
-                            edges_to_add.push((indices[s2], i1, d(s2, &s1)));
+                            edges_to_add.push((i1, indices[s2], d_out));
+                            edges_to_add.push((indices[s2], i1, d_in));
                         }
                     }
                     for (a, b, weight) in edges_to_add {
-                        graph.add_edge(a, b, OrderedFloat(weight));
+                        graph.add_edge(a, b, weight);
                     }
                 }
             }
         }
 
-        // info!("\nDotviz: {}", Dot::new(&graph));
-
         (graph, indices)
-    }
-
-    /// (insert equation (3) from SGM here
-    ///
-    /// TWC(s1, s2, tau, d) is defined as C_in >= tau AND C_out >= tau
-    /// given the distance function d
-    ///
-    /// C_out can be seen as a tau-approximate, Q-irrelevant abstraction.
-    /// this means that as we vary tau, we vary the sparsification of the graph
-    /// in a way that is irrelevant for the Q-function.
-    ///
-    /// the (goal-conditioned) Q-function is seen as approximately equivalent
-    /// to the true distance function, this implies that distance is interpreted
-    /// as expected reward.
-    ///
-    /// Q(state_s1, action_a, goal_g) ~= d(state_s1, state_s2),
-    /// where state_s2 is the results of taking action_a in state_s1
-    #[allow(non_snake_case)]
-    // #[instrument(skip(graph))]
-    fn TWC<S: Eq + Hash, D: Fn(&S, &S) -> f64>(
-        s1: &S,
-        s2: &S,
-        tau: OrderedFloat<f64>,
-        d: D,
-        graph: &StableGraph<S, OrderedFloat<f64>, Undirected>,
-    ) -> bool {
-        let c_in = Self::c_in(s1, s2, &d, graph);
-        let c_out = Self::c_out(s1, s2, &d, graph);
-
-        // info!("\nC_out is {c_out:#} and C_in is {c_in:#}");
-
-        c_out >= tau && c_in >= tau
-    }
-
-    fn c_out<S: Eq + Hash, D: Fn(&S, &S) -> f64>(
-        s1: &S,
-        s2: &S,
-        d: D,
-        graph: &StableGraph<S, OrderedFloat<f64>, Undirected>,
-    ) -> OrderedFloat<f64> {
-        graph
-            .node_weights()
-            .map(|w| OrderedFloat((d(s1, w) - d(s2, w)).abs()))
-            .max()
-            .expect("StableGraph cannot be empty because we always accept the first node")
-    }
-
-    fn c_in<S: Eq + Hash, D: Fn(&S, &S) -> f64>(
-        s1: &S,
-        s2: &S,
-        d: D,
-        graph: &StableGraph<S, OrderedFloat<f64>, Undirected>,
-    ) -> OrderedFloat<f64> {
-        graph
-            .node_weights()
-            .map(|w| OrderedFloat((d(w, s1) - d(w, s2)).abs()))
-            .max()
-            .expect("StableGraph cannot be empty because we always accept the first node")
     }
 }
