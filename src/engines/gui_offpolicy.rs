@@ -320,6 +320,11 @@ where
         if ui.add(Button::new("Run Episodes")).clicked() {
             self.run_agent().unwrap();
         };
+        if ui.add(Button::new("Train only")).clicked() {
+            for _ in 0..self.config.training_iterations() {
+                self.agent.train().unwrap();
+            }
+        };
 
         ui.separator();
         ui.label("Test Agent");
