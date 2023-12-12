@@ -187,6 +187,6 @@ impl DistanceMeasure for PointObs {
         s1: &Self,
         s2: &Self,
     ) -> f64 {
-        (s1.state).squared_distance_to(&s2.state).sqrt()
+        (s1.state).distance_to(&s2.state)
     }
 }

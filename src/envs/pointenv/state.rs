@@ -46,13 +46,12 @@ impl PointState {
     }
 
     /// Calculate the squared distance to another [PointState]
-    pub fn squared_distance_to(
+    pub fn distance_to(
         &self,
         other: &Self,
     ) -> f64 {
-        let dx = self.x() - other.x();
-        let dy = self.y() - other.y();
-        dx.powi(2) + dy.powi(2)
+        let v = self - other;
+        v.x().hypot(v.y())
     }
 
     /// Check if the [PointState] is within a circle of radius `radius` around
@@ -62,13 +61,12 @@ impl PointState {
         other: &Self,
         radius: f64,
     ) -> bool {
-        OrderedFloat(self.squared_distance_to(other)) <= OrderedFloat(radius.powi(2))
+        self.distance_to(other) <= radius
     }
 
     /// Calculate the magnitude of the [PointState] vector
     pub fn magnitude(&self) -> f64 {
-        self.squared_distance_to(&PointState::from((0.0, 0.0)))
-            .sqrt()
+        self.x().hypot(self.y())
     }
 }
 
@@ -169,7 +167,7 @@ impl DistanceMeasure for PointState {
         s1: &Self,
         s2: &Self,
     ) -> f64 {
-        s1.squared_distance_to(s2).sqrt()
+        s1.distance_to(s2)
     }
 }
 

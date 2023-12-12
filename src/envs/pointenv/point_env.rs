@@ -37,15 +37,15 @@ use {
 /// step, and there are no wall collisions i.e. neither start nor goal is
 /// contained within a wall / [PointLine].
 fn generate_start_goal(
-    width: usize,
-    height: usize,
+    width: f64,
+    height: f64,
     step_radius: f64,
     walls: &[PointLine],
     rng: &mut dyn RngCore,
 ) -> (PointState, PointState) {
     loop {
-        let state = PointState::sample(rng, &[0.0..=(width as f64), 0.0..=(height as f64)]);
-        let goal = PointState::sample(rng, &[0.0..=(width as f64), 0.0..=(height as f64)]);
+        let state = PointState::sample(rng, &[0.0..=width, 0.0..=height]);
+        let goal = PointState::sample(rng, &[0.0..=width, 0.0..=height]);
 
         let wall_contains_state = walls
             .iter()
@@ -75,17 +75,13 @@ pub fn reachable(
 /// Compute the `next_state` after taking `action` in `state`, considering any
 /// possible collisions with `walls`.
 fn compute_next_state(
-    width: usize,
-    height: usize,
+    width: f64,
+    height: f64,
     state: PointState,
     action: &PointAction,
-    step_radius: f64,
     bounce_factor: f64,
     walls: &[PointLine],
 ) -> PointState {
-    // bounds on incoming action
-    let action = action.restrict(step_radius);
-
     // make a line from A to B, collect any collisions
     let movement_line = PointLine::from((state, state + action));
     let collisions: Vec<PointState> = walls
@@ -106,7 +102,7 @@ fn compute_next_state(
             let argclosest = collisions
                 .iter()
                 .enumerate()
-                .map(|(idx, point)| (idx, point.squared_distance_to(&state)))
+                .map(|(idx, point)| (idx, point.distance_to(&state)))
                 .min_by(|(_, first), (_, second)| first.total_cmp(second))
                 .expect("Collisions cannot be an empty vector, we covered that case")
                 .0;
@@ -133,7 +129,7 @@ fn compute_next_state(
     );
 
     // bounds on outgoing state
-    next_state.restrict(width as f64, height as f64)
+    next_state.restrict(width, height)
 }
 
 /// A [PointEnv] is a 2D continuous action environment where the agent is a
@@ -148,8 +144,8 @@ fn compute_next_state(
 /// of reflection.
 pub struct PointEnv {
     config: PointEnvConfig,
-    width: usize,
-    height: usize,
+    width: f64,
+    height: f64,
     walls: Vec<PointLine>,
 
     state: PointState,
@@ -176,22 +172,22 @@ impl PointEnv {
         assert!(config.bounce_factor <= (config.step_radius / 10.0));
         // assertion guards for minimum map-size compared to step_radius
         assert!(
-            (config.step_radius * 4.0) < config.width as f64
-                && (config.step_radius * 4.0) < config.height as f64
+            (config.step_radius * 4.0) < config.width
+                && (config.step_radius * 4.0) < config.height
         );
 
         // add walls for the borders around the map
         let mut walls = config.walls.clone().unwrap_or_default();
         walls.extend([
-            PointLine::from(((0.0, 0.0), (config.width as f64, 0.0))),
-            PointLine::from(((0.0, 0.0), (0.0, config.height as f64))),
+            PointLine::from(((0.0, 0.0), (config.width, 0.0))),
+            PointLine::from(((0.0, 0.0), (0.0, config.height))),
             PointLine::from((
-                (config.width as f64, 0.0),
-                (config.width as f64, config.height as f64),
+                (config.width, 0.0),
+                (config.width, config.height),
             )),
             PointLine::from((
-                (0.0, config.height as f64),
-                (config.width as f64, config.height as f64),
+                (0.0, config.height),
+                (config.width, config.height),
             )),
         ]);
 
@@ -205,10 +201,32 @@ impl PointEnv {
             &mut rng,
         );
 
+
+        // assertion guards for square map
+        assert!(config.width == config.height);
+        // scale the map down to a 1x1 square
+        let scale = config.width;
+
+        let width = config.width / scale;
+        let height = config.height / scale;
+        let walls = walls.into_iter().map(|l| l / scale).collect();
+        let start = start / scale;
+        let goal = goal / scale;
+        let step_radius = config.step_radius / scale;
+        let term_radius = config.term_radius / scale;
+        let bounce_factor = config.bounce_factor / scale;
+
+        // let width = config.width;
+        // let height = config.height;
+        // let step_radius = config.step_radius;
+        // let term_radius = config.term_radius;
+        // let bounce_factor = config.bounce_factor;
+
+
         Ok(Box::new(PointEnv {
             config: config.clone(),
-            width: config.width,
-            height: config.height,
+            width,
+            height,
             walls,
 
             state: start,
@@ -220,20 +238,20 @@ impl PointEnv {
             timelimit: config.timelimit,
             reset_count: 0,
 
-            step_radius: config.step_radius,
-            term_radius: config.term_radius,
-            bounce_factor: config.bounce_factor,
+            step_radius,
+            term_radius,
+            bounce_factor,
             reward: config.reward,
 
             rng,
         }))
     }
 
-    pub fn width(&self) -> usize {
+    pub fn width(&self) -> f64 {
         self.width
     }
 
-    pub fn height(&self) -> usize {
+    pub fn height(&self) -> f64 {
         self.height
     }
 
@@ -324,7 +342,6 @@ impl Environment for PointEnv {
             self.height,
             self.state,
             &action,
-            self.step_radius,
             self.bounce_factor,
             &self.walls,
         );
@@ -389,7 +406,7 @@ impl Environment for PointEnv {
 
     /// The observation domain of [PointEnv] is `[0.0..=width, 0.0..=height; 4 + 4 * n]`,
     fn observation_domain(&self) -> Vec<RangeInclusive<f64>> {
-        vec![0.0..=(self.width as f64), 0.0..=(self.height as f64)]
+        vec![0.0..=self.width, 0.0..=self.height]
     }
 
     /// Return the current observation of the environment.
@@ -423,7 +440,7 @@ impl Renderable for PointEnv {
         // Setup plot bounds
         plot_ui.set_plot_bounds(PlotBounds::from_min_max(
             [0.0, 0.0],
-            [self.width() as f64, self.height() as f64],
+            [self.width(), self.height()],
         ));
         // Plot walls
         for wall in self.walls().iter() {

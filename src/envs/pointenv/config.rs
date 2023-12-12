@@ -43,8 +43,8 @@ use {
 /// ```
 #[derive(Debug, Clone, Serialize)]
 pub struct PointEnvConfig {
-    pub width: usize,
-    pub height: usize,
+    pub width: f64,
+    pub height: f64,
     pub walls: Option<Vec<PointLine>>,
     pub timelimit: usize,
     pub step_radius: f64,
@@ -56,8 +56,8 @@ pub struct PointEnvConfig {
 impl Default for PointEnvConfig {
     fn default() -> Self {
         Self {
-            width: 5,
-            height: 5,
+            width: 5.0,
+            height: 5.0,
             walls: None,
             timelimit: 30,
             step_radius: 1.0,
@@ -72,8 +72,8 @@ impl PointEnvConfig {
     /// Creates a new [PointEnvConfig].
     #[allow(clippy::too_many_arguments)]
     pub fn new(
-        width: usize,
-        height: usize,
+        width: f64,
+        height: f64,
         walls: Option<Vec<PointLine>>,
         timelimit: usize,
         step_radius: f64,

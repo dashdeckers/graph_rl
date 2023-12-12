@@ -46,7 +46,7 @@ impl PointAction {
         let zero = PointState::from((0.0, 0.0));
         let step = PointState::from((self.dx(), self.dy()));
 
-        let step_distance = zero.squared_distance_to(&step).sqrt();
+        let step_distance = zero.distance_to(&step);
 
         if step_distance <= radius {
             Self::from((self.dx(), self.dy()))

@@ -36,9 +36,9 @@ impl DDPG_SGM_Config {
         Self {
             ddpg: DDPG_Config::pointenv(),
             distance_mode: DistanceMode::True,
-            sgm_close_enough: 0.5,
-            sgm_maxdist: 1.0,
-            sgm_tau: 0.4,
+            sgm_close_enough: 0.05,
+            sgm_maxdist: 0.1,
+            sgm_tau: 0.04,
         }
     }
 

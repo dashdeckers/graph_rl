@@ -104,12 +104,10 @@ impl PointReward {
     pub fn value_range(
         &self,
         timelimit: usize,
-        width: usize,
-        height: usize,
+        width: f64,
+        height: f64,
     ) -> (f64, f64) {
         let timelimit = timelimit as f64;
-        let width = width as f64;
-        let height = height as f64;
         match self {
             PointReward::Euclidean => (-((width.powi(2) + height.powi(2)).sqrt()) * timelimit, 0.0),
             PointReward::Distance => (-1.0 * timelimit, 0.0),

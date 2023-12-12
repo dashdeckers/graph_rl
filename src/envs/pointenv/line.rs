@@ -71,7 +71,7 @@ impl PointLine {
         if determinant.abs() < f64::EPSILON {
             match (self.contains(&other.A), self.contains(&other.B)) {
                 (true, true) => {
-                    if self.A.squared_distance_to(&other.A) < self.A.squared_distance_to(&other.B) {
+                    if self.A.distance_to(&other.A) < self.A.distance_to(&other.B) {
                         Some(other.A)
                     } else {
                         Some(other.B)

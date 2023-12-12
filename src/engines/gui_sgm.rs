@@ -420,8 +420,8 @@ where
         ui.separator();
         ui.label("SGM Options");
         ui.add(
-            Slider::new(&mut sgm_close_enough, 0.0..=2.0)
-                .step_by(0.1)
+            Slider::new(&mut sgm_close_enough, 0.0..=0.2)
+                .step_by(0.01)
                 .text("Close enough"),
         );
         ui.add(
@@ -431,7 +431,7 @@ where
         );
         ui.add(
             Slider::new(&mut sgm_tau, 0.0..=1.0)
-                .step_by(0.01)
+                .step_by(0.001)
                 .text("Tau"),
         );
         let sgm_dist_mode = self.config.sgm_dist_mode();
