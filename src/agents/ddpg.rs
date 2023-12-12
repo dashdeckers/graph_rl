@@ -346,6 +346,10 @@ impl DDPG<'_> {
             &action.detach()?.unsqueeze(0)?,
         )?.squeeze(0)
     }
+
+    pub fn new_buffer(&mut self, buffer_capacity: usize) {
+        self.replay_buffer = ReplayBuffer::new(buffer_capacity);
+    }
 }
 
 impl Algorithm for DDPG<'_> {

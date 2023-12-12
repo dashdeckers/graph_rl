@@ -87,6 +87,10 @@ where
     Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation + DistanceMeasure,
     <Env::Observation as GoalAwareObservation>::State: Clone + Eq + DistanceMeasure,
 {
+    pub fn new_buffer(&mut self, buffer_capacity: usize) {
+        self.ddpg.new_buffer(buffer_capacity);
+    }
+
     fn distance(
         &self,
         s1: &Env::Observation,
@@ -333,7 +337,7 @@ where
         truncated: &Tensor,
     ) {
         // If the plan is empty, we default to the DDPG policy
-        if self.plan.is_empty() {
+        if self.plan.is_empty() { // || terminated || truncated
             self.ddpg.remember(
                 state,
                 action,
