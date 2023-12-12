@@ -15,8 +15,6 @@ use {
         envs::TensorConvertible,
         components::ReplayBuffer,
     },
-    // itertools::iproduct,
-    // rayon::prelude::*,
     ordered_float::OrderedFloat,
     petgraph::{
         dot::Dot,
@@ -48,7 +46,7 @@ impl ReplayBuffer {
     ///
     /// # Arguments
     ///
-    /// * `dist` - The distance function.
+    /// * `d` - The distance function.
     /// * `maxdist` - The maximum distance between two nodes in the graph.
     /// * `tau` - The tau parameter to vary the graph sparsity.
     pub fn construct_sgm<S, D>(
@@ -64,29 +62,12 @@ impl ReplayBuffer {
         S: Clone + Eq + Hash + TensorConvertible,
         D: Fn(&S, &S) -> f64,
     {
-        let maxdist = OrderedFloat(maxdist);
-        let tau = OrderedFloat(tau);
-
-        let states = self.all_states::<S>();
-
-        // precompute all pairwise distances
-        // iproduct!(states, states).par_iter().for_each(|(s1, s2)| {
-        //     cache.insert((s1, s2), OrderedFloat(dist(s1, s2)));
-        // });
-        // let mut cache: HashMap<(&S, &S), OrderedFloat<f64>> = HashMap::new();
-        // for s1 in states.iter() {
-        //     for s2 in states.iter() {
-        //         cache.insert((s1, s2), OrderedFloat(dist(s1, s2)));
-        //     }
-        // }
-        let d = |s1: &S, s2: &S| OrderedFloat(d(s1, s2));
-
         // initialize the SGM data structures
         let mut graph: StableGraph<S, OrderedFloat<f64>, Undirected> = StableGraph::default();
         let mut indices: HashMap<S, NodeIndex> = HashMap::new();
 
         // iterate over the set of nodes in the buffer
-        for s1 in states.iter() {
+        for s1 in self.all_states::<S>().iter() {
 
             // always accept the first node
             if graph.node_count() == 0 {
@@ -98,10 +79,10 @@ impl ReplayBuffer {
                 let is_twc_consistent = graph
                     .node_weights()
                     .all(|s2| {
-                        let c_out = graph.node_weights().map(|w|
+                        let c_out = *graph.node_weights().map(|w|
                             OrderedFloat((d(s1, w) - d(s2, w)).abs())
                         ).max().unwrap();
-                        let c_in = graph.node_weights().map(|w|
+                        let c_in = *graph.node_weights().map(|w|
                             OrderedFloat((d(w, s1) - d(w, s2)).abs())
                         ).max().unwrap();
 
@@ -130,7 +111,7 @@ impl ReplayBuffer {
                         }
                     }
                     for (a, b, weight) in edges_to_add {
-                        graph.add_edge(a, b, weight);
+                        graph.add_edge(a, b, OrderedFloat(weight));
                     }
                 }
             }
