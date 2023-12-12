@@ -46,9 +46,9 @@ impl PointAction {
         let zero = PointState::from((0.0, 0.0));
         let step = PointState::from((self.dx(), self.dy()));
 
-        let step_distance = zero.squared_distance_to(&step);
+        let step_distance = zero.squared_distance_to(&step).sqrt();
 
-        if OrderedFloat(step_distance) <= OrderedFloat(radius.powi(2)) {
+        if step_distance <= radius {
             Self::from((self.dx(), self.dy()))
         } else {
             let ratio = radius / step_distance;
