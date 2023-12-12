@@ -202,25 +202,25 @@ impl PointEnv {
         );
 
 
-        // assertion guards for square map
-        assert!(config.width == config.height);
-        // scale the map down to a 1x1 square
-        let scale = config.width;
+        // // assertion guards for square map
+        // assert!(config.width == config.height);
+        // // scale the map down to a 1x1 square
+        // let scale = config.width;
 
-        let width = config.width / scale;
-        let height = config.height / scale;
-        let walls = walls.into_iter().map(|l| l / scale).collect();
-        let start = start / scale;
-        let goal = goal / scale;
-        let step_radius = config.step_radius / scale;
-        let term_radius = config.term_radius / scale;
-        let bounce_factor = config.bounce_factor / scale;
+        // let width = config.width / scale;
+        // let height = config.height / scale;
+        // let walls = walls.into_iter().map(|l| l / scale).collect();
+        // let start = start / scale;
+        // let goal = goal / scale;
+        // let step_radius = config.step_radius / scale;
+        // let term_radius = config.term_radius / scale;
+        // let bounce_factor = config.bounce_factor / scale;
 
-        // let width = config.width;
-        // let height = config.height;
-        // let step_radius = config.step_radius;
-        // let term_radius = config.term_radius;
-        // let bounce_factor = config.bounce_factor;
+        let width = config.width;
+        let height = config.height;
+        let step_radius = config.step_radius;
+        let term_radius = config.term_radius;
+        let bounce_factor = config.bounce_factor;
 
 
         Ok(Box::new(PointEnv {

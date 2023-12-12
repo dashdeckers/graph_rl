@@ -420,12 +420,12 @@ where
         ui.separator();
         ui.label("SGM Options");
         ui.add(
-            Slider::new(&mut sgm_close_enough, 0.0..=0.2)
+            Slider::new(&mut sgm_close_enough, 0.0..=2.0)
                 .step_by(0.01)
                 .text("Close enough"),
         );
         ui.add(
-            Slider::new(&mut sgm_maxdist, 0.0..=1.0)
+            Slider::new(&mut sgm_maxdist, 0.0..=10.0)
                 .step_by(0.01)
                 .text("Max distance"),
         );
