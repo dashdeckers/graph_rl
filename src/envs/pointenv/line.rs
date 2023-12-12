@@ -8,6 +8,7 @@ use {
         state::PointState,
     },
     serde::Serialize,
+    auto_ops::impl_op_ex,
     candle_core::{
         Device,
         Tensor,
@@ -225,3 +226,14 @@ impl TensorConvertible for PointLine {
         Tensor::new(Self::to_vec(value), device)
     }
 }
+
+// PointState / f64 AND reference types
+impl_op_ex!(/ |l: &PointLine, s: &f64| -> PointLine {
+    if OrderedFloat(*s) == OrderedFloat(0.0) {
+        panic!("Division by zero is not allowed");
+    }
+    PointLine {
+        A: l.A / s,
+        B: l.B / s,
+    }
+});
