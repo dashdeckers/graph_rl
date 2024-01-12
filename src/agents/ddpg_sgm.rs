@@ -46,6 +46,7 @@ use {
 ///
 /// For example, it matters whether the agent is looking at S2 from S1 or S1 from S2.
 /// When looking at S2 from S1, we keep the View of S1, the Achieved Goal of S1, and the Desired Goal of S2.
+#[allow(dead_code)]
 #[allow(non_camel_case_types)]
 pub enum Direction {
     S1_S2_achieved_desired,
@@ -234,6 +235,35 @@ where
         let mut obs = state_is_state_from.clone();
         obs.set_desired_goal(goal_is_state_from.achieved_goal());
         obs
+    }
+
+    fn tensor_is_true(
+        &self,
+        tensor: &Tensor,
+    ) -> bool {
+        tensor.to_vec1::<u8>().unwrap().iter().all(|&x| x > 0)
+    }
+
+    pub fn from_config_with_ddpg(
+        device: &Device,
+        config: &DDPG_SGM_Config,
+        ddpg: DDPG<'a>,
+    ) -> Result<Box<Self>> {
+        Ok(Box::new(Self {
+            ddpg,
+            device: device.clone(),
+
+            sgm: StableGraph::default(),
+            indices: HashMap::new(),
+            plan: Vec::new(),
+
+            goal_obs: None,
+            dist_mode: config.distance_mode,
+
+            sgm_close_enough: config.sgm_close_enough,
+            sgm_maxdist: config.sgm_maxdist,
+            sgm_tau: config.sgm_tau,
+        }))
     }
 }
 
