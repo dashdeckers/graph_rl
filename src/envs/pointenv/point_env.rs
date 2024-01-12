@@ -36,16 +36,26 @@ use {
 /// A pair is valid if the goal is not reachable from the start within a single
 /// step, and there are no wall collisions i.e. neither start nor goal is
 /// contained within a wall / [PointLine].
+///
+/// If `max_radius` is provided, we also make sure that the distance between
+/// start and goal is less than `max_radius`.
 fn generate_start_goal(
     width: f64,
     height: f64,
     step_radius: f64,
+    max_radius: Option<f64>,
     walls: &[PointLine],
     rng: &mut dyn RngCore,
 ) -> (PointState, PointState) {
     loop {
         let state = PointState::sample(rng, &[0.0..=width, 0.0..=height]);
         let goal = PointState::sample(rng, &[0.0..=width, 0.0..=height]);
+
+        if let Some(max_radius) = max_radius {
+            if !state.in_radius_of(&goal, max_radius) {
+                continue;
+            }
+        }
 
         let wall_contains_state = walls
             .iter()
@@ -159,6 +169,7 @@ pub struct PointEnv {
 
     step_radius: f64,
     term_radius: f64,
+    max_radius: Option<f64>,
     bounce_factor: f64,
     reward: PointReward,
 
@@ -197,6 +208,7 @@ impl PointEnv {
             config.width,
             config.height,
             config.step_radius,
+            config.max_radius,
             &walls,
             &mut rng,
         );
@@ -220,6 +232,7 @@ impl PointEnv {
         let height = config.height;
         let step_radius = config.step_radius;
         let term_radius = config.term_radius;
+        let max_radius = config.max_radius;
         let bounce_factor = config.bounce_factor;
 
 
@@ -240,6 +253,7 @@ impl PointEnv {
 
             step_radius,
             term_radius,
+            max_radius,
             bounce_factor,
             reward: config.reward,
 
@@ -312,6 +326,7 @@ impl Environment for PointEnv {
             self.width,
             self.height,
             self.step_radius,
+            self.max_radius,
             &self.walls,
             &mut self.rng,
         );

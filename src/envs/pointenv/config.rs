@@ -20,6 +20,7 @@ use {
 /// * `timelimit` - The maximum number of steps before the episode is truncated.
 /// * `step_radius` - The radius that defines the maximum distance the agent can reach in one step.
 /// * `term_radius` - If the agent is within this radius of the goal, the episode is terminated.
+/// * `max_radius` - The maximum distance allowed between the randomly generated start and goal.
 /// * `bounce_factor` - The percentage of the traveled distance that the agent bounces back when it hits a wall.
 /// * `reward` - The reward function. For more information, see [`PointReward`](super::reward::PointReward)
 /// * `seed` - The seed for the random number generator.
@@ -38,6 +39,7 @@ use {
 /// assert_eq!(config.timelimit, 30);
 /// assert_eq!(config.step_radius, 1.0);
 /// assert_eq!(config.term_radius, 0.5);
+/// assert_eq!(config.max_radius, None);
 /// assert_eq!(config.bounce_factor, 0.1);
 /// assert_eq!(config.reward, PointReward::Distance);
 /// ```
@@ -49,6 +51,7 @@ pub struct PointEnvConfig {
     pub timelimit: usize,
     pub step_radius: f64,
     pub term_radius: f64,
+    pub max_radius: Option<f64>,
     pub bounce_factor: f64,
     pub reward: PointReward,
     pub seed: u64,
@@ -62,6 +65,7 @@ impl Default for PointEnvConfig {
             timelimit: 30,
             step_radius: 1.0,
             term_radius: 0.5,
+            max_radius: None,
             bounce_factor: 0.1,
             reward: PointReward::Distance,
             seed: StdRng::from_entropy().gen::<u64>(),
@@ -78,6 +82,7 @@ impl PointEnvConfig {
         timelimit: usize,
         step_radius: f64,
         term_radius: f64,
+        max_radius: Option<f64>,
         bounce_factor: f64,
         reward: PointReward,
         seed: u64,
@@ -89,6 +94,7 @@ impl PointEnvConfig {
             timelimit,
             step_radius,
             term_radius,
+            max_radius,
             bounce_factor,
             reward,
             seed,
