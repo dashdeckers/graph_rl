@@ -178,14 +178,12 @@ fn main() -> Result<()> {
 
         Env::Pointenv => {
             let env_config = PointEnvConfig::new(
-                // 10.0,
-                // 10.0,
                 // Some(vec![
                 //     ((0.0, 5.0), (5.0, 5.0)).into(),
                 //     ((5.0, 5.0), (5.0, 4.0)).into(),
                 // ]),
-                5.0,
-                5.0,
+                10.0,
+                10.0,
                 None,
                 30,
                 1.0,
@@ -197,10 +195,12 @@ fn main() -> Result<()> {
             match args.alg {
                 Alg::DDPG => {
                     let mut alg_config = DDPG_Config::pointenv();
-                    alg_config.set_max_episodes(200);
-                    alg_config.set_replay_buffer_capacity(
-                        (env_config.width * 10.0 * env_config.height * 10.0) as usize,
-                    );
+                    if env_config.height == 10.0 && env_config.width == 10.0 {
+                        alg_config.set_max_episodes(400);
+                        alg_config.set_replay_buffer_capacity(
+                            (env_config.width * 10.0 * env_config.height * 10.0) as usize,
+                        );
+                    }
                     if args.gui {
                         OffPolicyGUI::<DDPG, PointEnv, _, _>::open(
                             env_config,
@@ -219,10 +219,12 @@ fn main() -> Result<()> {
                 },
                 Alg::DDPG_SGM => {
                     let mut alg_config = DDPG_SGM_Config::pointenv();
-                    alg_config.set_max_episodes(200);
-                    alg_config.set_replay_buffer_capacity(
-                        (env_config.width * 10.0 * env_config.height * 10.0) as usize,
-                    );
+                    if env_config.height == 10.0 && env_config.width == 10.0 {
+                        alg_config.set_max_episodes(400);
+                        alg_config.set_replay_buffer_capacity(
+                            (env_config.width * 10.0 * env_config.height * 10.0) as usize,
+                        );
+                    }
                     if args.gui {
                         // let mut env = *PointEnv::new(small_env_config.clone())?;
                         // let mut agent = *DDPG_SGM::from_config(
