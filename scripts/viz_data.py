@@ -28,10 +28,13 @@ environment = [
     envname for envname in recognized_envs
     if all(envname in dirname for dirname in args.dirs)
 ]
-if len(environment) != 1:
+if len(environment) > 1:
     print("All provided paths must contain the same (unique) environment name")
     sys.exit()
-environment = environment[0]
+elif len(environment) == 0:
+    environment = "unknown"
+elif len(environment) == 1:
+    environment = environment[0]
 
 suffix = "successes" if args.successes else "total_rewards"
 
