@@ -378,7 +378,7 @@ where
                 warn!("Reached waypoint ({:#?})", waypoint.achieved_goal());
 
                 self.plan.pop();
-                reward = Tensor::new(vec![0.0], &self.device).unwrap();
+                reward = Tensor::new(vec![1.0], &self.device).unwrap();
             }
 
             self.ddpg.remember(
