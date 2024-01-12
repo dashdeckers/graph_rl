@@ -15,6 +15,7 @@ use {
         envs::TensorConvertible,
         components::ReplayBuffer,
     },
+    anyhow::Result,
     ordered_float::OrderedFloat,
     petgraph::{
         dot::Dot,
@@ -74,49 +75,67 @@ impl ReplayBuffer {
                 let i1 = graph.add_node(s1.clone());
                 indices.insert(s1.clone(), i1);
             } else {
-
-                // check if new node is TWC consistent
-                let is_twc_consistent = graph
-                    .node_weights()
-                    .all(|s2| {
-                        let c_out = *graph.node_weights().map(|w|
-                            OrderedFloat((d(s1, w) - d(s2, w)).abs())
-                        ).max().unwrap();
-                        let c_in = *graph.node_weights().map(|w|
-                            OrderedFloat((d(w, s1) - d(w, s2)).abs())
-                        ).max().unwrap();
-
-                        c_out >= tau && c_in >= tau
-                    });
-
-                if is_twc_consistent {
-                    // add node
-                    let i1 = graph.add_node(s1.clone());
-                    indices.insert(s1.clone(), i1);
-
-                    // add edges
-                    let mut edges_to_add = Vec::new();
-                    for s2 in graph.node_weights() {
-                        // no self edges
-                        if s1 == s2 {
-                            continue;
-                        }
-
-                        let d_out = d(s1, s2);
-                        let d_in = d(s2, s1);
-
-                        if d_out < maxdist && d_in < maxdist {
-                            edges_to_add.push((i1, indices[s2], d_out));
-                            edges_to_add.push((indices[s2], i1, d_in));
-                        }
-                    }
-                    for (a, b, weight) in edges_to_add {
-                        graph.add_edge(a, b, OrderedFloat(weight));
-                    }
-                }
+                let _ = self.try_adding_node(&mut graph, &mut indices, s1, &d, maxdist, tau);
             }
         }
 
         (graph, indices)
+    }
+
+    /// Adds a single node to the graph if it is TWC-consistent.
+    pub fn try_adding_node<S, D>(
+        &self,
+        graph: &mut StableGraph<S, OrderedFloat<f64>, Undirected>,
+        indices: &mut HashMap<S, NodeIndex>,
+        s1: &S,
+        d: &D,
+        maxdist: f64,
+        tau: f64,
+    ) -> Result<()>
+    where
+        S: Clone + Eq + Hash + TensorConvertible,
+        D: Fn(&S, &S) -> f64,
+    {
+        // check if new node is TWC consistent
+        let is_twc_consistent = graph
+            .node_weights()
+            .all(|s2| {
+                let c_out = *graph.node_weights().map(|w|
+                    OrderedFloat((d(s1, w) - d(s2, w)).abs())
+                ).max().unwrap();
+                let c_in = *graph.node_weights().map(|w|
+                    OrderedFloat((d(w, s1) - d(w, s2)).abs())
+                ).max().unwrap();
+
+                c_out >= tau && c_in >= tau
+            });
+
+        if is_twc_consistent {
+            // add node
+            let i1 = graph.add_node(s1.clone());
+            indices.insert(s1.clone(), i1);
+
+            // add edges
+            let mut edges_to_add = Vec::new();
+            for s2 in graph.node_weights() {
+                // no self edges
+                if s1 == s2 {
+                    continue;
+                }
+
+                let d_out = d(s1, s2);
+                let d_in = d(s2, s1);
+
+                if d_out < maxdist && d_in < maxdist {
+                    edges_to_add.push((i1, indices[s2], d_out));
+                    edges_to_add.push((indices[s2], i1, d_in));
+                }
+            }
+            for (a, b, weight) in edges_to_add {
+                graph.add_edge(a, b, OrderedFloat(weight));
+            }
+        }
+
+        is_twc_consistent.then_some(()).ok_or_else(|| anyhow::anyhow!("Not TWC consistent"))
     }
 }
