@@ -1,7 +1,6 @@
 mod ddpg;
 mod ddpg_sgm;
 
-pub mod configs;
 pub use ddpg::DDPG;
 pub use ddpg_sgm::DDPG_SGM;
 
@@ -9,7 +8,6 @@ pub use ddpg_sgm::DDPG_SGM;
 use crate::{
     envs::Environment,
     components::ReplayBuffer,
-    RunMode,
 };
 use {
     ordered_float::OrderedFloat,
@@ -24,9 +22,29 @@ use {
     }
 };
 
+
+use std::fmt::Display;
+
+/// The execution mode of an agent is either training or testing.
+#[derive(Clone, Copy, PartialEq, Eq)]
+pub enum RunMode {
+    Train,
+    Test,
+}
+
+impl Display for RunMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            RunMode::Train => write!(f, "Train"),
+            RunMode::Test => write!(f, "Test"),
+        }
+    }
+}
+
 pub trait Algorithm {
     type Config;
 
+    fn config(&self) -> &Self::Config;
     fn from_config(
         device: &Device,
         config: &Self::Config,
@@ -34,10 +52,12 @@ pub trait Algorithm {
         size_action: usize,
     ) -> Result<Box<Self>>;
 
-    fn run_mode(&self) -> RunMode;
-    fn set_run_mode(&mut self, mode: RunMode);
+    fn actions(
+        &mut self,
+        state: &Tensor,
+        mode: RunMode,
+    ) -> Result<Tensor>;
 
-    fn actions(&mut self, state: &Tensor) -> Result<Tensor>;
     fn train(&mut self) -> Result<()>;
 }
 

@@ -1,35 +1,39 @@
 use {
     super::{
         tick_off_policy,
-        training_loop_off_policy,
+        loop_off_policy,
+        ParamAlg,
+        ParamEnv,
+        ParamRunMode,
     },
     crate::{
         agents::{
+            RunMode,
             Algorithm,
             OffPolicyAlgorithm,
-            configs::{
-                AlgorithmConfig,
-                ActorCriticConfig,
-                OffPolicyConfig,
-            },
         },
         envs::{
             Environment,
-            Renderable,
+            RenderableEnvironment,
             Sampleable,
             TensorConvertible,
         },
-        RunMode,
+        configs::{
+            ActorCriticConfig,
+            OffPolicyConfig,
+            RenderableConfig,
+            TrainConfig,
+            TestConfig,
+        },
     },
     anyhow::Result,
+    serde::Serialize,
     candle_core::Device,
     eframe::egui,
     egui::{
         widgets::Button,
         Checkbox,
         Color32,
-        Slider,
-        Label,
         Ui,
     },
     egui_plot::{
@@ -47,7 +51,7 @@ use {
     },
 };
 
-enum PlayMode {
+pub enum PlayMode {
     Pause,
     Ticks,
     Episodes,
@@ -55,28 +59,33 @@ enum PlayMode {
 
 pub struct OffPolicyGUI<Alg, Env, Obs, Act>
 where
-    Env: Environment<Action = Act, Observation = Obs> + Renderable,
+    Env: Environment<Action = Act, Observation = Obs> + RenderableEnvironment,
+    Env::Config: Clone + Serialize + RenderableConfig,
     Alg: Algorithm,
-    Alg::Config: AlgorithmConfig,
+    Alg::Config: Clone + Serialize + RenderableConfig,
     Obs: Clone,
 {
-    env: Env,
-    agent: Alg,
-    config: Alg::Config,
-    device: Device,
+    pub env: Env,
+    pub alg: Alg,
+    pub env_config: Env::Config,
+    pub alg_config: Alg::Config,
+    // pub init_env: ParamEnv<Env, Obs, Act>,
+    pub init_alg: ParamAlg<Alg>,
+    pub init_run: ParamRunMode,
+    pub device: Device,
 
-    run_data: Vec<(RunMode, f64, bool)>,
-    play_mode: PlayMode,
+    pub run_data: Vec<(RunMode, f64, bool)>,
+    pub play_mode: PlayMode,
 
-    render_buffer: bool,
+    pub render_buffer: bool,
 }
 
 impl<Alg, Env, Obs, Act> eframe::App for OffPolicyGUI<Alg, Env, Obs, Act>
 where
-    Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
-    Env::Config: Clone,
-    Alg: Algorithm + OffPolicyAlgorithm + 'static,
-    Alg::Config: Clone + AlgorithmConfig + ActorCriticConfig + OffPolicyConfig,
+    Env: Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
+    Env::Config: Clone + Serialize + RenderableConfig,
+    Alg: Clone + Algorithm + OffPolicyAlgorithm + 'static,
+    Alg::Config: Clone + Serialize + ActorCriticConfig + OffPolicyConfig + RenderableConfig,
     Obs: Clone + Debug + Eq + Hash + TensorConvertible + 'static,
     Act: Clone + TensorConvertible + Sampleable + 'static,
 {
@@ -85,12 +94,10 @@ where
         ctx: &egui::Context,
         _frame: &mut eframe::Frame,
     ) {
-        // run the OffPolicyGUI logic
-        self.run_gui_logic().unwrap();
-
         // render the settings and options
         egui::SidePanel::left("settings").show(ctx, |ui| {
-            self.render_options(ui);
+            self.render_settings(ui);
+            self.render_gui_options(ui);
         });
 
         // render episodic rewards / learning curve
@@ -121,99 +128,134 @@ where
 
 impl<Alg, Env, Obs, Act> OffPolicyGUI<Alg, Env, Obs, Act>
 where
-    Env: Environment<Action = Act, Observation = Obs> + Renderable + 'static,
-    Env::Config: Clone,
-    Alg: Algorithm + OffPolicyAlgorithm + 'static,
-    Alg::Config: Clone + AlgorithmConfig + ActorCriticConfig + OffPolicyConfig,
+    Env: Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
+    Env::Config: Clone + Serialize + RenderableConfig,
+    Alg: Clone + Algorithm + OffPolicyAlgorithm + 'static,
+    Alg::Config: Clone + Serialize + ActorCriticConfig + OffPolicyConfig + RenderableConfig,
     Obs: Clone + Debug + Eq + Hash + TensorConvertible + 'static,
     Act: Clone + TensorConvertible + Sampleable + 'static,
 {
-    pub fn open(
-        env_config: Env::Config,
-        alg_config: Alg::Config,
+    pub fn create(
+        init_env: ParamEnv<Env, Obs, Act>,
+        init_alg: ParamAlg<Alg>,
+        init_run: ParamRunMode,
         device: Device,
-    ) {
-        let env = *Env::new(env_config.clone()).unwrap();
-        let agent = *Alg::from_config(
-            &device,
-            &alg_config,
-            env.observation_space().iter().product::<usize>(),
-            env.action_space().iter().product::<usize>(),
-        ).unwrap();
+    ) -> Self {
 
-        let gui = Self {
+
+        // let (env, env_config) = match init_env {
+        //     ParamEnv::AsEnvironment(env) => (env, env.config().clone()),
+        //     ParamEnv::AsConfig(config) => {
+        //         let env = *Env::new(config.clone()).unwrap();
+        //         (env, env.config().clone())
+        //     },
+        // };
+        let env_config = match &init_env {
+            ParamEnv::AsEnvironment(env) => env.config().clone(),
+            ParamEnv::AsConfig(config) => config.clone(),
+        };
+        let env = if let ParamEnv::AsEnvironment(env) = init_env {
+            env
+        } else {
+            *Env::new(env_config.clone()).unwrap()
+        };
+
+
+
+        let (alg, alg_config) = match &init_alg {
+            ParamAlg::AsAlgorithm(alg) => (alg.clone(), alg.config().clone()),
+            ParamAlg::AsConfig(config) => {
+                let alg = *Alg::from_config(
+                    &device,
+                    config,
+                    env.observation_space().iter().product::<usize>(),
+                    env.action_space().iter().product::<usize>(),
+                ).unwrap();
+                (alg.clone(), alg.config().clone())
+            },
+        };
+
+        Self {
             env,
-            agent,
-            config: alg_config,
+            alg,
+            env_config,
+            alg_config,
+            // init_env,
+            init_alg,
+            init_run,
             device,
 
             run_data: Vec::new(),
             play_mode: PlayMode::Pause,
 
             render_buffer: false,
-        };
+        }
+    }
+
+    pub fn open(
+        init_env: ParamEnv<Env, Obs, Act>,
+        init_alg: ParamAlg<Alg>,
+        init_run: ParamRunMode,
+        device: Device,
+    ) -> Result<(), eframe::Error> {
         eframe::run_native(
             "Actor-Critic Graph-Learner",
             eframe::NativeOptions {
                 min_window_size: Some(egui::vec2(800.0 * 1.2, 600.0 * 1.2)),
                 ..Default::default()
             },
-            Box::new(|_| Box::new(gui)),
+            Box::new(|_| Box::new(Self::create(
+                init_env,
+                init_alg,
+                init_run,
+                device,
+            ))),
         )
-        .unwrap();
     }
 
-    fn run_gui_logic(&mut self) -> Result<()> {
+    pub fn test_agent(&mut self) -> Result<()> {
         // let it play to observe agent behavior!
         match self.play_mode {
             PlayMode::Pause => (),
             PlayMode::Ticks => {
-                tick_off_policy(&mut self.env, &mut self.agent, &self.device)?;
+                tick_off_policy(&mut self.env, &mut self.alg, &self.device)?;
             }
             PlayMode::Episodes => {
-                let mut config = self.config.clone();
-                config.set_max_episodes(1);
-                config.set_initial_random_actions(0);
-                config.set_training_iterations(0);
-                let (mc_returns, successes) = training_loop_off_policy(
+                let (mc_returns, successes) = loop_off_policy(
                     &mut self.env,
-                    &mut self.agent,
-                    config,
+                    &mut self.alg,
+                    ParamRunMode::Test(TestConfig::new(1)),
                     &self.device,
                 )?;
                 self.run_data
-                    .push((self.agent.run_mode(), mc_returns[0], successes[0]));
+                    .push((RunMode::Test, mc_returns[0], successes[0]));
             }
         }
         Ok(())
     }
 
-    fn run_agent(&mut self) -> Result<()> {
-        let (mc_returns, successes) = training_loop_off_policy(
+    pub fn run_agent(&mut self) -> Result<()> {
+        let (mc_returns, successes) = loop_off_policy(
             &mut self.env,
-            &mut self.agent,
-            self.config.clone(),
+            &mut self.alg,
+            self.init_run.clone(),
             &self.device,
         )?;
+        let n_episodes = match &self.init_run {
+            ParamRunMode::Test(config) => config.max_episodes(),
+            ParamRunMode::Train(config) => config.max_episodes(),
+        };
         self.run_data.extend(
-            (0..self.config.max_episodes())
-                .map(|i| (RunMode::Train, mc_returns[i], successes[i])),
+            (0..n_episodes).map(|i| (RunMode::Train, mc_returns[i], successes[i])),
         );
         Ok(())
     }
 
-    fn reset_agent(&mut self) -> Result<()> {
-        let size_state = self.env.observation_space().iter().product::<usize>();
-        let size_action = self.env.action_space().iter().product::<usize>();
-        self.agent = *<Alg>::from_config(&self.device, &self.config, size_state, size_action)?;
-        Ok(())
-    }
-
-    fn render_buffer(
+    pub fn render_buffer(
         &self,
         plot_ui: &mut PlotUi,
     ) {
-        for state in self.agent.replay_buffer().all_states::<Obs>() {
+        for state in self.alg.replay_buffer().all_states::<Obs>() {
             let s = <Obs>::to_vec(state.clone());
             plot_ui.points(
                 Points::new(vec![[s[0], s[1]]])
@@ -223,7 +265,7 @@ where
         }
     }
 
-    fn render_returns(
+    pub fn render_returns(
         &mut self,
         plot_ui: &mut PlotUi,
     ) {
@@ -252,78 +294,96 @@ where
             .collect::<Vec<_>>();
     }
 
-    fn render_options(
+    pub fn render_settings(
         &mut self,
         ui: &mut Ui,
     ) {
         ui.heading("Settings");
-        let mut max_episodes = self.config.max_episodes();
-        let mut train_iterations = self.config.training_iterations();
-        let mut init_random_actions = self.config.initial_random_actions();
 
-        let actor_lr = self.config.actor_lr();
-        let critic_lr = self.config.critic_lr();
-        let gamma = self.config.gamma();
-        let tau = self.config.tau();
-
-        let buffer_size = self.config.replay_buffer_capacity();
-        let batch_size = self.config.training_batch_size();
-
-        ui.separator();
-        ui.label("DDPG Options");
-        ui.add(Label::new(format!("Actor LR: {actor_lr:#.5}")));
-        ui.add(Label::new(format!("Critic LR: {critic_lr:#.5}")));
-        ui.add(Label::new(format!("Gamma: {gamma}")));
-        ui.add(Label::new(format!("Tau: {tau}")));
-        ui.add(Label::new(format!("Buffer size: {buffer_size}")));
-        ui.add(Label::new(format!("Batch size: {batch_size}")));
-        ui.add(
-            Slider::new(&mut train_iterations, 1..=200)
-                .step_by(1.0)
-                .text("Training iters"),
-        );
-        ui.add(
-            Slider::new(&mut init_random_actions, 0..=1000)
-                .text("Init. random actions"),
-        );
-
-        ui.separator();
-        ui.label("Render Options");
-        ui.add(Checkbox::new(&mut self.render_buffer, "Show Buffer"));
-
-        ui.separator();
-        ui.heading("Actions");
-        ui.horizontal(|ui| {
-            if ui.add(Button::new("Reset Agent")).clicked() {
-                self.reset_agent().unwrap();
-            };
-
-            let agent_mode = self.agent.run_mode();
-            if ui
-                .add(Button::new(format!("Toggle TrainMode ({agent_mode})")))
-                .clicked()
-            {
-                self.agent.set_run_mode(match self.agent.run_mode() {
-                    RunMode::Test => RunMode::Train,
-                    RunMode::Train => RunMode::Test,
-                });
-            };
-        });
-
-        ui.separator();
-        ui.label("Train Agent");
-        ui.add(
-            Slider::new(&mut max_episodes, 1..=501)
-                .step_by(1.0)
-                .text("n_episodes"),
-        );
-        if ui.add(Button::new("Run Episodes")).clicked() {
-            self.run_agent().unwrap();
-        };
-        if ui.add(Button::new("Train only")).clicked() {
-            for _ in 0..self.config.training_iterations() {
-                self.agent.train().unwrap();
+        match self.init_run.clone() {
+            ParamRunMode::Test(mut config) => {
+                config.render_mutable(ui);
+                if ui
+                    .add(Button::new("Run"))
+                    .clicked()
+                {
+                    self.run_agent().unwrap();
+                };
+                if ui
+                    .add(Button::new("Toggle Mode"))
+                    .clicked()
+                {
+                    self.init_run = ParamRunMode::Train(
+                        TrainConfig::new(
+                            config.max_episodes(),
+                            30,
+                            0,
+                        ),
+                    );
+                };
             }
+            ParamRunMode::Train(mut config) => {
+                config.render_mutable(ui);
+                if ui
+                    .add(Button::new("Run"))
+                    .clicked()
+                {
+                    self.run_agent().unwrap();
+                };
+                if ui
+                    .add(Button::new("Toggle Mode"))
+                    .clicked()
+                {
+                    self.init_run = ParamRunMode::Test(
+                        TestConfig::new(
+                            config.max_episodes(),
+                        ),
+                    );
+                };
+            }
+        }
+
+        // match self.init_env {
+        //     ParamEnv::AsEnvironment(env) => {
+        //         env.config().render_mutable(ui);
+        //         if ui
+        //             .add(Button::new("Toggle Env"))
+        //             .clicked()
+        //         {
+        //             self.init_env = ParamEnv::AsConfig(
+        //                 env.config().clone(),
+        //             );
+        //         };
+        //     }
+        //     ParamEnv::AsConfig(config) => {
+        //         config.render_mutable(ui);
+        //         if ui
+        //             .add(Button::new("Toggle Env"))
+        //             .clicked()
+        //         {
+        //             self.init_env = ParamEnv::AsEnvironment(
+        //                 *Env::new(config.clone()).unwrap(),
+        //             );
+        //         };
+        //     }
+        // }
+
+        self.alg.config().clone().render_mutable(ui);
+        if ui.add(Button::new("Reset Settings")).clicked() {
+            self.alg_config = match &self.init_alg {
+                ParamAlg::AsAlgorithm(alg) => alg.config().clone(),
+                ParamAlg::AsConfig(config) => config.clone(),
+            };
+        };
+        if ui.add(Button::new("Set Agent")).clicked() {
+            let size_state = self.env.observation_space().iter().product::<usize>();
+            let size_action = self.env.action_space().iter().product::<usize>();
+            self.alg = *Alg::from_config(
+                &self.device,
+                &self.alg_config,
+                size_state,
+                size_action,
+            ).unwrap();
         };
 
         ui.separator();
@@ -339,9 +399,17 @@ where
                 self.play_mode = PlayMode::Episodes;
             };
         });
+        self.test_agent().unwrap();
+    }
 
-        self.config.set_max_episodes(max_episodes);
-        self.config.set_training_iterations(train_iterations);
-        self.config.set_initial_random_actions(init_random_actions);
+    pub fn render_gui_options(
+        &mut self,
+        ui: &mut Ui,
+    ) {
+        ui.separator();
+        ui.label("Render Options");
+        ui.add(Checkbox::new(&mut self.render_buffer, "Show Buffer"));
     }
 }
+
+

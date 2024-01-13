@@ -63,6 +63,7 @@ impl Transition {
 /// * `buffer` - The buffer of transitions.
 /// * `capacity` - The capacity of the buffer.
 /// * `size` - The current size of the buffer.
+#[derive(Clone)]
 pub struct ReplayBuffer {
     buffer: VecDeque<Transition>,
     capacity: usize,

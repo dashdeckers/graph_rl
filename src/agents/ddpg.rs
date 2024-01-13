@@ -1,15 +1,15 @@
 use {
     super::{
-        configs::DDPG_Config,
+        RunMode,
         Algorithm,
         OffPolicyAlgorithm,
     },
     crate::{
+        configs::DDPG_Config,
         components::{
             OuNoise,
             ReplayBuffer,
         },
-        RunMode,
     },
     candle_core::{
         DType,
@@ -21,14 +21,11 @@ use {
         Var,
     },
     candle_nn::{
-        func,
         linear,
-        sequential::seq,
-        Activation,
+        Linear,
         AdamW,
         Optimizer,
         ParamsAdamW,
-        Sequential,
         VarBuilder,
         VarMap,
     },
@@ -62,11 +59,12 @@ fn track(
 }
 
 #[allow(dead_code)]
+#[derive(Clone)]
 struct Actor<'a> {
     varmap: VarMap,
     vb: VarBuilder<'a>,
-    network: Sequential,
-    target_network: Sequential,
+    network: Vec<Linear>,
+    target_network: Vec<Linear>,
     dims: Vec<(usize, usize)>,
 }
 
@@ -79,31 +77,32 @@ impl Actor<'_> {
         let mut varmap = VarMap::new();
         let vb = VarBuilder::from_varmap(&varmap, dtype, device);
 
-        let make_network = |prefix: &str| {
-            let seq = seq()
-                .add(linear(
+        let make_layers = |prefix: &str| {
+            let layers = vec![
+                linear(
                     dims[0].0,
                     dims[0].1,
                     vb.pp(format!("{prefix}-fc0")),
-                )?)
-                .add(Activation::Relu)
-                .add(linear(
+                )?,
+                // Activation::Relu,
+                linear(
                     dims[1].0,
                     dims[1].1,
                     vb.pp(format!("{prefix}-fc1")),
-                )?)
-                .add(Activation::Relu)
-                .add(linear(
+                )?,
+                // Activation::Relu,
+                linear(
                     dims[2].0,
                     dims[2].1,
                     vb.pp(format!("{prefix}-fc2")),
-                )?)
-                .add(func(|xs| xs.tanh()));
-            Ok::<Sequential, Error>(seq)
+                )?,
+                // func(|xs| xs.tanh())
+            ];
+            Ok::<Vec<Linear>, Error>(layers)
         };
 
-        let network = make_network("actor")?;
-        let target_network = make_network("target-actor")?;
+        let network = make_layers("actor")?;
+        let target_network = make_layers("target-actor")?;
 
         // this sets the two networks to be equal to each other using tau = 1.0
         track(&mut varmap, &vb, "target-actor", "actor", dims, 1.0)?;
@@ -121,14 +120,32 @@ impl Actor<'_> {
         &self,
         state: &Tensor,
     ) -> Result<Tensor> {
-        self.network.forward(state)
+        let mut xs = state.clone();
+
+        xs = self.network[0].forward(&xs)?;
+        xs = xs.relu()?;
+        xs = self.network[1].forward(&xs)?;
+        xs = xs.relu()?;
+        xs = self.network[2].forward(&xs)?;
+        xs = xs.tanh()?;
+
+        Ok(xs)
     }
 
     fn target_forward(
         &self,
         state: &Tensor,
     ) -> Result<Tensor> {
-        self.target_network.forward(state)
+        let mut xs = state.clone();
+
+        xs = self.target_network[0].forward(&xs)?;
+        xs = xs.relu()?;
+        xs = self.target_network[1].forward(&xs)?;
+        xs = xs.relu()?;
+        xs = self.target_network[2].forward(&xs)?;
+        xs = xs.tanh()?;
+
+        Ok(xs)
     }
 
     fn track(
@@ -147,11 +164,12 @@ impl Actor<'_> {
 }
 
 #[allow(dead_code)]
+#[derive(Clone)]
 struct Critic<'a> {
     varmap: VarMap,
     vb: VarBuilder<'a>,
-    network: Sequential,
-    target_network: Sequential,
+    network: Vec<Linear>,
+    target_network: Vec<Linear>,
     dims: Vec<(usize, usize)>,
 }
 
@@ -164,30 +182,31 @@ impl Critic<'_> {
         let mut varmap = VarMap::new();
         let vb = VarBuilder::from_varmap(&varmap, dtype, device);
 
-        let make_network = |prefix: &str| {
-            let seq = seq()
-                .add(linear(
+        let make_layers = |prefix: &str| {
+            let layers = vec![
+                linear(
                     dims[0].0,
                     dims[0].1,
                     vb.pp(format!("{prefix}-fc0")),
-                )?)
-                .add(Activation::Relu)
-                .add(linear(
+                )?,
+                // Activation::Relu,
+                linear(
                     dims[1].0,
                     dims[1].1,
                     vb.pp(format!("{prefix}-fc1")),
-                )?)
-                .add(Activation::Relu)
-                .add(linear(
+                )?,
+                // Activation::Relu,
+                linear(
                     dims[2].0,
                     dims[2].1,
                     vb.pp(format!("{prefix}-fc2")),
-                )?);
-            Ok::<Sequential, Error>(seq)
+                )?,
+            ];
+            Ok::<Vec<Linear>, Error>(layers)
         };
 
-        let network = make_network("critic")?;
-        let target_network = make_network("target-critic")?;
+        let network = make_layers("critic")?;
+        let target_network = make_layers("target-critic")?;
 
         // this sets the two networks to be equal to each other using tau = 1.0
         track(&mut varmap, &vb, "target-critic", "critic", dims, 1.0)?;
@@ -206,8 +225,15 @@ impl Critic<'_> {
         state: &Tensor,
         action: &Tensor,
     ) -> Result<Tensor> {
-        let xs = Tensor::cat(&[action, state], 1)?;
-        self.network.forward(&xs)
+        let mut xs = Tensor::cat(&[action, state], 1)?;
+
+        xs = self.network[0].forward(&xs)?;
+        xs = xs.relu()?;
+        xs = self.network[1].forward(&xs)?;
+        xs = xs.relu()?;
+        xs = self.network[2].forward(&xs)?;
+
+        Ok(xs)
     }
 
     fn target_forward(
@@ -215,8 +241,15 @@ impl Critic<'_> {
         state: &Tensor,
         action: &Tensor,
     ) -> Result<Tensor> {
-        let xs = Tensor::cat(&[action, state], 1)?;
-        self.target_network.forward(&xs)
+        let mut xs = Tensor::cat(&[action, state], 1)?;
+
+        xs = self.target_network[0].forward(&xs)?;
+        xs = xs.relu()?;
+        xs = self.target_network[1].forward(&xs)?;
+        xs = xs.relu()?;
+        xs = self.target_network[2].forward(&xs)?;
+
+        Ok(xs)
     }
 
     fn track(
@@ -236,6 +269,7 @@ impl Critic<'_> {
 
 #[allow(dead_code)]
 #[allow(clippy::upper_case_acronyms)]
+#[derive(Clone)]
 pub struct DDPG<'a> {
     actor: Actor<'a>,
     actor_optim: AdamW,
@@ -249,7 +283,7 @@ pub struct DDPG<'a> {
 
     size_state: usize,
     size_action: usize,
-    pub run_mode: RunMode,
+    config: DDPG_Config,
 }
 
 impl DDPG<'_> {
@@ -260,7 +294,6 @@ impl DDPG<'_> {
         size_action: usize,
         hidden_1_size: usize,
         hidden_2_size: usize,
-        run_mode: RunMode,
         actor_lr: f64,
         critic_lr: f64,
         gamma: f64,
@@ -313,6 +346,10 @@ impl DDPG<'_> {
             },
         )?;
 
+        let ou_theta = ou_noise.theta();
+        let ou_kappa = ou_noise.kappa();
+        let ou_sigma = ou_noise.sigma();
+
         Ok(Self {
             actor,
             actor_optim,
@@ -325,7 +362,19 @@ impl DDPG<'_> {
             ou_noise,
             size_state,
             size_action,
-            run_mode,
+            config: DDPG_Config {
+                hidden_1_size,
+                hidden_2_size,
+                actor_learning_rate: actor_lr,
+                critic_learning_rate: critic_lr,
+                gamma,
+                tau,
+                replay_buffer_capacity: buffer_capacity,
+                training_batch_size: batch_size,
+                ou_theta,
+                ou_kappa,
+                ou_sigma,
+            },
         })
     }
 
@@ -355,6 +404,10 @@ impl DDPG<'_> {
 impl Algorithm for DDPG<'_> {
     type Config = DDPG_Config;
 
+    fn config(&self) -> &Self::Config {
+        &self.config
+    }
+
     fn from_config(
         device: &Device,
         config: &DDPG_Config,
@@ -367,7 +420,6 @@ impl Algorithm for DDPG<'_> {
             size_action,
             config.hidden_1_size,
             config.hidden_2_size,
-            RunMode::Train,
             config.actor_learning_rate,
             config.critic_learning_rate,
             config.gamma,
@@ -375,8 +427,8 @@ impl Algorithm for DDPG<'_> {
             config.replay_buffer_capacity,
             config.training_batch_size,
             OuNoise::new(
-                config.ou_mu,
                 config.ou_theta,
+                config.ou_kappa,
                 config.ou_sigma,
                 size_action,
                 device,
@@ -387,11 +439,12 @@ impl Algorithm for DDPG<'_> {
     fn actions(
         &mut self,
         state: &Tensor,
+        mode: RunMode,
     ) -> Result<Tensor> {
         // Candle assumes a batch dimension, so when we don't have one we need
         // to pretend we do by un- and resqueezing the state tensor.
         let actions = self.actor.forward(&state.detach()?.unsqueeze(0)?)?.squeeze(0)?;
-        Ok(if let RunMode::Train = self.run_mode {
+        Ok(if let RunMode::Train = mode {
             (actions + self.ou_noise.sample()?)?
         } else {
             actions
@@ -426,14 +479,6 @@ impl Algorithm for DDPG<'_> {
         self.actor.track(self.tau)?;
 
         Ok(())
-    }
-
-    fn run_mode(&self) -> RunMode {
-        self.run_mode
-    }
-
-    fn set_run_mode(&mut self, mode: RunMode) {
-        self.run_mode = mode;
     }
 }
 

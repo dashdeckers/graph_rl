@@ -1,8 +1,5 @@
 use {
-    super::configs::{
-        DDPG_SGM_Config,
-        DistanceMode,
-    },
+    super::RunMode,
     crate::{
         agents::{
             DDPG,
@@ -16,8 +13,11 @@ use {
             TensorConvertible,
             GoalAwareObservation,
         },
-        components::ReplayBuffer,
-        RunMode,
+        components::{
+            ReplayBuffer,
+            sgm::DistanceMode,
+        },
+        configs::DDPG_SGM_Config,
     },
     candle_core::{
         Device,
@@ -41,7 +41,6 @@ use {
     },
 };
 
-
 /// Goal-Aware Observations contain a notion of perspective.
 ///
 /// For example, it matters whether the agent is looking at S2 from S1 or S1 from S2.
@@ -61,6 +60,7 @@ pub enum Direction {
 }
 
 #[allow(non_camel_case_types)]
+#[derive(Clone)]
 pub struct DDPG_SGM<'a, Env>
 where
     Env: Environment,
@@ -80,6 +80,8 @@ where
 
     sgm_maxdist: f64,
     sgm_tau: f64,
+
+    config: DDPG_SGM_Config,
 }
 
 impl<'a, Env> DDPG_SGM<'a, Env>
@@ -263,6 +265,8 @@ where
             sgm_close_enough: config.sgm_close_enough,
             sgm_maxdist: config.sgm_maxdist,
             sgm_tau: config.sgm_tau,
+
+            config: config.clone(),
         }))
     }
 }
@@ -274,6 +278,10 @@ where
     <Env::Observation as GoalAwareObservation>::State: Clone + Debug + Eq + Hash + TensorConvertible + DistanceMeasure,
 {
     type Config = DDPG_SGM_Config;
+
+    fn config(&self) -> &Self::Config {
+        &self.config
+    }
 
     fn from_config(
         device: &Device,
@@ -297,12 +305,15 @@ where
             sgm_close_enough: config.sgm_close_enough,
             sgm_maxdist: config.sgm_maxdist,
             sgm_tau: config.sgm_tau,
+
+            config: config.clone(),
         }))
     }
 
     fn actions(
         &mut self,
         state: &Tensor,
+        mode: RunMode,
     ) -> Result<Tensor> {
         let curr_obs = <Env::Observation>::from_tensor(state.clone());
 
@@ -310,7 +321,7 @@ where
         // This should only happen at the very beginning of training
         if self.goal_obs.is_none() {
             self.goal_obs = Some(curr_obs);
-            return self.ddpg.actions(state);
+            return self.ddpg.actions(state, mode);
         }
 
         // Check if the environment has given us a new objective, and if so, update the graph and plan.
@@ -326,7 +337,7 @@ where
 
         // If the plan is empty, we default to the DDPG policy
         if self.plan.is_empty() {
-            self.ddpg.actions(state)
+            self.ddpg.actions(state, mode)
         } else {
             // Otherwise we pass the current state with the next waypoint as the goal
             let waypoint_obs = self.splice_states(
@@ -334,20 +345,12 @@ where
                 self.plan.last().unwrap(),
             );
             warn!("Aiming for Waypoint: {:#?}", waypoint_obs);
-            self.ddpg.actions(&<Env::Observation>::to_tensor(waypoint_obs, &self.device)?)
+            self.ddpg.actions(&<Env::Observation>::to_tensor(waypoint_obs, &self.device)?, mode)
         }
     }
 
     fn train(&mut self) -> Result<()> {
         self.ddpg.train()
-    }
-
-    fn run_mode(&self) -> RunMode {
-        self.ddpg.run_mode()
-    }
-
-    fn set_run_mode(&mut self, run_mode: RunMode) {
-        self.ddpg.set_run_mode(run_mode)
     }
 }
 
@@ -367,7 +370,7 @@ where
         truncated: &Tensor,
     ) {
         // If the plan is empty, we default to the DDPG policy
-        if self.plan.is_empty() { // || terminated || truncated
+        if self.plan.is_empty() || self.tensor_is_true(terminated) || self.tensor_is_true(truncated) { // || terminated || truncated
             self.ddpg.remember(
                 state,
                 action,

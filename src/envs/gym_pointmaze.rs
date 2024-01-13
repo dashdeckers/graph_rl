@@ -7,7 +7,7 @@ use {
         },
         DistanceMeasure,
         Environment,
-        Renderable,
+        RenderableEnvironment,
         Sampleable,
         Step,
         TensorConvertible,
@@ -406,12 +406,12 @@ impl Environment for PointMazeEnv {
         (lo, hi + padding)
     }
 
-    fn config(&self) -> Self::Config {
-        self.config.clone()
+    fn config(&self) -> &Self::Config {
+        &self.config
     }
 }
 
-impl Renderable for PointMazeEnv {
+impl RenderableEnvironment for PointMazeEnv {
     fn render(
         &mut self,
         plot_ui: &mut PlotUi,

@@ -24,17 +24,53 @@
 //! an algorithm on an environment using a graphical user interface.
 
 mod experiment;
-mod train;
+mod run;
 mod tick;
 mod gui_offpolicy;
 mod gui_sgm;
 
 pub use experiment::run_experiment_off_policy;
-pub use train::training_loop_off_policy;
+pub use run::loop_off_policy;
 pub use tick::{tick, tick_off_policy};
 
 pub use gui_offpolicy::OffPolicyGUI;
 pub use gui_sgm::SgmGUI;
+
+use {
+    serde::Serialize,
+    crate::{
+        agents::Algorithm,
+        envs::Environment,
+        configs::{
+            TrainConfig,
+            TestConfig,
+        },
+    }
+};
+
+pub enum ParamAlg<Alg>
+where
+    Alg: Algorithm,
+    Alg::Config: Clone + Serialize,
+{
+    AsAlgorithm(Alg),
+    AsConfig(Alg::Config),
+}
+
+pub enum ParamEnv<Env, Obs, Act>
+where
+    Env: Environment<Action = Act, Observation = Obs>,
+    Env::Config: Clone + Serialize,
+{
+    AsEnvironment(Env),
+    AsConfig(Env::Config),
+}
+
+#[derive(Clone, Serialize)]
+pub enum ParamRunMode {
+    Train(TrainConfig),
+    Test(TestConfig),
+}
 
 
 use {

@@ -1,11 +1,19 @@
 use serde::Serialize;
-use super::{
-    DDPG_Config,
-    AlgorithmConfig,
-    ActorCriticConfig,
-    OffPolicyConfig,
-    SgmConfig,
-    DistanceMode,
+use {
+    super::{
+        ActorCriticConfig,
+        OffPolicyConfig,
+        RenderableConfig,
+        DDPG_Config,
+        SgmConfig,
+        DistanceMode,
+    },
+    egui::{
+        Ui,
+        Label,
+        Slider,
+        Button,
+    },
 };
 
 
@@ -22,6 +30,22 @@ pub struct DDPG_SGM_Config {
     pub sgm_tau: f64,
 }
 impl DDPG_SGM_Config {
+    pub fn new(
+        ddpg: DDPG_Config,
+        distance_mode: DistanceMode,
+        sgm_close_enough: f64,
+        sgm_maxdist: f64,
+        sgm_tau: f64,
+    ) -> Self {
+        Self {
+            ddpg,
+            distance_mode,
+            sgm_close_enough,
+            sgm_maxdist,
+            sgm_tau,
+        }
+    }
+
     pub fn pendulum() -> Self {
         Self {
             ddpg: DDPG_Config::pendulum(),
@@ -50,28 +74,6 @@ impl DDPG_SGM_Config {
             sgm_maxdist: 1.0,
             sgm_tau: 0.4,
         }
-    }
-}
-
-
-impl AlgorithmConfig for DDPG_SGM_Config {
-    fn max_episodes(&self) -> usize {
-        self.ddpg.max_episodes
-    }
-    fn training_iterations(&self) -> usize {
-        self.ddpg.training_iterations
-    }
-    fn initial_random_actions(&self) -> usize {
-        self.ddpg.initial_random_actions
-    }
-    fn set_max_episodes(&mut self, max_episodes: usize) {
-        self.ddpg.max_episodes = max_episodes;
-    }
-    fn set_training_iterations(&mut self, training_iterations: usize) {
-        self.ddpg.training_iterations = training_iterations;
-    }
-    fn set_initial_random_actions(&mut self, initial_random_actions: usize) {
-        self.ddpg.initial_random_actions = initial_random_actions;
     }
 }
 
@@ -141,5 +143,62 @@ impl SgmConfig for DDPG_SGM_Config {
     }
     fn set_sgm_dist_mode(&mut self, dist_mode: DistanceMode) {
         self.distance_mode = dist_mode;
+    }
+}
+
+impl RenderableConfig for DDPG_SGM_Config {
+    fn render_immutable(
+        &self,
+        ui: &mut Ui,
+    ) {
+        self.ddpg.render_immutable(ui);
+
+        let close_enough = self.sgm_close_enough;
+        let maxdist = self.sgm_maxdist;
+        let tau = self.sgm_tau;
+        let dist_mode = self.distance_mode;
+
+        ui.separator();
+        ui.label("SGM Options");
+        ui.add(Label::new(format!("Close enough: {close_enough:#.2}")));
+        ui.add(Label::new(format!("Max distance: {maxdist:#.2}")));
+        ui.add(Label::new(format!("Tau: {tau:#.2}")));
+        ui.add(Label::new(format!("Distance mode: {dist_mode}")));
+    }
+
+    fn render_mutable(
+        &mut self,
+        ui: &mut Ui,
+    ) {
+        self.ddpg.render_mutable(ui);
+
+        ui.separator();
+        ui.label("SGM Options");
+        ui.add(
+            Slider::new(&mut self.sgm_close_enough, 0.0..=1.0)
+                .step_by(0.01)
+                .text("Close enough:"),
+        );
+        ui.add(
+            Slider::new(&mut self.sgm_maxdist, 0.0..=1.0)
+                .step_by(0.01)
+                .text("Max distance:"),
+        );
+        ui.add(
+            Slider::new(&mut self.sgm_tau, 0.0..=1.0)
+                .step_by(0.01)
+                .text("Tau:"),
+        );
+
+        let sgm_dist_mode = self.sgm_dist_mode();
+        if ui
+            .add(Button::new(format!("Toggle DistMode ({sgm_dist_mode})")))
+            .clicked()
+        {
+            self.set_sgm_dist_mode(match self.sgm_dist_mode() {
+                DistanceMode::True => DistanceMode::Estimated,
+                DistanceMode::Estimated => DistanceMode::True,
+            });
+        };
     }
 }

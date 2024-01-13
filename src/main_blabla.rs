@@ -1,3 +1,4 @@
+#[allow(unused_imports)]
 use {
     anyhow::Result,
     graph_rl::{
@@ -5,12 +6,6 @@ use {
             Algorithm,
             DDPG,
             DDPG_SGM,
-            configs::{
-                DDPG_Config,
-                DDPG_SGM_Config,
-                AlgorithmConfig,
-                OffPolicyConfig,
-            },
         },
         envs::{
             Environment,
@@ -25,10 +20,16 @@ use {
             PointMazeEnv,
             PointMazeConfig,
         },
+        configs::{
+            DDPG_Config,
+            DDPG_SGM_Config,
+            TrainConfig,
+            OffPolicyConfig,
+        },
         engines::{
             setup_logging,
             run_experiment_off_policy,
-            training_loop_off_policy,
+            loop_off_policy,
             OffPolicyGUI,
             SgmGUI,
         }

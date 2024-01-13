@@ -92,6 +92,7 @@ pub trait Environment {
     type Action;
     type Observation;
 
+    fn config(&self) -> &Self::Config;
     fn new(config: Self::Config) -> Result<Box<Self>>;
     fn reset(
         &mut self,
@@ -108,10 +109,9 @@ pub trait Environment {
     fn observation_domain(&self) -> Vec<RangeInclusive<f64>>;
     fn current_observation(&self) -> Self::Observation;
     fn value_range(&self) -> (f64, f64);
-    fn config(&self) -> Self::Config;
 }
 
-pub trait Renderable {
+pub trait RenderableEnvironment {
     fn render(
         &mut self,
         plot_ui: &mut PlotUi,

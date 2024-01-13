@@ -35,22 +35,23 @@ use candle_core::{
 /// `$\theta$`, with speed, `$\kappa$`, and volatility, `$\sigma$`.
 ///
 /// ---
+#[derive(Clone)]
 pub struct OuNoise {
-    mu: f64,
+    theta: f64,
     kappa: f64,
     sigma: f64,
     state: Tensor,
 }
 impl OuNoise {
     pub fn new(
-        mu: f64,
+        theta: f64,
         kappa: f64,
         sigma: f64,
         size_action: usize,
         device: &Device,
     ) -> Result<Self> {
         Ok(Self {
-            mu,
+            theta,
             kappa,
             sigma,
             state: Tensor::ones(size_action, DType::F64, device)?,
@@ -59,8 +60,20 @@ impl OuNoise {
 
     pub fn sample(&mut self) -> Result<Tensor> {
         let rand = Tensor::randn_like(&self.state, 0.0, 1.0)?;
-        let dx = ((self.kappa * (self.mu - &self.state)?)? + (self.sigma * rand)?)?;
+        let dx = ((self.kappa * (self.theta - &self.state)?)? + (self.sigma * rand)?)?;
         self.state = (&self.state + dx)?;
         Ok(self.state.clone())
+    }
+
+    pub fn theta(&self) -> f64 {
+        self.theta
+    }
+
+    pub fn kappa(&self) -> f64 {
+        self.kappa
+    }
+
+    pub fn sigma(&self) -> f64 {
+        self.sigma
     }
 }

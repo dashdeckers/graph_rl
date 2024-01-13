@@ -1,10 +1,14 @@
 use {
-    super::train::training_loop_off_policy,
+    super::{
+        run::loop_off_policy,
+        ParamAlg,
+        ParamEnv,
+        ParamRunMode,
+    },
     crate::{
         agents::{
             Algorithm,
             OffPolicyAlgorithm,
-            configs::AlgorithmConfig,
         },
         envs::{
             Environment,
@@ -16,6 +20,7 @@ use {
         anyhow,
         Result,
     },
+    serde::Serialize,
     candle_core::Device,
     polars::prelude::{
         DataFrame,
@@ -23,7 +28,6 @@ use {
         NamedFrom,
         ParquetWriter,
     },
-    serde::Serialize,
     std::{
         path::Path,
         fs::{File, create_dir_all},
@@ -44,15 +48,16 @@ use {
 pub fn run_experiment_off_policy<Alg, Env, Obs, Act>(
     path: &dyn AsRef<Path>,
     n_runs: usize,
-    env_config: Env::Config,
-    alg_config: Alg::Config,
+    env: ParamEnv<Env, Obs, Act>,
+    alg: ParamAlg<Alg>,
+    run_mode: ParamRunMode,
     device: &Device,
 ) -> Result<()>
 where
     Env: Environment<Action = Act, Observation = Obs>,
     Env::Config: Clone + Serialize,
-    Alg: Algorithm + OffPolicyAlgorithm,
-    Alg::Config: Clone + Serialize + AlgorithmConfig,
+    Alg: Clone + Algorithm + OffPolicyAlgorithm,
+    Alg::Config: Clone + Serialize,
     Obs: Clone + TensorConvertible,
     Act: Clone + TensorConvertible + Sampleable,
 {
@@ -66,6 +71,15 @@ where
             "I am assuming I would be overwriting existing data!",
         )))?
     }
+
+    let alg_config = match &alg {
+        ParamAlg::AsAlgorithm(alg) => alg.config().clone(),
+        ParamAlg::AsConfig(config) => config.clone(),
+    };
+    let env_config = match &env {
+        ParamEnv::AsEnvironment(env) => env.config().clone(),
+        ParamEnv::AsConfig(config) => config.clone(),
+    };
 
     create_dir_all(path.as_path())?;
 
@@ -83,19 +97,39 @@ where
         )?.as_bytes()
     )?;
 
+    File::create(path.join("config_training.ron"))?.write_all(
+        ron::ser::to_string_pretty(
+            &run_mode,
+            ron::ser::PrettyConfig::default(),
+        )?.as_bytes()
+    )?;
+
+    let mut env = match env {
+        ParamEnv::AsEnvironment(env) => env,
+        ParamEnv::AsConfig(config) => {
+            *Env::new(config.clone())?
+        },
+    };
+    let size_state = env.observation_space().iter().product::<usize>();
+    let size_action = env.action_space().iter().product::<usize>();
+
     for n in 0..n_runs {
         warn!("Collecting data, run {n}/{n_runs}");
-        let mut env = *Env::new(env_config.clone())?;
-        let mut agent = *Alg::from_config(
-            device,
-            &alg_config,
-            env.observation_space().iter().product::<usize>(),
-            env.action_space().iter().product::<usize>(),
-        )?;
-        let (mc_returns, successes) = training_loop_off_policy(
+        let mut alg = match &alg {
+            ParamAlg::AsAlgorithm(alg) => alg.clone(),
+            ParamAlg::AsConfig(config) => {
+                *Alg::from_config(
+                    device,
+                    &config.clone(),
+                    size_state,
+                    size_action,
+                )?
+            },
+        };
+        let (mc_returns, successes) = loop_off_policy(
             &mut env,
-            &mut agent,
-            alg_config.clone(),
+            &mut alg,
+            run_mode.clone(),
             device,
         )?;
 

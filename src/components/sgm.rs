@@ -9,7 +9,6 @@
 //!
 //! The SGM is used in the [`crate::agents::DDPG_SGM`] algorithm.
 
-
 use {
     crate::{
         envs::TensorConvertible,
@@ -25,12 +24,32 @@ use {
         },
         Undirected,
     },
+    serde::Serialize,
     std::{
         collections::HashMap,
-        fmt::Debug,
+        fmt::{
+            Debug,
+            Display,
+        },
         hash::Hash,
     },
 };
+
+
+#[derive(Clone, Copy, Serialize)]
+pub enum DistanceMode {
+    True,
+    Estimated,
+}
+
+impl Display for DistanceMode {
+    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
+        match self {
+            DistanceMode::True => write!(f, "True"),
+            DistanceMode::Estimated => write!(f, "Estimated"),
+        }
+    }
+}
 
 /// Return a dotviz representation of the given graph.
 pub fn dot<S: Debug>(graph: &StableGraph<S, OrderedFloat<f64>, Undirected>) -> String {

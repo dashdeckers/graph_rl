@@ -28,7 +28,6 @@ unzip-n = "0.1.2"
 eframe = "0.23.0"
 egui = "0.23.0"
 egui_plot = "0.23.0"
-egui_graphs = { version = "0.15.0", features = ["events"] }
 
 # CLI
 clap = { version = "4.2.4", features = ["derive"] }
@@ -68,10 +67,10 @@ rustdoc-args = [
 
 # Deep Learning (config gate: I didn't install CUDA on my windows machine)
 [target.'cfg(windows)'.dependencies]
-candle-core = { git = "https://github.com/huggingface/candle.git" }
-candle-nn = { git = "https://github.com/huggingface/candle.git" }
+candle-core = { git = "https://github.com/dashdeckers/candle.git" }
+candle-nn = { git = "https://github.com/dashdeckers/candle.git" }
 
 [target.'cfg(not(windows))'.dependencies]
-candle-core = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
-candle-nn = { git = "https://github.com/huggingface/candle.git", features = ["cuda"] }
+candle-core = { git = "https://github.com/dashdeckers/candle.git", features = ["cuda"] }
+candle-nn = { git = "https://github.com/dashdeckers/candle.git", features = ["cuda"] }
 

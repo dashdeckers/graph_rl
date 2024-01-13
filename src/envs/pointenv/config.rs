@@ -3,11 +3,17 @@ use {
         line::PointLine,
         reward::PointReward,
     },
+    crate::configs::RenderableConfig,
     serde::Serialize,
     rand::{
         rngs::StdRng,
         Rng,
         SeedableRng,
+    },
+    egui::{
+        Ui,
+        Label,
+        Slider,
     },
 };
 
@@ -99,5 +105,54 @@ impl PointEnvConfig {
             reward,
             seed,
         }
+    }
+}
+
+impl RenderableConfig for PointEnvConfig {
+    fn render_immutable(
+        &self,
+        ui: &mut Ui,
+    ) {
+        let width = self.width;
+        let height = self.height;
+        let timelimit = self.timelimit;
+        let step_radius = self.step_radius;
+        let term_radius = self.term_radius;
+        let bounce_factor = self.bounce_factor;
+        let reward = &self.reward;
+        let seed = self.seed;
+
+        ui.label("PointEnv Options");
+        ui.add(Label::new(format!("Width: {width:#.2}")));
+        ui.add(Label::new(format!("Height: {height:#.2}")));
+        if let Some(walls) = &self.walls {
+            ui.label("Walls:");
+            for wall in walls {
+                ui.add(Label::new(format!("{:?}", wall)));
+            }
+        }
+        ui.add(Label::new(format!("Timelimit: {timelimit:#.2}")));
+        ui.add(Label::new(format!("Step radius: {step_radius:#.2}")));
+        ui.add(Label::new(format!("Term radius: {term_radius:#.2}")));
+        if let Some(max_radius) = self.max_radius {
+            ui.add(Label::new(format!("Max radius: {max_radius:#.2}")));
+        }
+        ui.add(Label::new(format!("Bounce factor: {bounce_factor:#.2}")));
+        ui.add(Label::new(format!("Reward: {reward:?}")));
+        ui.add(Label::new(format!("Seed: {seed:#.2}")));
+    }
+
+    fn render_mutable(
+        &mut self,
+        ui: &mut Ui,
+    ) {
+        ui.label("PointEnv Options");
+        ui.add(Slider::new(&mut self.width, 0.0..=100.0).step_by(0.1));
+        ui.add(Slider::new(&mut self.height, 0.0..=100.0).step_by(0.1));
+        ui.add(Slider::new(&mut self.timelimit, 0..=1000));
+        ui.add(Slider::new(&mut self.step_radius, 0.0..=10.0).step_by(0.1));
+        ui.add(Slider::new(&mut self.term_radius, 0.0..=10.0).step_by(0.1));
+        ui.add(Slider::new(&mut self.bounce_factor, 0.0..=1.0).step_by(0.01));
+        ui.add(Slider::new(&mut self.seed, 0..=1000));
     }
 }

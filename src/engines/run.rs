@@ -1,16 +1,16 @@
 use {
+    super::ParamRunMode,
     crate::{
         agents::{
+            RunMode,
             Algorithm,
             OffPolicyAlgorithm,
-            configs::AlgorithmConfig,
         },
         envs::{
             Environment,
             Sampleable,
             TensorConvertible,
         },
-        RunMode,
     },
     anyhow::Result,
     candle_core::{
@@ -27,19 +27,18 @@ use {
 /// # Arguments
 ///
 /// * `env` - The environment to train on.
-/// * `agent` - The agent to train with.
+/// * `alg` - The agent to train with.
 /// * `config` - The configuration for the algorithm.
 /// * `device` - The device to run on.
-pub fn training_loop_off_policy<Alg, Env, Obs, Act>(
+pub fn loop_off_policy<Alg, Env, Obs, Act>(
     env: &mut Env,
-    agent: &mut Alg,
-    config: Alg::Config,
+    alg: &mut Alg,
+    run_mode: ParamRunMode,
     device: &Device,
 ) -> Result<(Vec<f64>, Vec<bool>)>
 where
     Env: Environment<Action = Act, Observation = Obs>,
     Alg: Algorithm + OffPolicyAlgorithm,
-    Alg::Config: AlgorithmConfig,
     Obs: Clone + TensorConvertible,
     Act: Clone + TensorConvertible + Sampleable,
 {
@@ -51,7 +50,12 @@ where
     let mut successes = Vec::new();
     let mut rng = rand::thread_rng();
 
-    for episode in 0..config.max_episodes() {
+    let max_episodes = match &run_mode {
+        ParamRunMode::Train(config) => config.max_episodes(),
+        ParamRunMode::Test(config) => config.max_episodes(),
+    };
+
+    for episode in 0..max_episodes {
         let mut total_reward = 0.0;
         env.reset(rng.gen::<u64>())?;
 
@@ -59,17 +63,22 @@ where
             let state = &<Obs>::to_tensor(env.current_observation(), device)?;
 
             // select an action, or randomly sample one
-            let action = &if steps_taken < config.initial_random_actions() {
-                <Act>::to_tensor(<Act>::sample(&mut rng, &env.action_domain()), device)?
-            } else {
-                agent.actions(state)?
+            let action = &match &run_mode {
+                ParamRunMode::Train(config) => {
+                    if steps_taken < config.initial_random_actions() {
+                        <Act>::to_tensor(<Act>::sample(&mut rng, &env.action_domain()), device)?
+                    } else {
+                        alg.actions(state, RunMode::Train)?
+                    }
+                },
+                ParamRunMode::Test(_) => alg.actions(state, RunMode::Test)?,
             };
 
             let step = env.step(<Act>::from_tensor_pp(action.clone()))?;
             total_reward += step.reward;
             steps_taken += 1;
 
-            agent.remember(
+            alg.remember(
                 state,
                 action,
                 &Tensor::new(vec![step.reward], device)?,
@@ -87,10 +96,13 @@ where
         warn!("episode {episode} with total reward of {total_reward}");
         mc_returns.push(total_reward);
 
-        if let RunMode::Train = agent.run_mode() {
-            for _ in 0..config.training_iterations() {
-                agent.train()?;
-            }
+        match &run_mode {
+            ParamRunMode::Train(config) => {
+                for _ in 0..config.training_iterations() {
+                    alg.train()?;
+                }
+            },
+            ParamRunMode::Test(_) => (),
         }
     }
     Ok((mc_returns, successes))

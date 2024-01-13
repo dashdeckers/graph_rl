@@ -2,7 +2,7 @@ use {
     super::{
         super::{
             Environment,
-            Renderable,
+            RenderableEnvironment,
             Sampleable,
             Step,
         },
@@ -152,6 +152,7 @@ fn compute_next_state(
 /// If the agent collides with a wall, it will bounce off the wall by a factor
 /// of the travelled distance. The angle of incidence here is equal to the angle
 /// of reflection.
+#[derive(Clone)]
 pub struct PointEnv {
     config: PointEnvConfig,
     width: f64,
@@ -442,12 +443,12 @@ impl Environment for PointEnv {
     }
 
     /// Return the [PointEnvConfig] used to create this environment.
-    fn config(&self) -> Self::Config {
-        self.config.clone()
+    fn config(&self) -> &Self::Config {
+        &self.config
     }
 }
 
-impl Renderable for PointEnv {
+impl RenderableEnvironment for PointEnv {
     fn render(
         &mut self,
         plot_ui: &mut PlotUi,

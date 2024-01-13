@@ -7,7 +7,7 @@ use {
         },
         DistanceMeasure,
         Environment,
-        Renderable,
+        RenderableEnvironment,
         Sampleable,
         Step,
         TensorConvertible,
@@ -342,12 +342,12 @@ impl Environment for PendulumEnv {
     }
 
     /// Return the [PendulumConfig] used to create this [PendulumEnv]
-    fn config(&self) -> Self::Config {
-        self.config.clone()
+    fn config(&self) -> &Self::Config {
+        &self.config
     }
 }
 
-impl Renderable for PendulumEnv {
+impl RenderableEnvironment for PendulumEnv {
     fn render(
         &mut self,
         plot_ui: &mut PlotUi,
