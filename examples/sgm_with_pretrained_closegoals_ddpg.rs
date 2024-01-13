@@ -34,6 +34,10 @@ use {
     },
     anyhow::Result,
     tracing::Level,
+    std::panic::{
+        catch_unwind,
+        AssertUnwindSafe,
+    },
 };
 
 
@@ -148,7 +152,7 @@ fn main() -> Result<()> {
 
     //// Check Pretrained DDPG_SGM Performance via GUI ////
 
-    SgmGUI::<DDPG_SGM<PointEnv>, PointEnv, _, _>::open(
+    let _ = catch_unwind(AssertUnwindSafe(|| SgmGUI::<DDPG_SGM<PointEnv>, PointEnv, _, _>::open(
         ParamEnv::AsConfig(env_config.clone()),
         ParamAlg::AsAlgorithm(ddpg_sgm.clone()),
         ParamRunMode::Train(TrainConfig::new(
@@ -157,7 +161,7 @@ fn main() -> Result<()> {
             500,
         )),
         device.clone(),
-    );
+    )));
 
 
     //// Run Pretrained DDPG_SGM Algorithm in Experiment ////
