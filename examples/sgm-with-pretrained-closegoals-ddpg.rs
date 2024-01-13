@@ -27,7 +27,11 @@ use {
         },
         components::sgm::DistanceMode,
     },
-    candle_core::Device,
+    candle_core::{
+        Device,
+        CudaDevice,
+        backend::BackendDevice,
+    },
     anyhow::Result,
     tracing::Level,
 };
@@ -41,8 +45,8 @@ fn main() -> Result<()> {
         Some(Level::WARN),
     )?;
 
-    // let device = Device::Cuda(CudaDevice::new(0)?);
-    let device = Device::Cpu;
+    let device = Device::Cuda(CudaDevice::new(0)?);
+    // let device = Device::Cpu;
 
 
     //// Create PointEnv Environment for Pretraining ////
