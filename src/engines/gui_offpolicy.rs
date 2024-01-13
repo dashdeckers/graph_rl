@@ -197,7 +197,7 @@ where
         init_alg: ParamAlg<Alg>,
         init_run: ParamRunMode,
         device: Device,
-    ) -> Result<(), eframe::Error> {
+    ) {
         eframe::run_native(
             "Actor-Critic Graph-Learner",
             eframe::NativeOptions {
@@ -210,7 +210,7 @@ where
                 init_run,
                 device,
             ))),
-        )
+        ).unwrap_or(())
     }
 
     pub fn test_agent(&mut self) -> Result<()> {

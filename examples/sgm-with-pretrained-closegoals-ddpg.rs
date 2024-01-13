@@ -1,6 +1,4 @@
-#[allow(unused_imports)]
 use {
-    anyhow::Result,
     graph_rl::{
         agents::{
             Algorithm,
@@ -29,11 +27,8 @@ use {
         },
         components::sgm::DistanceMode,
     },
-    candle_core::{
-        Device,
-        CudaDevice,
-        backend::BackendDevice,
-    },
+    candle_core::Device,
+    anyhow::Result,
     tracing::Level,
 };
 
@@ -46,7 +41,8 @@ fn main() -> Result<()> {
         Some(Level::WARN),
     )?;
 
-    let device = Device::Cuda(CudaDevice::new(0)?);
+    // let device = Device::Cuda(CudaDevice::new(0)?);
+    let device = Device::Cpu;
 
 
     //// Create PointEnv Environment for Pretraining ////
@@ -148,16 +144,16 @@ fn main() -> Result<()> {
 
     //// Check Pretrained DDPG_SGM Performance via GUI ////
 
-    // SgmGUI::<DDPG_SGM<PointEnv>, PointEnv, _, _>::open(
-    //     ParamEnv::AsConfig(env_config),
-    //     ParamAlg::AsAlgorithm(ddpg_sgm),
-    //     ParamRunMode::Train(TrainConfig::new(
-    //         200,
-    //         30,
-    //         500,
-    //     )),
-    //     device,
-    // ).unwrap();
+    SgmGUI::<DDPG_SGM<PointEnv>, PointEnv, _, _>::open(
+        ParamEnv::AsConfig(env_config.clone()),
+        ParamAlg::AsAlgorithm(ddpg_sgm.clone()),
+        ParamRunMode::Train(TrainConfig::new(
+            200,
+            30,
+            500,
+        )),
+        device.clone(),
+    );
 
 
     //// Run Pretrained DDPG_SGM Algorithm in Experiment ////
@@ -174,6 +170,7 @@ fn main() -> Result<()> {
         )),
         &device,
     )?;
+
 
     Ok(())
 }

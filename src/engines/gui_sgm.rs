@@ -130,7 +130,7 @@ where
         init_alg: ParamAlg<Alg>,
         init_run: ParamRunMode,
         device: Device,
-    ) -> Result<(), eframe::Error> {
+    ) {
         eframe::run_native(
             "Actor-Critic Graph-Learner",
             eframe::NativeOptions {
@@ -147,7 +147,7 @@ where
                 render_graph: false,
                 render_plan: false,
             })),
-        )
+        ).unwrap_or(())
     }
 
     pub fn render_graph(
