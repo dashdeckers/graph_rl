@@ -48,6 +48,10 @@ use {
         hash::Hash,
         thread,
         time,
+        panic::{
+            catch_unwind,
+            AssertUnwindSafe,
+        },
     },
 };
 
@@ -69,9 +73,7 @@ where
     pub alg: Alg,
     pub env_config: Env::Config,
     pub alg_config: Alg::Config,
-    // pub init_env: ParamEnv<Env, Obs, Act>,
-    pub init_alg: ParamAlg<Alg>,
-    pub init_run: ParamRunMode,
+    pub run_mode: ParamRunMode,
     pub device: Device,
 
     pub run_data: Vec<(RunMode, f64, bool)>,
@@ -82,7 +84,7 @@ where
 
 impl<Alg, Env, Obs, Act> eframe::App for OffPolicyGUI<Alg, Env, Obs, Act>
 where
-    Env: Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
+    Env: Clone + Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
     Env::Config: Clone + Serialize + RenderableConfig,
     Alg: Clone + Algorithm + OffPolicyAlgorithm + 'static,
     Alg::Config: Clone + Serialize + ActorCriticConfig + OffPolicyConfig + RenderableConfig,
@@ -128,7 +130,7 @@ where
 
 impl<Alg, Env, Obs, Act> OffPolicyGUI<Alg, Env, Obs, Act>
 where
-    Env: Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
+    Env: Clone + Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
     Env::Config: Clone + Serialize + RenderableConfig,
     Alg: Clone + Algorithm + OffPolicyAlgorithm + 'static,
     Alg::Config: Clone + Serialize + ActorCriticConfig + OffPolicyConfig + RenderableConfig,
@@ -138,29 +140,26 @@ where
     pub fn create(
         init_env: ParamEnv<Env, Obs, Act>,
         init_alg: ParamAlg<Alg>,
-        init_run: ParamRunMode,
+        run_mode: ParamRunMode,
         device: Device,
     ) -> Self {
-
-
-        // let (env, env_config) = match init_env {
-        //     ParamEnv::AsEnvironment(env) => (env, env.config().clone()),
-        //     ParamEnv::AsConfig(config) => {
-        //         let env = *Env::new(config.clone()).unwrap();
-        //         (env, env.config().clone())
-        //     },
+        // let env_config = match &init_env {
+        //     ParamEnv::AsEnvironment(env) => env.config().clone(),
+        //     ParamEnv::AsConfig(config) => config.clone(),
         // };
-        let env_config = match &init_env {
-            ParamEnv::AsEnvironment(env) => env.config().clone(),
-            ParamEnv::AsConfig(config) => config.clone(),
-        };
-        let env = if let ParamEnv::AsEnvironment(env) = init_env {
-            env
-        } else {
-            *Env::new(env_config.clone()).unwrap()
-        };
+        // let env = if let ParamEnv::AsEnvironment(env) = init_env {
+        //     env
+        // } else {
+        //     *Env::new(env_config.clone()).unwrap()
+        // };
 
-
+        let (env, env_config) = match init_env {
+            ParamEnv::AsEnvironment(env) => (env.clone(), env.config().clone()),
+            ParamEnv::AsConfig(config) => {
+                let env = *Env::new(config.clone()).unwrap();
+                (env.clone(), env.config().clone())
+            },
+        };
 
         let (alg, alg_config) = match &init_alg {
             ParamAlg::AsAlgorithm(alg) => (alg.clone(), alg.config().clone()),
@@ -180,9 +179,7 @@ where
             alg,
             env_config,
             alg_config,
-            // init_env,
-            init_alg,
-            init_run,
+            run_mode,
             device,
 
             run_data: Vec::new(),
@@ -195,22 +192,22 @@ where
     pub fn open(
         init_env: ParamEnv<Env, Obs, Act>,
         init_alg: ParamAlg<Alg>,
-        init_run: ParamRunMode,
+        run_mode: ParamRunMode,
         device: Device,
     ) {
-        eframe::run_native(
+        let _ = catch_unwind(AssertUnwindSafe(|| eframe::run_native(
             "Actor-Critic Graph-Learner",
             eframe::NativeOptions {
-                min_window_size: Some(egui::vec2(800.0 * 1.2, 600.0 * 1.2)),
+                min_window_size: Some(egui::vec2(800.0 * 1.3, 600.0 * 1.3)),
                 ..Default::default()
             },
             Box::new(|_| Box::new(Self::create(
                 init_env,
                 init_alg,
-                init_run,
+                run_mode,
                 device,
             ))),
-        ).unwrap_or(())
+        )));
     }
 
     pub fn test_agent(&mut self) -> Result<()> {
@@ -238,15 +235,15 @@ where
         let (mc_returns, successes) = loop_off_policy(
             &mut self.env,
             &mut self.alg,
-            self.init_run.clone(),
+            self.run_mode.clone(),
             &self.device,
         )?;
-        let n_episodes = match &self.init_run {
-            ParamRunMode::Test(config) => config.max_episodes(),
-            ParamRunMode::Train(config) => config.max_episodes(),
+        let (n_episodes, run_mode) = match &self.run_mode {
+            ParamRunMode::Test(config) => (config.max_episodes(), RunMode::Test),
+            ParamRunMode::Train(config) => (config.max_episodes(), RunMode::Train),
         };
         self.run_data.extend(
-            (0..n_episodes).map(|i| (RunMode::Train, mc_returns[i], successes[i])),
+            (0..n_episodes).map(|i| (run_mode, mc_returns[i], successes[i])),
         );
         Ok(())
     }
@@ -300,7 +297,7 @@ where
     ) {
         ui.heading("Settings");
 
-        match self.init_run.clone() {
+        match self.run_mode.clone() {
             ParamRunMode::Test(mut config) => {
                 config.render_mutable(ui);
                 if ui
@@ -313,14 +310,16 @@ where
                     .add(Button::new("Toggle Mode"))
                     .clicked()
                 {
-                    self.init_run = ParamRunMode::Train(
+                    self.run_mode = ParamRunMode::Train(
                         TrainConfig::new(
                             config.max_episodes(),
                             30,
                             0,
                         ),
                     );
-                };
+                } else {
+                    self.run_mode = ParamRunMode::Test(config);
+                }
             }
             ParamRunMode::Train(mut config) => {
                 config.render_mutable(ui);
@@ -334,48 +333,31 @@ where
                     .add(Button::new("Toggle Mode"))
                     .clicked()
                 {
-                    self.init_run = ParamRunMode::Test(
+                    self.run_mode = ParamRunMode::Test(
                         TestConfig::new(
                             config.max_episodes(),
                         ),
                     );
-                };
+                } else {
+                    self.run_mode = ParamRunMode::Train(config);
+                }
             }
         }
 
-        // match self.init_env {
-        //     ParamEnv::AsEnvironment(env) => {
-        //         env.config().render_mutable(ui);
-        //         if ui
-        //             .add(Button::new("Toggle Env"))
-        //             .clicked()
-        //         {
-        //             self.init_env = ParamEnv::AsConfig(
-        //                 env.config().clone(),
-        //             );
-        //         };
-        //     }
-        //     ParamEnv::AsConfig(config) => {
-        //         config.render_mutable(ui);
-        //         if ui
-        //             .add(Button::new("Toggle Env"))
-        //             .clicked()
-        //         {
-        //             self.init_env = ParamEnv::AsEnvironment(
-        //                 *Env::new(config.clone()).unwrap(),
-        //             );
-        //         };
-        //     }
-        // }
-
-        self.alg.config().clone().render_mutable(ui);
+        self.env_config.render_mutable(ui);
         if ui.add(Button::new("Reset Settings")).clicked() {
-            self.alg_config = match &self.init_alg {
-                ParamAlg::AsAlgorithm(alg) => alg.config().clone(),
-                ParamAlg::AsConfig(config) => config.clone(),
-            };
+            self.env_config = self.env.config().clone();
         };
-        if ui.add(Button::new("Set Agent")).clicked() {
+        if ui.add(Button::new("(Re)set Environment")).clicked() {
+            self.env = *Env::new(self.env_config.clone()).unwrap();
+        };
+
+
+        self.alg_config.render_mutable(ui);
+        if ui.add(Button::new("Reset Settings")).clicked() {
+            self.alg_config = self.alg.config().clone();
+        };
+        if ui.add(Button::new("(Re)set Agent")).clicked() {
             let size_state = self.env.observation_space().iter().product::<usize>();
             let size_action = self.env.action_space().iter().product::<usize>();
             self.alg = *Alg::from_config(

@@ -9,6 +9,7 @@ use {
             Environment,
             PointEnv,
             PointEnvConfig,
+            PointEnvWalls,
             PointReward,
         },
         configs::{
@@ -34,10 +35,6 @@ use {
     },
     anyhow::Result,
     tracing::Level,
-    std::panic::{
-        catch_unwind,
-        AssertUnwindSafe,
-    },
 };
 
 
@@ -53,25 +50,26 @@ fn main() -> Result<()> {
     // let device = Device::Cpu;
 
 
-    //// Create PointEnv Environment for Pretraining ////
+    //// Create the PointEnv Environment for Pretraining ////
 
-    let pretrain_env_config = PointEnvConfig::new(
-        // Some(vec![
-        //     ((0.0, 5.0), (5.0, 5.0)).into(),
-        //     ((5.0, 5.0), (5.0, 4.0)).into(),
-        // ]),
-        5.0,
-        5.0,
-        None,
-        30,
-        1.0,
-        0.5,
-        Some(2.5),
-        0.1,
-        PointReward::Distance,
-        42,
-    );
-    let mut pretrain_env = *PointEnv::new(pretrain_env_config.clone())?;
+    let mut pretrain_env = *PointEnv::new(
+    PointEnvConfig::new(
+            // Some(vec![
+            //     ((0.0, 5.0), (5.0, 5.0)).into(),
+            //     ((5.0, 5.0), (5.0, 4.0)).into(),
+            // ]),
+            5.0,
+            5.0,
+            PointEnvWalls::None,
+            30,
+            1.0,
+            0.5,
+            Some(2.5),
+            0.1,
+            PointReward::Distance,
+            42,
+        )
+    )?;
 
 
     //// Create DDPG Algorithm for Pretraining ////
@@ -139,7 +137,7 @@ fn main() -> Result<()> {
         // ]),
         10.0,
         10.0,
-        None,
+        PointEnvWalls::None,
         30,
         1.0,
         0.5,
@@ -152,7 +150,7 @@ fn main() -> Result<()> {
 
     //// Check Pretrained DDPG_SGM Performance via GUI ////
 
-    let _ = catch_unwind(AssertUnwindSafe(|| SgmGUI::<DDPG_SGM<PointEnv>, PointEnv, _, _>::open(
+    SgmGUI::<DDPG_SGM<PointEnv>, PointEnv, _, _>::open(
         ParamEnv::AsConfig(env_config.clone()),
         ParamAlg::AsAlgorithm(ddpg_sgm.clone()),
         ParamRunMode::Train(TrainConfig::new(
@@ -161,7 +159,7 @@ fn main() -> Result<()> {
             500,
         )),
         device.clone(),
-    )));
+    );
 
 
     //// Run Pretrained DDPG_SGM Algorithm in Experiment ////

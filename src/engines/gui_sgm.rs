@@ -47,6 +47,10 @@ use {
         hash::Hash,
         thread,
         time,
+        panic::{
+            catch_unwind,
+            AssertUnwindSafe,
+        },
     },
 };
 
@@ -66,7 +70,7 @@ where
 
 impl<Alg, Env, Obs, Act> eframe::App for SgmGUI<Alg, Env, Obs, Act>
 where
-    Env: Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
+    Env: Clone + Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
     Env::Config: Clone + Serialize + RenderableConfig,
     Alg: Clone + Algorithm + OffPolicyAlgorithm + SgmAlgorithm<Env> + 'static,
     Alg::Config: Clone + Serialize + ActorCriticConfig + OffPolicyConfig + SgmConfig + RenderableConfig,
@@ -118,7 +122,7 @@ where
 
 impl<Alg, Env, Obs, Act> SgmGUI<Alg, Env, Obs, Act>
 where
-    Env: Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
+    Env: Clone + Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
     Env::Config: Clone + Serialize + RenderableConfig,
     Alg: Clone + Algorithm + OffPolicyAlgorithm + SgmAlgorithm<Env> + 'static,
     Alg::Config: Clone + Serialize + ActorCriticConfig + OffPolicyConfig + SgmConfig + RenderableConfig,
@@ -128,26 +132,26 @@ where
     pub fn open(
         init_env: ParamEnv<Env, Obs, Act>,
         init_alg: ParamAlg<Alg>,
-        init_run: ParamRunMode,
+        run_mode: ParamRunMode,
         device: Device,
     ) {
-        eframe::run_native(
+        let _ = catch_unwind(AssertUnwindSafe(|| eframe::run_native(
             "Actor-Critic Graph-Learner",
             eframe::NativeOptions {
-                min_window_size: Some(egui::vec2(800.0 * 1.2, 600.0 * 1.2)),
+                min_window_size: Some(egui::vec2(800.0 * 1.4, 600.0 * 1.4)),
                 ..Default::default()
             },
             Box::new(|_| Box::new(Self {
                 gui: OffPolicyGUI::<Alg, Env, Obs, Act>::create(
                     init_env,
                     init_alg,
-                    init_run,
+                    run_mode,
                     device,
                 ),
                 render_graph: false,
                 render_plan: false,
             })),
-        ).unwrap_or(())
+        )));
     }
 
     pub fn render_graph(

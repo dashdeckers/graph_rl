@@ -177,17 +177,17 @@ impl RenderableConfig for DDPG_SGM_Config {
         ui.add(
             Slider::new(&mut self.sgm_close_enough, 0.0..=1.0)
                 .step_by(0.01)
-                .text("Close enough:"),
+                .text("Close enough"),
         );
         ui.add(
             Slider::new(&mut self.sgm_maxdist, 0.0..=1.0)
                 .step_by(0.01)
-                .text("Max distance:"),
+                .text("Max distance"),
         );
         ui.add(
             Slider::new(&mut self.sgm_tau, 0.0..=1.0)
                 .step_by(0.01)
-                .text("Tau:"),
+                .text("Tau"),
         );
 
         let sgm_dist_mode = self.sgm_dist_mode();

@@ -175,30 +175,30 @@ impl RenderableConfig for DDPG_Config {
         ui.add(
             Slider::new(&mut self.actor_learning_rate, 0.0..=1.0)
                 .step_by(0.0001)
-                .text("Actor LR:"),
+                .text("Actor LR"),
         );
         ui.add(
             Slider::new(&mut self.critic_learning_rate, 0.0..=1.0)
                 .step_by(0.0001)
-                .text("Critic LR:"),
+                .text("Critic LR"),
         );
         ui.add(
             Slider::new(&mut self.gamma, 0.0..=1.0)
                 .step_by(0.0001)
-                .text("Gamma:"),
+                .text("Gamma"),
         );
         ui.add(
             Slider::new(&mut self.tau, 0.0..=1.0)
                 .step_by(0.0001)
-                .text("Tau:"),
+                .text("Tau"),
         );
         ui.add(
             Slider::new(&mut self.replay_buffer_capacity, 0..=1_000_000)
-                .text("Buffer size:"),
+                .text("Buffer size"),
         );
         ui.add(
             Slider::new(&mut self.training_batch_size, 0..=1_000)
-                .text("Batch size:"),
+                .text("Batch size"),
         );
     }
 }

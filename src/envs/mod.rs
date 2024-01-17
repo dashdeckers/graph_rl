@@ -24,7 +24,10 @@ pub use crate::envs::{
         PointMazeEnv,
     },
     pointenv::{
-        config::PointEnvConfig,
+        config::{
+            PointEnvConfig,
+            PointEnvWalls,
+        },
         point_env::PointEnv,
         reward::PointReward,
         line::PointLine,

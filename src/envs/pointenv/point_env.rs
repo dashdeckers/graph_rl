@@ -188,20 +188,8 @@ impl PointEnv {
                 && (config.step_radius * 4.0) < config.height
         );
 
-        // add walls for the borders around the map
-        let mut walls = config.walls.clone().unwrap_or_default();
-        walls.extend([
-            PointLine::from(((0.0, 0.0), (config.width, 0.0))),
-            PointLine::from(((0.0, 0.0), (0.0, config.height))),
-            PointLine::from((
-                (config.width, 0.0),
-                (config.width, config.height),
-            )),
-            PointLine::from((
-                (0.0, config.height),
-                (config.width, config.height),
-            )),
-        ]);
+        // add walls
+        let walls = config.walls.to_walls(config.width, config.height);
 
         // compute random start and goal
         let mut rng = StdRng::seed_from_u64(config.seed);
