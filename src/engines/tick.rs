@@ -33,6 +33,7 @@ use {
 pub fn tick<Alg, Env, Obs, Act>(
     env: &mut Env,
     agent: &mut Alg,
+    mode: RunMode,
     device: &Device,
 ) -> Result<()>
 where
@@ -42,7 +43,7 @@ where
     Act: Clone + TensorConvertible,
 {
     let state = &<Obs>::to_tensor(env.current_observation(), device)?;
-    let action = agent.actions(state, RunMode::Test)?;
+    let action = agent.actions(state, mode)?;
     let step = env.step(<Act>::from_tensor_pp(action))?;
 
     if step.terminated || step.truncated {
@@ -67,6 +68,7 @@ where
 pub fn tick_off_policy<Alg, Env, Obs, Act>(
     env: &mut Env,
     agent: &mut Alg,
+    mode: RunMode,
     device: &Device,
 ) -> Result<()>
 where
@@ -76,7 +78,7 @@ where
     Act: Clone + TensorConvertible,
 {
     let state = &<Obs>::to_tensor(env.current_observation(), device)?;
-    let action = &agent.actions(state, RunMode::Test)?;
+    let action = &agent.actions(state, mode)?;
     let step = env.step(<Act>::from_tensor_pp(action.clone()))?;
 
     agent.remember(

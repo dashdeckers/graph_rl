@@ -211,21 +211,41 @@ where
     }
 
     pub fn test_agent(&mut self) -> Result<()> {
-        // let it play to observe agent behavior!
+
+        let mode = match &self.run_mode {
+            ParamRunMode::Train(_) => RunMode::Train,
+            ParamRunMode::Test(_) => RunMode::Test,
+        };
+
         match self.play_mode {
             PlayMode::Pause => (),
             PlayMode::Ticks => {
-                tick_off_policy(&mut self.env, &mut self.alg, &self.device)?;
+                tick_off_policy(
+                    &mut self.env,
+                    &mut self.alg,
+                    mode,
+                    &self.device,
+                )?;
             }
             PlayMode::Episodes => {
                 let (mc_returns, successes) = loop_off_policy(
                     &mut self.env,
                     &mut self.alg,
-                    ParamRunMode::Test(TestConfig::new(1)),
+                    match &self.run_mode {
+                        ParamRunMode::Train(_) => ParamRunMode::Train(
+                            TrainConfig::new(
+                                1,
+                                0,
+                                0,
+                            )
+                        ),
+                        ParamRunMode::Test(_) => ParamRunMode::Test(
+                            TestConfig::new(1)
+                        ),
+                    },
                     &self.device,
                 )?;
-                self.run_data
-                    .push((RunMode::Test, mc_returns[0], successes[0]));
+                self.run_data.push((mode, mc_returns[0], successes[0]));
             }
         }
         Ok(())
@@ -238,13 +258,13 @@ where
             self.run_mode.clone(),
             &self.device,
         )?;
-        let (n_episodes, run_mode) = match &self.run_mode {
+
+        let (n, mode) = match &self.run_mode {
             ParamRunMode::Test(config) => (config.max_episodes(), RunMode::Test),
             ParamRunMode::Train(config) => (config.max_episodes(), RunMode::Train),
         };
-        self.run_data.extend(
-            (0..n_episodes).map(|i| (run_mode, mc_returns[i], successes[i])),
-        );
+
+        self.run_data.extend((0..n).map(|i| (mode, mc_returns[i], successes[i])));
         Ok(())
     }
 
@@ -381,7 +401,11 @@ where
         });
 
         ui.separator();
-        ui.label("Test Agent");
+        let mode = match &self.run_mode {
+            ParamRunMode::Train(_) => "TrainMode",
+            ParamRunMode::Test(_) => "TestMode",
+        };
+        ui.label(format!("Watch Agent ({mode})"));
         ui.horizontal(|ui| {
             if ui.add(Button::new("Pause")).clicked() {
                 self.play_mode = PlayMode::Pause;
