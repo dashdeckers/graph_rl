@@ -120,19 +120,23 @@ fn main() -> Result<()> {
     )?;
 
 
+    //// Create the TrainConfig ////
+
+    let train_config = TrainConfig::new(
+        200,
+        30,
+        500,
+    );
+
 
     if args.gui {
         //// Check Pretrained DDPG Performance via GUI ////
 
         OffPolicyGUI::<DDPG, PointEnv, _, _>::open(
-            ParamEnv::AsEnvironment(pointenv.clone()),
-            ParamAlg::AsAlgorithm(ddpg.clone()),
-            ParamRunMode::Train(TrainConfig::new(
-                200,
-                30,
-                500,
-            )),
-            device.clone(),
+            ParamEnv::AsEnvironment(pointenv),
+            ParamAlg::AsAlgorithm(ddpg),
+            ParamRunMode::Train(train_config),
+            device,
         );
     } else {
         //// Run Pretrained DDPG Algorithm in Experiment ////
@@ -140,13 +144,9 @@ fn main() -> Result<()> {
         run_experiment_off_policy::<DDPG, PointEnv, _, _>(
             &args.name,
             100,
-            ParamEnv::AsEnvironment(pointenv.clone()),
+            ParamEnv::AsEnvironment(pointenv),
             ParamAlg::AsAlgorithm(ddpg),
-            ParamRunMode::Train(TrainConfig::new(
-                200,
-                30,
-                500,
-            )),
+            ParamRunMode::Train(train_config),
             &device,
         )?;
     }

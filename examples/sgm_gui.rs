@@ -120,18 +120,23 @@ fn main() -> Result<()> {
     )?;
 
 
+    //// Create the TrainConfig ////
+
+    let train_config = TrainConfig::new(
+        200,
+        30,
+        500,
+    );
+
+
     if args.gui {
         //// Check Pretrained DDPG_SGM Performance via GUI ////
 
         SgmGUI::<DDPG_SGM<PointEnv>, PointEnv, _, _>::open(
-            ParamEnv::AsEnvironment(pointenv.clone()),
-            ParamAlg::AsAlgorithm(ddpg_sgm.clone()),
-            ParamRunMode::Train(TrainConfig::new(
-                200,
-                30,
-                500,
-            )),
-            device.clone(),
+            ParamEnv::AsEnvironment(pointenv),
+            ParamAlg::AsAlgorithm(ddpg_sgm),
+            ParamRunMode::Train(train_config),
+            device,
         );
     } else {
         //// Run Pretrained DDPG_SGM Algorithm in Experiment ////
@@ -139,13 +144,9 @@ fn main() -> Result<()> {
         run_experiment_off_policy::<DDPG_SGM<PointEnv>, PointEnv, _, _>(
             &args.name,
             100,
-            ParamEnv::AsEnvironment(pointenv.clone()),
+            ParamEnv::AsEnvironment(pointenv),
             ParamAlg::AsAlgorithm(ddpg_sgm),
-            ParamRunMode::Train(TrainConfig::new(
-                200,
-                30,
-                500,
-            )),
+            ParamRunMode::Train(train_config),
             &device,
         )?;
     }
