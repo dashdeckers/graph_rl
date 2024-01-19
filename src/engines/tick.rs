@@ -38,7 +38,6 @@ pub fn tick<Alg, Env, Obs, Act>(
 where
     Env: Environment<Action = Act, Observation = Obs>,
     Alg: Algorithm,
-    // Alg::Config: AlgorithmConfig,
     Obs: Clone + TensorConvertible,
     Act: Clone + TensorConvertible,
 {
@@ -73,7 +72,6 @@ pub fn tick_off_policy<Alg, Env, Obs, Act>(
 where
     Env: Environment<Action = Act, Observation = Obs>,
     Alg: Algorithm + OffPolicyAlgorithm,
-    // Alg::Config: AlgorithmConfig,
     Obs: Clone + TensorConvertible,
     Act: Clone + TensorConvertible,
 {

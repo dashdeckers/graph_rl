@@ -2,7 +2,7 @@ use {
     graph_rl::{
         agents::{
             Algorithm,
-            DDPG_SGM,
+            DDPG,
         },
         envs::{
             Environment,
@@ -12,7 +12,7 @@ use {
             PointReward,
         },
         configs::{
-            DDPG_SGM_Config,
+            DDPG_Config,
             TrainConfig,
         },
         engines::{
@@ -21,7 +21,7 @@ use {
             ParamRunMode,
             ParamEnv,
             ParamAlg,
-            SgmGUI,
+            OffPolicyGUI,
         },
     },
     candle_core::{
@@ -64,7 +64,7 @@ struct Args {
     pub log: ArgLoglevel,
 
     /// Experiment name to use for logging / collecting data.
-    #[arg(long, default_value = "sgm-test")]
+    #[arg(long, default_value = "ddpg-test")]
     pub name: String,
 
     /// Run as a GUI instead of just training.
@@ -110,22 +110,23 @@ fn main() -> Result<()> {
     )?;
 
 
-    //// Create DDPG_SGM Algorithm ////
+    //// Create DDPG Algorithm ////
 
-    let ddpg_sgm = *DDPG_SGM::from_config(
+    let ddpg = *DDPG::from_config(
         &device,
-        &DDPG_SGM_Config::pointenv(),
+        &DDPG_Config::pointenv(),
         pointenv.observation_space().iter().product::<usize>(),
         pointenv.action_space().iter().product::<usize>(),
     )?;
 
 
-    if args.gui {
-        //// Check Pretrained DDPG_SGM Performance via GUI ////
 
-        SgmGUI::<DDPG_SGM<PointEnv>, PointEnv, _, _>::open(
+    if args.gui {
+        //// Check Pretrained DDPG Performance via GUI ////
+
+        OffPolicyGUI::<DDPG, PointEnv, _, _>::open(
             ParamEnv::AsEnvironment(pointenv.clone()),
-            ParamAlg::AsAlgorithm(ddpg_sgm.clone()),
+            ParamAlg::AsAlgorithm(ddpg.clone()),
             ParamRunMode::Train(TrainConfig::new(
                 200,
                 30,
@@ -134,13 +135,13 @@ fn main() -> Result<()> {
             device.clone(),
         );
     } else {
-        //// Run Pretrained DDPG_SGM Algorithm in Experiment ////
+        //// Run Pretrained DDPG Algorithm in Experiment ////
 
-        run_experiment_off_policy::<DDPG_SGM<PointEnv>, PointEnv, _, _>(
+        run_experiment_off_policy::<DDPG, PointEnv, _, _>(
             &args.name,
             100,
             ParamEnv::AsEnvironment(pointenv.clone()),
-            ParamAlg::AsAlgorithm(ddpg_sgm),
+            ParamAlg::AsAlgorithm(ddpg),
             ParamRunMode::Train(TrainConfig::new(
                 200,
                 30,

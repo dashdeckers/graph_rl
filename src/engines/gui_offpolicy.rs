@@ -300,73 +300,85 @@ where
         match self.run_mode.clone() {
             ParamRunMode::Test(mut config) => {
                 config.render_mutable(ui);
-                if ui
-                    .add(Button::new("Run"))
-                    .clicked()
-                {
-                    self.run_agent().unwrap();
-                };
-                if ui
-                    .add(Button::new("Toggle Mode"))
-                    .clicked()
-                {
-                    self.run_mode = ParamRunMode::Train(
-                        TrainConfig::new(
-                            config.max_episodes(),
-                            30,
-                            0,
-                        ),
-                    );
-                } else {
-                    self.run_mode = ParamRunMode::Test(config);
-                }
+
+                ui.horizontal(|ui| {
+                    if ui
+                        .add(Button::new("Run"))
+                        .clicked()
+                    {
+                        self.run_agent().unwrap();
+                    };
+                    if ui
+                        .add(Button::new("Toggle Mode"))
+                        .clicked()
+                    {
+                        self.run_mode = ParamRunMode::Train(
+                            TrainConfig::new(
+                                config.max_episodes(),
+                                30,
+                                0,
+                            ),
+                        );
+                    } else {
+                        self.run_mode = ParamRunMode::Test(config);
+                    }
+                });
             }
             ParamRunMode::Train(mut config) => {
                 config.render_mutable(ui);
-                if ui
-                    .add(Button::new("Run"))
-                    .clicked()
-                {
-                    self.run_agent().unwrap();
-                };
-                if ui
-                    .add(Button::new("Toggle Mode"))
-                    .clicked()
-                {
-                    self.run_mode = ParamRunMode::Test(
-                        TestConfig::new(
-                            config.max_episodes(),
-                        ),
-                    );
-                } else {
-                    self.run_mode = ParamRunMode::Train(config);
-                }
+
+                ui.horizontal(|ui| {
+                    if ui
+                        .add(Button::new("Run"))
+                        .clicked()
+                    {
+                        self.run_agent().unwrap();
+                    };
+                    if ui
+                        .add(Button::new("Toggle Mode"))
+                        .clicked()
+                    {
+                        self.run_mode = ParamRunMode::Test(
+                            TestConfig::new(
+                                config.max_episodes(),
+                            ),
+                        );
+                    } else {
+                        self.run_mode = ParamRunMode::Train(config);
+                    }
+                });
             }
         }
 
         self.env_config.render_mutable(ui);
-        if ui.add(Button::new("Reset Settings")).clicked() {
-            self.env_config = self.env.config().clone();
-        };
-        if ui.add(Button::new("(Re)set Environment")).clicked() {
-            self.env = *Env::new(self.env_config.clone()).unwrap();
-        };
+
+        ui.horizontal(|ui| {
+            if ui.add(Button::new("Reset")).clicked() {
+                self.env_config = self.env.config().clone();
+            };
+            if ui.add(Button::new("Set (new) Environment")).clicked() {
+                self.env = *Env::new(self.env_config.clone()).unwrap();
+            };
+        });
 
 
         self.alg_config.render_mutable(ui);
-        if ui.add(Button::new("Reset Settings")).clicked() {
-            self.alg_config = self.alg.config().clone();
-        };
-        if ui.add(Button::new("(Re)set Agent")).clicked() {
-            let size_state = self.env.observation_space().iter().product::<usize>();
-            let size_action = self.env.action_space().iter().product::<usize>();
-            self.alg = *Alg::from_config(
-                &self.device,
-                &self.alg_config,
-                size_state,
-                size_action,
-            ).unwrap();
-        };
+
+        ui.horizontal(|ui| {
+            if ui.add(Button::new("Reset")).clicked() {
+                self.alg_config = self.alg.config().clone();
+            };
+            if ui.add(Button::new("Set (new) Agent")).clicked() {
+                let size_state = self.env.observation_space().iter().product::<usize>();
+                let size_action = self.env.action_space().iter().product::<usize>();
+                self.alg = *Alg::from_config(
+                    &self.device,
+                    &self.alg_config,
+                    size_state,
+                    size_action,
+                ).unwrap();
+            };
+        });
 
         ui.separator();
         ui.label("Test Agent");
