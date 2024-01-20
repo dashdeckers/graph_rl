@@ -68,7 +68,7 @@ struct Args {
     pub name: String,
 
     /// Run as a GUI instead of just training.
-    #[arg(long, default_value_t=true)]
+    #[arg(long, default_value_t=false)]
     pub gui: bool,
 }
 
