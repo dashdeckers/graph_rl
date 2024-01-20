@@ -96,13 +96,13 @@ fn main() -> Result<()> {
 
     let pointenv = *PointEnv::new(
         PointEnvConfig::new(
-            10.0,
-            10.0,
+            20.0,
+            20.0,
             PointEnvWalls::None,
-            30,
+            5,
             1.0,
             0.5,
-            None,
+            Some(2.5),
             0.1,
             PointReward::Distance,
             42,
@@ -114,7 +114,7 @@ fn main() -> Result<()> {
 
     let ddpg = *DDPG::from_config(
         &device,
-        &DDPG_Config::pointenv(),
+        &DDPG_Config::small(),
         pointenv.observation_space().iter().product::<usize>(),
         pointenv.action_space().iter().product::<usize>(),
     )?;

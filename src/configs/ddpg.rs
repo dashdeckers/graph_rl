@@ -1,10 +1,6 @@
-use serde::Serialize;
 use {
-    super::{
-        ActorCriticConfig,
-        OffPolicyConfig,
-        RenderableConfig,
-    },
+    super::RenderableConfig,
+    serde::Serialize,
     egui::{
         Ui,
         Label,
@@ -65,7 +61,7 @@ impl DDPG_Config {
         }
     }
 
-    pub fn pendulum() -> Self {
+    pub fn large() -> Self {
         Self {
             actor_learning_rate: 1e-4,
             critic_learning_rate: 1e-3,
@@ -81,11 +77,11 @@ impl DDPG_Config {
         }
     }
 
-    pub fn pointenv() -> Self {
+    pub fn small() -> Self {
         Self {
             actor_learning_rate: 0.0003,
             critic_learning_rate: 0.0003,
-            gamma: 1.0,
+            gamma: 0.99,
             tau: 0.005,
             hidden_1_size: 256,
             hidden_2_size: 256,
@@ -95,52 +91,6 @@ impl DDPG_Config {
             ou_kappa: 0.15,
             ou_sigma: 0.2,
         }
-    }
-
-    pub fn pointmaze() -> Self {
-        Self::pointenv()
-    }
-}
-
-impl ActorCriticConfig for DDPG_Config {
-    fn actor_lr(&self) -> f64 {
-        self.actor_learning_rate
-    }
-    fn critic_lr(&self) -> f64 {
-        self.critic_learning_rate
-    }
-    fn gamma(&self) -> f64 {
-        self.gamma
-    }
-    fn tau(&self) -> f64 {
-        self.tau
-    }
-    fn set_actor_lr(&mut self, lr: f64) {
-        self.actor_learning_rate = lr;
-    }
-    fn set_critic_lr(&mut self, lr: f64) {
-        self.critic_learning_rate = lr;
-    }
-    fn set_gamma(&mut self, gamma: f64) {
-        self.gamma = gamma;
-    }
-    fn set_tau(&mut self, tau: f64) {
-        self.tau = tau;
-    }
-}
-
-impl OffPolicyConfig for DDPG_Config {
-    fn replay_buffer_capacity(&self) -> usize {
-        self.replay_buffer_capacity
-    }
-    fn training_batch_size(&self) -> usize {
-        self.training_batch_size
-    }
-    fn set_replay_buffer_capacity(&mut self, capacity: usize) {
-        self.replay_buffer_capacity = capacity;
-    }
-    fn set_training_batch_size(&mut self, batch_size: usize) {
-        self.training_batch_size = batch_size;
     }
 }
 
@@ -153,8 +103,12 @@ impl RenderableConfig for DDPG_Config {
         let critic_lr = self.critic_learning_rate;
         let gamma = self.gamma;
         let tau = self.tau;
+        let hidden_1_size = self.hidden_1_size;
+        let hidden_2_size = self.hidden_2_size;
         let buffer_size = self.replay_buffer_capacity;
         let batch_size = self.training_batch_size;
+        let ou_kappa = self.ou_kappa;
+        let ou_sigma = self.ou_sigma;
 
         ui.separator();
         ui.label("DDPG Options");
@@ -162,8 +116,12 @@ impl RenderableConfig for DDPG_Config {
         ui.add(Label::new(format!("Critic LR: {critic_lr:#.5}")));
         ui.add(Label::new(format!("Gamma: {gamma}")));
         ui.add(Label::new(format!("Tau: {tau}")));
+        ui.add(Label::new(format!("Hidden 1 size: {hidden_1_size}")));
+        ui.add(Label::new(format!("Hidden 2 size: {hidden_2_size}")));
         ui.add(Label::new(format!("Buffer size: {buffer_size}")));
         ui.add(Label::new(format!("Batch size: {batch_size}")));
+        ui.add(Label::new(format!("OU Kappa (speed): {ou_kappa}")));
+        ui.add(Label::new(format!("OU Sigma (volatility): {ou_sigma}")));
     }
 
     fn render_mutable(
@@ -193,12 +151,30 @@ impl RenderableConfig for DDPG_Config {
                 .text("Tau"),
         );
         ui.add(
+            Slider::new(&mut self.hidden_1_size, 0..=1_000)
+                .text("Hidden 1 size"),
+        );
+        ui.add(
+            Slider::new(&mut self.hidden_2_size, 0..=1_000)
+                .text("Hidden 2 size"),
+        );
+        ui.add(
             Slider::new(&mut self.replay_buffer_capacity, 0..=1_000_000)
                 .text("Buffer size"),
         );
         ui.add(
             Slider::new(&mut self.training_batch_size, 0..=1_000)
                 .text("Batch size"),
+        );
+        ui.add(
+            Slider::new(&mut self.ou_kappa, 0.0..=1.0)
+                .step_by(0.001)
+                .text("OU Kappa (speed)"),
+        );
+        ui.add(
+            Slider::new(&mut self.ou_sigma, 0.0..=1.0)
+                .step_by(0.001)
+                .text("OU Sigma (volatility)"),
         );
     }
 }

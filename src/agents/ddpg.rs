@@ -452,16 +452,16 @@ impl Algorithm for DDPG<'_> {
     }
 
     fn train(&mut self) -> Result<()> {
-        let (states, actions, rewards, next_states, _, _) =
+        let (states, actions, rewards, next_states, terminated, _) =
             match self.replay_buffer.random_batch(self.batch_size)? {
                 Some(v) => v,
                 _ => return Ok(()),
             };
 
-        let q_target = self
-            .critic
-            .target_forward(&next_states, &self.actor.target_forward(&next_states)?)?;
-        let q_target = (rewards + (self.gamma * q_target)?.detach())?;
+        let not_done = (Tensor::ones_like(&terminated) - terminated)?.to_dtype(DType::F64)?;
+
+        let q_target = self.critic.target_forward(&next_states, &self.actor.target_forward(&next_states)?)?;
+        let q_target = (rewards + ((not_done * self.gamma)? * q_target)?.detach())?;
         let q = self.critic.forward(&states, &actions)?;
         let diff = (q_target - q)?;
 

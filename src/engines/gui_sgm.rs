@@ -12,18 +12,12 @@ use {
             SgmAlgorithm,
         },
         envs::{
-            DistanceMeasure,
             Environment,
             RenderableEnvironment,
             Sampleable,
             TensorConvertible,
         },
-        configs::{
-            ActorCriticConfig,
-            OffPolicyConfig,
-            RenderableConfig,
-            SgmConfig,
-        },
+        configs::RenderableConfig,
     },
     serde::Serialize,
     candle_core::Device,
@@ -43,8 +37,6 @@ use {
         PlotUi,
     },
     std::{
-        fmt::Debug,
-        hash::Hash,
         thread,
         time,
         panic::{
@@ -73,8 +65,8 @@ where
     Env: Clone + Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
     Env::Config: Clone + Serialize + RenderableConfig,
     Alg: Clone + Algorithm + OffPolicyAlgorithm + SgmAlgorithm<Env> + 'static,
-    Alg::Config: Clone + Serialize + ActorCriticConfig + OffPolicyConfig + SgmConfig + RenderableConfig,
-    Obs: Clone + Debug + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
+    Alg::Config: Clone + Serialize + RenderableConfig,
+    Obs: Clone + TensorConvertible + 'static,
     Act: Clone + TensorConvertible + Sampleable + 'static,
 {
     fn update(
@@ -125,8 +117,8 @@ where
     Env: Clone + Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
     Env::Config: Clone + Serialize + RenderableConfig,
     Alg: Clone + Algorithm + OffPolicyAlgorithm + SgmAlgorithm<Env> + 'static,
-    Alg::Config: Clone + Serialize + ActorCriticConfig + OffPolicyConfig + SgmConfig + RenderableConfig,
-    Obs: Clone + Debug + Eq + Hash + TensorConvertible + DistanceMeasure + 'static,
+    Alg::Config: Clone + Serialize + RenderableConfig,
+    Obs: Clone + TensorConvertible + 'static,
     Act: Clone + TensorConvertible + Sampleable + 'static,
 {
     pub fn open(

@@ -19,8 +19,6 @@ use {
             TensorConvertible,
         },
         configs::{
-            ActorCriticConfig,
-            OffPolicyConfig,
             RenderableConfig,
             TrainConfig,
             TestConfig,
@@ -44,8 +42,6 @@ use {
         Points,
     },
     std::{
-        fmt::Debug,
-        hash::Hash,
         thread,
         time,
         panic::{
@@ -87,8 +83,8 @@ where
     Env: Clone + Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
     Env::Config: Clone + Serialize + RenderableConfig,
     Alg: Clone + Algorithm + OffPolicyAlgorithm + 'static,
-    Alg::Config: Clone + Serialize + ActorCriticConfig + OffPolicyConfig + RenderableConfig,
-    Obs: Clone + Debug + Eq + Hash + TensorConvertible + 'static,
+    Alg::Config: Clone + Serialize + RenderableConfig,
+    Obs: Clone + TensorConvertible + 'static,
     Act: Clone + TensorConvertible + Sampleable + 'static,
 {
     fn update(
@@ -133,8 +129,8 @@ where
     Env: Clone + Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
     Env::Config: Clone + Serialize + RenderableConfig,
     Alg: Clone + Algorithm + OffPolicyAlgorithm + 'static,
-    Alg::Config: Clone + Serialize + ActorCriticConfig + OffPolicyConfig + RenderableConfig,
-    Obs: Clone + Debug + Eq + Hash + TensorConvertible + 'static,
+    Alg::Config: Clone + Serialize + RenderableConfig,
+    Obs: Clone + TensorConvertible + 'static,
     Act: Clone + TensorConvertible + Sampleable + 'static,
 {
     pub fn create(
@@ -143,16 +139,6 @@ where
         run_mode: ParamRunMode,
         device: Device,
     ) -> Self {
-        // let env_config = match &init_env {
-        //     ParamEnv::AsEnvironment(env) => env.config().clone(),
-        //     ParamEnv::AsConfig(config) => config.clone(),
-        // };
-        // let env = if let ParamEnv::AsEnvironment(env) = init_env {
-        //     env
-        // } else {
-        //     *Env::new(env_config.clone()).unwrap()
-        // };
-
         let (env, env_config) = match init_env {
             ParamEnv::AsEnvironment(env) => (env.clone(), env.config().clone()),
             ParamEnv::AsConfig(config) => {
@@ -327,6 +313,7 @@ where
                         .clicked()
                     {
                         self.run_agent().unwrap();
+                        println!("Done!");
                     };
                     if ui
                         .add(Button::new("Toggle Mode"))
@@ -353,6 +340,7 @@ where
                         .clicked()
                     {
                         self.run_agent().unwrap();
+                        println!("Done!");
                     };
                     if ui
                         .add(Button::new("Toggle Mode"))
@@ -397,6 +385,7 @@ where
                     size_state,
                     size_action,
                 ).unwrap();
+                self.run_data = Vec::new();
             };
         });
 

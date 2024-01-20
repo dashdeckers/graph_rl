@@ -1,11 +1,8 @@
 use serde::Serialize;
 use {
     super::{
-        ActorCriticConfig,
-        OffPolicyConfig,
         RenderableConfig,
         DDPG_Config,
-        SgmConfig,
         DistanceMode,
     },
     egui::{
@@ -46,9 +43,9 @@ impl DDPG_SGM_Config {
         }
     }
 
-    pub fn pendulum() -> Self {
+    pub fn large() -> Self {
         Self {
-            ddpg: DDPG_Config::pendulum(),
+            ddpg: DDPG_Config::large(),
             distance_mode: DistanceMode::True,
             sgm_close_enough: 0.5,
             sgm_maxdist: 1.0,
@@ -56,93 +53,14 @@ impl DDPG_SGM_Config {
         }
     }
 
-    pub fn pointenv() -> Self {
+    pub fn small() -> Self {
         Self {
-            ddpg: DDPG_Config::pointenv(),
+            ddpg: DDPG_Config::small(),
             distance_mode: DistanceMode::True,
             sgm_close_enough: 0.5,
             sgm_maxdist: 1.0,
             sgm_tau: 0.4,
         }
-    }
-
-    pub fn pointmaze() -> Self {
-        Self {
-            ddpg: DDPG_Config::pointmaze(),
-            distance_mode: DistanceMode::True,
-            sgm_close_enough: 0.5,
-            sgm_maxdist: 1.0,
-            sgm_tau: 0.4,
-        }
-    }
-}
-
-impl ActorCriticConfig for DDPG_SGM_Config {
-    fn actor_lr(&self) -> f64 {
-        self.ddpg.actor_learning_rate
-    }
-    fn critic_lr(&self) -> f64 {
-        self.ddpg.critic_learning_rate
-    }
-    fn gamma(&self) -> f64 {
-        self.ddpg.gamma
-    }
-    fn tau(&self) -> f64 {
-        self.ddpg.tau
-    }
-    fn set_actor_lr(&mut self, lr: f64) {
-        self.ddpg.actor_learning_rate = lr;
-    }
-    fn set_critic_lr(&mut self, lr: f64) {
-        self.ddpg.critic_learning_rate = lr;
-    }
-    fn set_gamma(&mut self, gamma: f64) {
-        self.ddpg.gamma = gamma;
-    }
-    fn set_tau(&mut self, tau: f64) {
-        self.ddpg.tau = tau;
-    }
-}
-
-impl OffPolicyConfig for DDPG_SGM_Config {
-    fn replay_buffer_capacity(&self) -> usize {
-        self.ddpg.replay_buffer_capacity
-    }
-    fn training_batch_size(&self) -> usize {
-        self.ddpg.training_batch_size
-    }
-    fn set_replay_buffer_capacity(&mut self, capacity: usize) {
-        self.ddpg.replay_buffer_capacity = capacity;
-    }
-    fn set_training_batch_size(&mut self, batch_size: usize) {
-        self.ddpg.training_batch_size = batch_size;
-    }
-}
-
-impl SgmConfig for DDPG_SGM_Config {
-    fn sgm_close_enough(&self) -> f64 {
-        self.sgm_close_enough
-    }
-    fn sgm_maxdist(&self) -> f64 {
-        self.sgm_maxdist
-    }
-    fn sgm_tau(&self) -> f64 {
-        self.sgm_tau
-    }
-    fn sgm_dist_mode(&self) -> DistanceMode {
-        self.distance_mode
-    }
-    fn set_sgm_close_enough(&mut self, sgm_close_enough: f64) {
-        self.sgm_close_enough = sgm_close_enough;
-    }
-    fn set_sgm_maxdist(&mut self, maxdist: f64) {
-        self.sgm_maxdist = maxdist;
-    }
-    fn set_sgm_tau(&mut self, tau: f64) {
-        self.sgm_tau = tau;
-    }
-    fn set_sgm_dist_mode(&mut self, dist_mode: DistanceMode) {
-        self.distance_mode = dist_mode;
     }
 }
 
@@ -190,15 +108,15 @@ impl RenderableConfig for DDPG_SGM_Config {
                 .text("Tau"),
         );
 
-        let sgm_dist_mode = self.sgm_dist_mode();
+        let distance_mode = self.distance_mode;
         if ui
-            .add(Button::new(format!("Toggle DistMode ({sgm_dist_mode})")))
+            .add(Button::new(format!("Toggle DistMode ({distance_mode})")))
             .clicked()
         {
-            self.set_sgm_dist_mode(match self.sgm_dist_mode() {
+            self.distance_mode = match distance_mode {
                 DistanceMode::True => DistanceMode::Estimated,
                 DistanceMode::Estimated => DistanceMode::True,
-            });
+            };
         };
     }
 }
