@@ -48,13 +48,13 @@ use {
 pub fn run_experiment_off_policy<Alg, Env, Obs, Act>(
     path: &dyn AsRef<Path>,
     n_runs: usize,
-    env: ParamEnv<Env, Obs, Act>,
-    alg: ParamAlg<Alg>,
+    init_env: ParamEnv<Env, Obs, Act>,
+    init_alg: ParamAlg<Alg>,
     run_mode: ParamRunMode,
     device: &Device,
 ) -> Result<()>
 where
-    Env: Environment<Action = Act, Observation = Obs>,
+    Env: Clone + Environment<Action = Act, Observation = Obs>,
     Env::Config: Clone + Serialize,
     Alg: Clone + Algorithm + OffPolicyAlgorithm,
     Alg::Config: Clone + Serialize,
@@ -72,11 +72,11 @@ where
         )))?
     }
 
-    let alg_config = match &alg {
+    let alg_config = match &init_alg {
         ParamAlg::AsAlgorithm(alg) => alg.config().clone(),
         ParamAlg::AsConfig(config) => config.clone(),
     };
-    let env_config = match &env {
+    let env_config = match &init_env {
         ParamEnv::AsEnvironment(env) => env.config().clone(),
         ParamEnv::AsConfig(config) => config.clone(),
     };
@@ -104,28 +104,27 @@ where
         )?.as_bytes()
     )?;
 
-    let mut env = match env {
-        ParamEnv::AsEnvironment(env) => env,
-        ParamEnv::AsConfig(config) => {
-            *Env::new(config.clone())?
-        },
-    };
-    let size_state = env.observation_space().iter().product::<usize>();
-    let size_action = env.action_space().iter().product::<usize>();
-
     for n in 0..n_runs {
         warn!("Collecting data, run {n}/{n_runs}");
-        let mut alg = match &alg {
+        let mut env = match &init_env {
+            ParamEnv::AsEnvironment(env) => env.clone(),
+            ParamEnv::AsConfig(config) => {
+                *Env::new(config.clone()).unwrap()
+            },
+        };
+
+        let mut alg = match &init_alg {
             ParamAlg::AsAlgorithm(alg) => alg.clone(),
             ParamAlg::AsConfig(config) => {
                 *Alg::from_config(
                     device,
-                    &config.clone(),
-                    size_state,
-                    size_action,
-                )?
+                    config,
+                    env.observation_space().iter().product::<usize>(),
+                    env.action_space().iter().product::<usize>(),
+                ).unwrap()
             },
         };
+
         let (mc_returns, successes) = loop_off_policy(
             &mut env,
             &mut alg,

@@ -96,10 +96,10 @@ fn main() -> Result<()> {
 
     let pointenv = *PointEnv::new(
         PointEnvConfig::new(
-            20.0,
-            20.0,
+            10.0,
+            10.0,
             PointEnvWalls::None,
-            5,
+            10,
             1.0,
             0.5,
             Some(2.5),
@@ -123,7 +123,7 @@ fn main() -> Result<()> {
     //// Create the TrainConfig ////
 
     let train_config = TrainConfig::new(
-        200,
+        300,
         30,
         500,
     );
