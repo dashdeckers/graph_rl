@@ -3,6 +3,7 @@ use {
         agents::{
             Algorithm,
             DDPG_SGM,
+            DDPG,
         },
         envs::{
             Environment,
@@ -13,6 +14,7 @@ use {
         },
         configs::{
             DDPG_SGM_Config,
+            DDPG_Config,
             TrainConfig,
         },
         engines::{
@@ -118,11 +120,11 @@ fn main() -> Result<()> {
     )?;
 
 
-    //// Create DDPG_SGM Algorithm ////
+    //// Create DDPG Algorithm ////
 
-    let mut ddpg_sgm = *DDPG_SGM::from_config(
+    let mut ddpg = *DDPG::from_config(
         &device,
-        &DDPG_SGM_Config::small(),
+        &DDPG_Config::small(),
         pointenv.observation_space().iter().product::<usize>(),
         pointenv.action_space().iter().product::<usize>(),
     )?;
@@ -137,12 +139,12 @@ fn main() -> Result<()> {
     );
 
 
-    //// Pretrain DDPG_SGM Algorithm ////
+    //// Pretrain DDPG Algorithm ////
 
     for n in 0..args.n_pretrain_runs {
         let (mc_returns, successes) = loop_off_policy(
             &mut pointenv,
-            &mut ddpg_sgm,
+            &mut ddpg,
             ParamRunMode::Train(train_config.clone()),
             &device,
         )?;
@@ -155,6 +157,15 @@ fn main() -> Result<()> {
             successes.len(),
         );
     }
+
+    //// Create DDPG_SGM Algorithm ////
+
+    let ddpg_sgm = *DDPG_SGM::from_config_with_ddpg(
+        &device,
+        &DDPG_SGM_Config::small(),
+        ddpg,
+    )?;
+
 
     if args.gui {
         //// Check Pretrained DDPG_SGM Performance via GUI ////

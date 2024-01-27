@@ -22,6 +22,7 @@ pub struct DDPG_SGM_Config {
     // Whether to use true or estimated distances
     pub distance_mode: DistanceMode,
     // Sparse Graphical Memory parameters
+    pub sgm_max_tries: usize,
     pub sgm_close_enough: f64,
     pub sgm_maxdist: f64,
     pub sgm_tau: f64,
@@ -30,6 +31,7 @@ impl DDPG_SGM_Config {
     pub fn new(
         ddpg: DDPG_Config,
         distance_mode: DistanceMode,
+        sgm_max_tries: usize,
         sgm_close_enough: f64,
         sgm_maxdist: f64,
         sgm_tau: f64,
@@ -37,6 +39,7 @@ impl DDPG_SGM_Config {
         Self {
             ddpg,
             distance_mode,
+            sgm_max_tries,
             sgm_close_enough,
             sgm_maxdist,
             sgm_tau,
@@ -47,6 +50,7 @@ impl DDPG_SGM_Config {
         Self {
             ddpg: DDPG_Config::large(),
             distance_mode: DistanceMode::True,
+            sgm_max_tries: 5,
             sgm_close_enough: 0.5,
             sgm_maxdist: 1.0,
             sgm_tau: 0.4,
@@ -56,10 +60,7 @@ impl DDPG_SGM_Config {
     pub fn small() -> Self {
         Self {
             ddpg: DDPG_Config::small(),
-            distance_mode: DistanceMode::True,
-            sgm_close_enough: 0.5,
-            sgm_maxdist: 1.0,
-            sgm_tau: 0.4,
+            ..Self::large()
         }
     }
 }

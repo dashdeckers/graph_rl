@@ -18,6 +18,7 @@ use {
         engines::{
             setup_logging,
             run_experiment_off_policy,
+            loop_off_policy,
             ParamRunMode,
             ParamEnv,
             ParamAlg,
@@ -34,7 +35,10 @@ use {
         ValueEnum,
     },
     anyhow::Result,
-    tracing::Level,
+    tracing::{
+        Level,
+        warn,
+    },
 };
 
 
@@ -58,6 +62,10 @@ struct Args {
     /// Device to run on (e.g. CPU / GPU).
     #[arg(long, value_enum, default_value_t=ArgDevice::Cpu)]
     pub device: ArgDevice,
+
+    /// Number of pretraining runs to perform.
+    #[arg(long, default_value = "0")]
+    pub n_pretrain_runs: usize,
 
     /// Setup logging
     #[arg(long, value_enum, default_value_t=ArgLoglevel::Warn)]
@@ -94,7 +102,7 @@ fn main() -> Result<()> {
 
     //// Create the PointEnv Environment for Training ////
 
-    let pointenv = *PointEnv::new(
+    let mut pointenv = *PointEnv::new(
         PointEnvConfig::new(
             10.0,
             10.0,
@@ -112,7 +120,7 @@ fn main() -> Result<()> {
 
     //// Create DDPG Algorithm ////
 
-    let ddpg = *DDPG::from_config(
+    let mut ddpg = *DDPG::from_config(
         &device,
         &DDPG_Config::small(),
         pointenv.observation_space().iter().product::<usize>(),
@@ -127,6 +135,26 @@ fn main() -> Result<()> {
         30,
         500,
     );
+
+
+    //// Pretrain DDPG_SGM Algorithm ////
+
+    for n in 0..args.n_pretrain_runs {
+        let (mc_returns, successes) = loop_off_policy(
+            &mut pointenv,
+            &mut ddpg,
+            ParamRunMode::Train(train_config.clone()),
+            &device,
+        )?;
+
+        warn!(
+            "Pretrain run #{} - Avg return: {:.3}, Successes: {}/{}",
+            n,
+            mc_returns.iter().sum::<f64>() / mc_returns.len() as f64,
+            successes.iter().filter(|&&s| s).count(),
+            successes.len(),
+        );
+    }
 
 
     if args.gui {
