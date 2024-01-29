@@ -4,6 +4,10 @@ use {
         reward::PointReward,
     },
     crate::configs::RenderableConfig,
+    strum::{
+        EnumIter,
+        IntoEnumIterator,
+    },
     serde::Serialize,
     rand::{
         rngs::StdRng,
@@ -19,14 +23,15 @@ use {
     std::fmt::Display,
 };
 
-
 /// An enum representing the different wall configurations for the
 /// [`PointEnv`](super::point_env::PointEnv) environment.
-#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, EnumIter)]
 pub enum PointEnvWalls {
     None,
     OneLine,
     TwoLine,
+    FourLine,
+    Hooks,
 }
 impl Display for PointEnvWalls {
     fn fmt(
@@ -37,6 +42,8 @@ impl Display for PointEnvWalls {
             Self::None => write!(f, "None"),
             Self::OneLine => write!(f, "OneLine"),
             Self::TwoLine => write!(f, "TwoLine"),
+            Self::FourLine => write!(f, "FourLine"),
+            Self::Hooks => write!(f, "Hooks"),
         }
     }
 }
@@ -55,7 +62,19 @@ impl PointEnvWalls {
                 PointLine::from(((0.0, height * 0.2), (width * 0.8, height * 0.2))),
                 PointLine::from(((width * 0.2, height * 0.8), (width, height * 0.8))),
             ],
-            // Self::Custom(walls) => walls.clone(),
+            Self::FourLine => vec![
+                PointLine::from(((width * 0.2, height * 0.8), (width, height * 0.8))),
+                PointLine::from(((0.0, height * 0.6), (width * 0.8, height * 0.6))),
+                PointLine::from(((width * 0.2, height * 0.4), (width, height * 0.4))),
+                PointLine::from(((0.0, height * 0.2), (width * 0.8, height * 0.2))),
+            ],
+            Self::Hooks => vec![
+                PointLine::from(((0.0, height * 0.3), (width * 0.6, height * 0.3))),
+                PointLine::from(((width * 0.6, height * 0.6), (width * 0.6, height * 0.3))),
+
+                PointLine::from(((width * 0.4, height * 0.7), (width, height * 0.7))),
+                PointLine::from(((width * 0.4, height * 0.7), (width * 0.4, height * 0.4))),
+            ],
         };
         walls.extend([
             PointLine::from(((0.0, 0.0), (width, 0.0))),
@@ -216,9 +235,13 @@ impl RenderableConfig for PointEnvConfig {
         ComboBox::from_label("Walls")
             .selected_text(format!("{}", self.walls))
             .show_ui(ui, |ui| {
-                ui.selectable_value(&mut self.walls, PointEnvWalls::None, "None");
-                ui.selectable_value(&mut self.walls, PointEnvWalls::OneLine, "OneLine");
-                ui.selectable_value(&mut self.walls, PointEnvWalls::TwoLine, "TwoLine");
+                for wall in PointEnvWalls::iter() {
+                    ui.selectable_value(
+                        &mut self.walls,
+                        wall.clone(),
+                        format!("{}", wall),
+                    );
+                }
             }
         );
         ui.add(
