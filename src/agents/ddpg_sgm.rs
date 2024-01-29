@@ -65,8 +65,9 @@ where
     try_counter: usize,
 
     dist_mode: DistanceMode,
-    sgm_close_enough: f64,
     sgm_max_tries: usize,
+    sgm_close_enough: f64,
+    sgm_waypoint_reward: f64,
     sgm_maxdist: f64,
     sgm_tau: f64,
 
@@ -165,14 +166,14 @@ where
         }
     }
 
-    fn splice_goal_into_obs(
+    fn splice_state_as_goal_into_obs(
         &self,
         obs: &Env::Observation,
-        goal: &Env::Observation,
+        state_as_goal: &Env::Observation,
     ) -> Env::Observation {
         Env::Observation::new(
             obs.achieved_goal(),
-            goal.desired_goal(),
+            state_as_goal.achieved_goal(),
             obs.observation(),
         )
     }
@@ -203,6 +204,7 @@ where
             dist_mode: config.distance_mode,
             sgm_max_tries: config.sgm_max_tries,
             sgm_close_enough: config.sgm_close_enough,
+            sgm_waypoint_reward: config.sgm_waypoint_reward,
             sgm_maxdist: config.sgm_maxdist,
             sgm_tau: config.sgm_tau,
 
@@ -261,6 +263,7 @@ where
             dist_mode: config.distance_mode,
             sgm_max_tries: config.sgm_max_tries,
             sgm_close_enough: config.sgm_close_enough,
+            sgm_waypoint_reward: config.sgm_waypoint_reward,
             sgm_maxdist: config.sgm_maxdist,
             sgm_tau: config.sgm_tau,
 
@@ -311,12 +314,17 @@ where
 
         if !self.plan.is_empty() && self.try_counter > self.sgm_max_tries {
             if let Some(last_waypoint) = self.last_waypoint.clone() {
-                let edge = self.sgm.find_edge(
-                    self.indices[&last_waypoint],
-                    self.indices[&self.plan.last().unwrap()],
-                ).unwrap();
 
-                self.sgm.remove_edge(edge);
+                let a = &last_waypoint;
+                let b = self.plan.last().unwrap();
+
+                warn!("Removing edges: {:#?} <-> {:#?}", a, b);
+
+                for (from, to) in [(a, b), (b, a)] {
+                    if let Some(edge) = self.sgm.find_edge(self.indices[&from], self.indices[&to]) {
+                        self.sgm.remove_edge(edge);
+                    }
+                }
             }
 
             self.plan = Vec::new();
@@ -336,7 +344,7 @@ where
         //      try reaching the goal
 
         if !self.plan.is_empty() {
-            let waypoint_obs = self.splice_goal_into_obs(
+            let waypoint_obs = self.splice_state_as_goal_into_obs(
                 &curr_obs,
                 self.plan.last().unwrap(),
             );
@@ -382,17 +390,21 @@ where
         } else {
             // Otherwise, we relabel the goals of the state and next_state
             // to reflect that we are trying to reach the next waypoint
-            let curr_obs = self.splice_goal_into_obs(
+            let curr_obs = self.splice_state_as_goal_into_obs(
                 &<Env::Observation>::from_tensor(state.clone()),
                 self.plan.last().unwrap(),
             );
-            let next_obs = self.splice_goal_into_obs(
+            let next_obs = self.splice_state_as_goal_into_obs(
                 &<Env::Observation>::from_tensor(next_state.clone()),
                 self.plan.last().unwrap(),
             );
             let mut reward = reward.clone();
 
-            warn!("Checking distance between: {:#?} and {:#?}", next_obs.achieved_goal(), next_obs.achieved_goal());
+            warn!(
+                "Checking distance between: {:#?} and {:#?}",
+                next_obs.achieved_goal(),
+                next_obs.desired_goal(),
+            );
 
             // Then we check if we have reached the next waypoint
             let distance_to_waypoint = self.distance(
@@ -404,11 +416,11 @@ where
             // If we have reached the next waypoint, we:
             // - Pop the waypoint from the plan
             // - Reset the try counter
-            // - Pretend we got a +1.0 reward from the environment for reaching the waypoint
+            // - Pretend we got a reward from the environment for reaching the waypoint
             if distance_to_waypoint <= self.sgm_close_enough {
                 self.last_waypoint = self.plan.pop();
                 self.try_counter = 0;
-                reward = Tensor::new(vec![1.0], &self.device).unwrap();
+                reward = Tensor::new(vec![self.sgm_waypoint_reward], &self.device).unwrap();
             } else {
                 self.try_counter += 1;
                 warn!("Try counter: {}", self.try_counter);

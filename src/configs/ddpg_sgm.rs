@@ -24,6 +24,7 @@ pub struct DDPG_SGM_Config {
     // Sparse Graphical Memory parameters
     pub sgm_max_tries: usize,
     pub sgm_close_enough: f64,
+    pub sgm_waypoint_reward: f64,
     pub sgm_maxdist: f64,
     pub sgm_tau: f64,
 }
@@ -33,6 +34,7 @@ impl DDPG_SGM_Config {
         distance_mode: DistanceMode,
         sgm_max_tries: usize,
         sgm_close_enough: f64,
+        sgm_waypoint_reward: f64,
         sgm_maxdist: f64,
         sgm_tau: f64,
     ) -> Self {
@@ -41,6 +43,7 @@ impl DDPG_SGM_Config {
             distance_mode,
             sgm_max_tries,
             sgm_close_enough,
+            sgm_waypoint_reward,
             sgm_maxdist,
             sgm_tau,
         }
@@ -52,6 +55,7 @@ impl DDPG_SGM_Config {
             distance_mode: DistanceMode::True,
             sgm_max_tries: 5,
             sgm_close_enough: 0.5,
+            sgm_waypoint_reward: 1.0,
             sgm_maxdist: 1.0,
             sgm_tau: 0.4,
         }
@@ -72,6 +76,7 @@ impl RenderableConfig for DDPG_SGM_Config {
     ) {
         self.ddpg.render_immutable(ui);
 
+        let sgm_max_tries = self.sgm_max_tries;
         let close_enough = self.sgm_close_enough;
         let maxdist = self.sgm_maxdist;
         let tau = self.sgm_tau;
@@ -79,6 +84,7 @@ impl RenderableConfig for DDPG_SGM_Config {
 
         ui.separator();
         ui.label("SGM Options");
+        ui.add(Label::new(format!("Max tries: {sgm_max_tries}")));
         ui.add(Label::new(format!("Close enough: {close_enough:#.2}")));
         ui.add(Label::new(format!("Max distance: {maxdist:#.2}")));
         ui.add(Label::new(format!("Tau: {tau:#.2}")));
@@ -93,6 +99,10 @@ impl RenderableConfig for DDPG_SGM_Config {
 
         ui.separator();
         ui.label("SGM Options");
+        ui.add(
+            Slider::new(&mut self.sgm_max_tries, 1..=10)
+                .text("Max tries"),
+        );
         ui.add(
             Slider::new(&mut self.sgm_close_enough, 0.0..=1.0)
                 .step_by(0.01)
