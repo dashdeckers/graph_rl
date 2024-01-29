@@ -29,7 +29,10 @@ use {
     candle_core::Device,
     eframe::egui,
     egui::{
-        widgets::Button,
+        widgets::{
+            Button,
+            Slider,
+        },
         Checkbox,
         Color32,
         Ui,
@@ -74,6 +77,9 @@ where
 
     pub run_data: Vec<(RunMode, f64, bool)>,
     pub play_mode: PlayMode,
+
+    pub slowdown_ms: u64,
+    pub slowdown_ticker: u64,
 
     pub render_buffer: bool,
 }
@@ -171,6 +177,9 @@ where
             run_data: Vec::new(),
             play_mode: PlayMode::Pause,
 
+            slowdown_ms: 0,
+            slowdown_ticker: 0,
+
             render_buffer: false,
         }
     }
@@ -197,41 +206,47 @@ where
     }
 
     pub fn test_agent(&mut self) -> Result<()> {
+        if self.slowdown_ticker > 0 {
+            thread::sleep(time::Duration::from_millis(10));
+            self.slowdown_ticker -= 10;
+        } else {
+            self.slowdown_ticker = self.slowdown_ms;
 
-        let mode = match &self.run_mode {
-            ParamRunMode::Train(_) => RunMode::Train,
-            ParamRunMode::Test(_) => RunMode::Test,
-        };
+            let mode = match &self.run_mode {
+                ParamRunMode::Train(_) => RunMode::Train,
+                ParamRunMode::Test(_) => RunMode::Test,
+            };
 
-        match self.play_mode {
-            PlayMode::Pause => (),
-            PlayMode::Ticks => {
-                tick_off_policy(
-                    &mut self.env,
-                    &mut self.alg,
-                    mode,
-                    &self.device,
-                )?;
-            }
-            PlayMode::Episodes => {
-                let (mc_returns, successes) = loop_off_policy(
-                    &mut self.env,
-                    &mut self.alg,
-                    match &self.run_mode {
-                        ParamRunMode::Train(_) => ParamRunMode::Train(
-                            TrainConfig::new(
-                                1,
-                                0,
-                                0,
-                            )
-                        ),
-                        ParamRunMode::Test(_) => ParamRunMode::Test(
-                            TestConfig::new(1)
-                        ),
-                    },
-                    &self.device,
-                )?;
-                self.run_data.push((mode, mc_returns[0], successes[0]));
+            match self.play_mode {
+                PlayMode::Pause => (),
+                PlayMode::Ticks => {
+                    tick_off_policy(
+                        &mut self.env,
+                        &mut self.alg,
+                        mode,
+                        &self.device,
+                    )?;
+                }
+                PlayMode::Episodes => {
+                    let (mc_returns, successes) = loop_off_policy(
+                        &mut self.env,
+                        &mut self.alg,
+                        match &self.run_mode {
+                            ParamRunMode::Train(_) => ParamRunMode::Train(
+                                TrainConfig::new(
+                                    1,
+                                    0,
+                                    0,
+                                )
+                            ),
+                            ParamRunMode::Test(_) => ParamRunMode::Test(
+                                TestConfig::new(1)
+                            ),
+                        },
+                        &self.device,
+                    )?;
+                    self.run_data.push((mode, mc_returns[0], successes[0]));
+                }
             }
         }
         Ok(())
@@ -406,6 +421,11 @@ where
                 self.play_mode = PlayMode::Episodes;
             };
         });
+        ui.add(
+            Slider::new(&mut self.slowdown_ms, 0..=100)
+                .step_by(10.0)
+                .text("Tick Slowdown"),
+        );
         self.test_agent().unwrap();
     }
 
