@@ -69,11 +69,11 @@ impl PointEnvWalls {
                 PointLine::from(((0.0, height * 0.2), (width * 0.8, height * 0.2))),
             ],
             Self::Hooks => vec![
-                PointLine::from(((0.0, height * 0.3), (width * 0.6, height * 0.3))),
-                PointLine::from(((width * 0.6, height * 0.6), (width * 0.6, height * 0.3))),
+                PointLine::from(((0.0, height * 0.2), (width * 0.7, height * 0.2))),
+                PointLine::from(((width * 0.7, height * 0.6), (width * 0.7, height * 0.2))),
 
-                PointLine::from(((width * 0.4, height * 0.7), (width, height * 0.7))),
-                PointLine::from(((width * 0.4, height * 0.7), (width * 0.4, height * 0.4))),
+                PointLine::from(((width * 0.3, height * 0.8), (width, height * 0.8))),
+                PointLine::from(((width * 0.3, height * 0.8), (width * 0.3, height * 0.4))),
             ],
         };
         walls.extend([
