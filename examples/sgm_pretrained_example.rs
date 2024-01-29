@@ -3,6 +3,7 @@ use {
         agents::{
             Algorithm,
             DDPG_SGM,
+            DDPG,
         },
         envs::{
             Environment,
@@ -13,6 +14,7 @@ use {
         },
         configs::{
             DDPG_SGM_Config,
+            DDPG_Config,
             TrainConfig,
         },
         engines::{
@@ -111,10 +113,10 @@ fn main() -> Result<()> {
             10.0,
             10.0,
             PointEnvWalls::None,
-            10,
+            100,
             1.0,
             0.5,
-            Some(2.5),
+            None,
             0.1,
             PointReward::Distance,
             42,
@@ -122,21 +124,20 @@ fn main() -> Result<()> {
     )?;
 
 
-    //// Create DDPG_SGM Algorithm (with a larger buffer) ////
+    //// Create DDPG Algorithm ////
 
-    let mut ddpg_sgm = *DDPG_SGM::from_config(
+    let mut ddpg = *DDPG::from_config(
         &device,
-        &DDPG_SGM_Config::small(),
+        &DDPG_Config::small(),
         pointenv.observation_space().iter().product::<usize>(),
         pointenv.action_space().iter().product::<usize>(),
     )?;
-    ddpg_sgm.new_buffer(10_000);
 
 
     //// Maybe Load Pretrained Weights ////
 
     if let (path, Some(suffix)) = (&args.name, &args.load) {
-        ddpg_sgm.load(path, suffix)?;
+        ddpg.load(path, suffix)?;
     }
 
 
@@ -149,12 +150,12 @@ fn main() -> Result<()> {
     );
 
 
-    //// Pretrain DDPG_SGM Algorithm ////
+    //// Pretrain DDPG Algorithm ////
 
     for n in 0..args.pretrain {
         let (mc_returns, successes) = loop_off_policy(
             &mut pointenv,
-            &mut ddpg_sgm.clone(),
+            &mut ddpg.clone(),
             ParamRunMode::Train(train_config.clone()),
             &device,
         )?;
@@ -167,8 +168,18 @@ fn main() -> Result<()> {
             successes.len(),
         );
 
-        ddpg_sgm.save(&args.name, &format!("pretrained-{n}"))?;
+        ddpg.save(&args.name, &format!("pretrained-{n}"))?;
     }
+
+    //// Create DDPG_SGM Algorithm (with a larger buffer) ////
+
+    let mut ddpg_sgm = *DDPG_SGM::from_config_with_ddpg(
+        &device,
+        &DDPG_SGM_Config::small(),
+        ddpg,
+    )?;
+    ddpg_sgm.new_buffer(10_000);
+
 
     if args.gui {
         //// Check Pretrained DDPG_SGM Performance via GUI ////
