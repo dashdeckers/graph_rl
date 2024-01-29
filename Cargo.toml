@@ -12,7 +12,7 @@ keywords = [
     "planning",
     "graph",
 ]
-license = "MIT"
+license = "mit"
 categories = ["research"]
 
 
@@ -23,6 +23,7 @@ anyhow = "1.0.70"
 auto_ops = "0.3.0"
 ordered-float = { version = "4.1.1", features = ["serde"] }
 unzip-n = "0.1.2"
+strum = { version = "0.26.1", features = ["derive"] }
 
 # GUI
 eframe = "0.23.0"
