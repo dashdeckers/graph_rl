@@ -118,14 +118,15 @@ fn main() -> Result<()> {
     )?;
 
 
-    //// Create DDPG_SGM Algorithm ////
+    //// Create DDPG_SGM Algorithm (with a larger buffer) ////
 
-    let ddpg_sgm = *DDPG_SGM::from_config(
+    let mut ddpg_sgm = *DDPG_SGM::from_config(
         &device,
         &DDPG_SGM_Config::small(),
         pointenv.observation_space().iter().product::<usize>(),
         pointenv.action_space().iter().product::<usize>(),
     )?;
+    ddpg_sgm.new_buffer(10_000);
 
 
     //// Create the TrainConfig ////
