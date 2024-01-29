@@ -130,7 +130,7 @@ where
         let _ = catch_unwind(AssertUnwindSafe(|| eframe::run_native(
             "Actor-Critic Graph-Learner",
             eframe::NativeOptions {
-                min_window_size: Some(egui::vec2(800.0 * 1.4, 600.0 * 1.4)),
+                min_window_size: Some(egui::vec2(800.0 * 1.5, 600.0 * 1.5)),
                 ..Default::default()
             },
             Box::new(|_| Box::new(Self {
