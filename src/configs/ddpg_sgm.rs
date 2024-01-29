@@ -1,4 +1,3 @@
-use serde::Serialize;
 use {
     super::{
         RenderableConfig,
@@ -11,6 +10,7 @@ use {
         Slider,
         Button,
     },
+    serde::Serialize,
 };
 
 

@@ -1,4 +1,3 @@
-use serde::Serialize;
 use {
     super::RenderableConfig,
     egui::{
@@ -6,6 +5,7 @@ use {
         Label,
         Slider,
     },
+    serde::Serialize,
 };
 
 

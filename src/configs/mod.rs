@@ -30,17 +30,6 @@ pub trait OffPolicyConfig {
     fn set_training_batch_size(&mut self, batch_size: usize);
 }
 
-pub trait SgmConfig {
-    fn sgm_close_enough(&self) -> f64;
-    fn sgm_maxdist(&self) -> f64;
-    fn sgm_tau(&self) -> f64;
-    fn sgm_dist_mode(&self) -> DistanceMode;
-    fn set_sgm_close_enough(&mut self, close_enough: f64);
-    fn set_sgm_maxdist(&mut self, maxdist: f64);
-    fn set_sgm_tau(&mut self, tau: f64);
-    fn set_sgm_dist_mode(&mut self, dist_mode: DistanceMode);
-}
-
 pub trait RenderableConfig {
     fn render_mutable(
         &mut self,

@@ -8,7 +8,6 @@
 //! algorithm, by simply providing a method on top of a [`ReplayBuffer`].
 //!
 //! The SGM is used in the [`crate::agents::DDPG_SGM`] algorithm.
-
 use {
     crate::{
         envs::TensorConvertible,
