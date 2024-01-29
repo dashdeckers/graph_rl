@@ -435,6 +435,21 @@ impl Algorithm for DDPG<'_> {
         &self.config
     }
 
+    fn override_config(
+        &mut self,
+        config: &Self::Config,
+    ) {
+        self.gamma = config.gamma;
+        self.tau = config.tau;
+        self.new_buffer(config.replay_buffer_capacity);
+        self.batch_size = config.training_batch_size;
+
+        self.config.gamma = config.gamma;
+        self.config.tau = config.tau;
+        self.config.replay_buffer_capacity = config.replay_buffer_capacity;
+        self.config.training_batch_size = config.training_batch_size;
+    }
+
     fn from_config(
         device: &Device,
         config: &DDPG_Config,

@@ -402,6 +402,10 @@ where
                 ).unwrap();
                 self.run_data = Vec::new();
             };
+            if ui.add(Button::new("Override Agent")).clicked() {
+                self.alg.override_config(&self.alg_config);
+                self.alg_config = self.alg.config().clone();
+            };
         });
 
         ui.separator();

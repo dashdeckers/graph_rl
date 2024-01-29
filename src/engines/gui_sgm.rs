@@ -27,6 +27,7 @@ use {
     },
     eframe::egui,
     egui::{
+        Button,
         Checkbox,
         Color32,
         Ui,
@@ -77,6 +78,9 @@ where
         // render the settings and options
         egui::SidePanel::left("settings").show(ctx, |ui| {
             self.gui.render_settings(ui);
+            if ui.add(Button::new("Clear Graph")).clicked() {
+                self.gui.alg.clear_graph();
+            }
             self.render_gui_options(ui);
         });
 

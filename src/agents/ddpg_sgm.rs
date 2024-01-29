@@ -241,6 +241,25 @@ where
         &self.config
     }
 
+    fn override_config(
+        &mut self,
+        config: &Self::Config,
+    ) {
+        self.dist_mode = config.distance_mode;
+        self.sgm_max_tries = config.sgm_max_tries;
+        self.sgm_close_enough = config.sgm_close_enough;
+        self.sgm_waypoint_reward = config.sgm_waypoint_reward;
+        self.sgm_maxdist = config.sgm_maxdist;
+        self.sgm_tau = config.sgm_tau;
+
+        self.config.distance_mode = config.distance_mode;
+        self.config.sgm_max_tries = config.sgm_max_tries;
+        self.config.sgm_close_enough = config.sgm_close_enough;
+        self.config.sgm_waypoint_reward = config.sgm_waypoint_reward;
+        self.config.sgm_maxdist = config.sgm_maxdist;
+        self.config.sgm_tau = config.sgm_tau;
+    }
+
     fn from_config(
         device: &Device,
         config: &DDPG_SGM_Config,
@@ -443,51 +462,39 @@ where
 }
 
 
-
-
-
-
-
-
-// TODO: maybe we dont need this?
-
-
-
 impl<'a, Env> SgmAlgorithm<Env> for DDPG_SGM<'a, Env>
 where
     Env: Environment,
     Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation + DistanceMeasure,
     <Env::Observation as GoalAwareObservation>::State: Clone + Debug + Eq + Hash + TensorConvertible + DistanceMeasure,
 {
-    fn set_from_config(&mut self, config: &Self::Config) {
-        self.dist_mode = config.distance_mode;
-        self.sgm_close_enough = config.sgm_close_enough;
-        self.sgm_maxdist = config.sgm_maxdist;
-        self.sgm_tau = config.sgm_tau;
+    fn plan(&self) -> &Vec<Env::Observation> {
+        &self.plan
     }
 
     fn graph(&self) -> &StableGraph<Env::Observation, OrderedFloat<f64>, Undirected> {
         &self.sgm
     }
 
-    fn plan(&self) -> &Vec<Env::Observation> {
-        &self.plan
+    fn clear_graph(&mut self) {
+        self.sgm = StableGraph::default();
+        self.indices = HashMap::new();
     }
 
-    fn construct_graph(&mut self) {
-        (self.sgm, self.indices) = self
-            .replay_buffer()
-            .construct_sgm(
-                |s1: &Env::Observation, s2: &Env::Observation| {
-                    self.distance(
-                        s1.achieved_goal(),
-                        s2.achieved_goal(),
-                        s1.observation(),
-                    )
-                },
-                self.sgm_maxdist,
-                self.sgm_tau,
-            );
-    }
+    // fn construct_graph(&mut self) {
+    //     (self.sgm, self.indices) = self
+    //         .replay_buffer()
+    //         .construct_sgm(
+    //             |s1: &Env::Observation, s2: &Env::Observation| {
+    //                 self.distance(
+    //                     s1.achieved_goal(),
+    //                     s2.achieved_goal(),
+    //                     s1.observation(),
+    //                 )
+    //             },
+    //             self.sgm_maxdist,
+    //             self.sgm_tau,
+    //         );
+    // }
 }
 

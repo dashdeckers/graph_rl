@@ -44,6 +44,10 @@ pub trait Algorithm {
     type Config;
 
     fn config(&self) -> &Self::Config;
+    fn override_config(
+        &mut self,
+        config: &Self::Config,
+    );
     fn from_config(
         device: &Device,
         config: &Self::Config,
@@ -77,6 +81,7 @@ pub trait OffPolicyAlgorithm: Algorithm {
 pub trait SgmAlgorithm<Env: Environment>: Algorithm {
     fn plan(&self) -> &Vec<Env::Observation>;
     fn graph(&self) -> &StableGraph<Env::Observation, OrderedFloat<f64>, Undirected>;
-    fn construct_graph(&mut self);
-    fn set_from_config(&mut self, config: &Self::Config);
+    fn clear_graph(&mut self);
+    // fn construct_graph(&mut self);
+    // fn set_from_config(&mut self, config: &Self::Config);
 }
