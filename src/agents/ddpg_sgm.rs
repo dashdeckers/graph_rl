@@ -41,6 +41,7 @@ use {
         collections::HashMap,
         fmt::Debug,
         hash::Hash,
+        path::Path,
     },
 };
 
@@ -207,6 +208,22 @@ where
 
             config: config.clone(),
         }))
+    }
+
+    pub fn save(
+        &self,
+        path: &dyn AsRef<Path>,
+        suffix: &str,
+    ) -> Result<()> {
+        self.ddpg.save(path, suffix)
+    }
+
+    pub fn load(
+        &mut self,
+        path: &dyn AsRef<Path>,
+        suffix: &str,
+    ) -> Result<()> {
+        self.ddpg.load(path, suffix)
     }
 }
 

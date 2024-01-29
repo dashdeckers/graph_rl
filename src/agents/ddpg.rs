@@ -30,6 +30,7 @@ use {
         VarMap,
     },
     tracing::info,
+    std::path::Path,
 };
 
 fn track(
@@ -398,6 +399,32 @@ impl DDPG<'_> {
 
     pub fn new_buffer(&mut self, buffer_capacity: usize) {
         self.replay_buffer = ReplayBuffer::new(buffer_capacity);
+    }
+
+    pub fn save(
+        &self,
+        path: &dyn AsRef<Path>,
+        suffix: &str,
+    ) -> Result<()> {
+        let path = Path::new("data/").join(path);
+
+        self.actor.varmap.save(path.join(format!("{}-actor.safetensor", suffix)))?;
+        self.critic.varmap.save(path.join(format!("{}-critic.safetensor", suffix)))?;
+
+        Ok(())
+    }
+
+    pub fn load(
+        &mut self,
+        path: &dyn AsRef<Path>,
+        suffix: &str,
+    ) -> Result<()> {
+        let path = Path::new("data/").join(path);
+
+        self.actor.varmap.load(path.join(format!("{}-actor.safetensor", suffix)))?;
+        self.critic.varmap.load(path.join(format!("{}-critic.safetensor", suffix)))?;
+
+        Ok(())
     }
 }
 

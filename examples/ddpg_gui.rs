@@ -67,6 +67,10 @@ struct Args {
     #[arg(long, default_value = "0")]
     pub pretrain: usize,
 
+    /// Load a pretrained model from a file in the same directory as name.
+    #[arg(long)]
+    pub load: Option<String>,
+
     /// Setup logging
     #[arg(long, value_enum, default_value_t=ArgLoglevel::Warn)]
     pub log: ArgLoglevel,
@@ -120,7 +124,7 @@ fn main() -> Result<()> {
 
     //// Create DDPG Algorithm ////
 
-    let ddpg = *DDPG::from_config(
+    let mut ddpg = *DDPG::from_config(
         &device,
         &DDPG_Config::small(),
         pointenv.observation_space().iter().product::<usize>(),
@@ -128,12 +132,19 @@ fn main() -> Result<()> {
     )?;
 
 
+    //// Maybe Load Pretrained Weights ////
+
+    if let (path, Some(suffix)) = (&args.name, &args.load) {
+        ddpg.load(path, suffix)?;
+    }
+
+
     //// Create the TrainConfig ////
 
     let train_config = TrainConfig::new(
         300,
         30,
-        500,
+        if args.load.is_none() {500} else {0},
     );
 
 
@@ -154,6 +165,8 @@ fn main() -> Result<()> {
             successes.iter().filter(|&&s| s).count(),
             successes.len(),
         );
+
+        ddpg.save(&args.name, &format!("pretrained-{n}"))?;
     }
 
 
