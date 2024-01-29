@@ -5,11 +5,11 @@ pub use ddpg::DDPG;
 pub use ddpg_sgm::DDPG_SGM;
 
 
-use crate::{
-    envs::Environment,
-    components::ReplayBuffer,
-};
 use {
+    crate::{
+        envs::Environment,
+        components::ReplayBuffer,
+    },
     ordered_float::OrderedFloat,
     petgraph::{
         stable_graph::StableGraph,
@@ -19,11 +19,10 @@ use {
         Tensor,
         Result,
         Device,
-    }
+    },
+    std::fmt::Display,
 };
 
-
-use std::fmt::Display;
 
 /// The execution mode of an agent is either training or testing.
 #[derive(Clone, Copy, PartialEq, Eq)]
