@@ -171,13 +171,14 @@ fn main() -> Result<()> {
         ddpg.save(&args.name, &format!("pretrained-{n}"))?;
     }
 
-    //// Create DDPG_SGM Algorithm ////
+    //// Create DDPG_SGM Algorithm (with a larger buffer) ////
 
-    let ddpg_sgm = *DDPG_SGM::from_config_with_ddpg(
+    let mut ddpg_sgm = *DDPG_SGM::from_config_with_ddpg(
         &device,
         &DDPG_SGM_Config::small(),
         ddpg,
     )?;
+    ddpg_sgm.new_buffer(10_000);
 
 
     if args.gui {

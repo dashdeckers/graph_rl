@@ -122,7 +122,7 @@ fn main() -> Result<()> {
     )?;
 
 
-    //// Create DDPG_SGM Algorithm ////
+    //// Create DDPG_SGM Algorithm (with a larger buffer) ////
 
     let mut ddpg_sgm = *DDPG_SGM::from_config(
         &device,
@@ -130,6 +130,7 @@ fn main() -> Result<()> {
         pointenv.observation_space().iter().product::<usize>(),
         pointenv.action_space().iter().product::<usize>(),
     )?;
+    ddpg_sgm.new_buffer(10_000);
 
 
     //// Maybe Load Pretrained Weights ////
