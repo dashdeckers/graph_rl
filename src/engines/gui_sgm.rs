@@ -10,6 +10,7 @@ use {
             Algorithm,
             OffPolicyAlgorithm,
             SgmAlgorithm,
+            SaveableAlgorithm,
         },
         envs::{
             Environment,
@@ -65,7 +66,7 @@ impl<Alg, Env, Obs, Act> eframe::App for SgmGUI<Alg, Env, Obs, Act>
 where
     Env: Clone + Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
     Env::Config: Clone + Serialize + RenderableConfig,
-    Alg: Clone + Algorithm + OffPolicyAlgorithm + SgmAlgorithm<Env> + 'static,
+    Alg: Clone + Algorithm + OffPolicyAlgorithm + SaveableAlgorithm + SgmAlgorithm<Env> + 'static,
     Alg::Config: Clone + Serialize + RenderableConfig,
     Obs: Clone + TensorConvertible + 'static,
     Act: Clone + TensorConvertible + Sampleable + 'static,
@@ -120,7 +121,7 @@ impl<Alg, Env, Obs, Act> SgmGUI<Alg, Env, Obs, Act>
 where
     Env: Clone + Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
     Env::Config: Clone + Serialize + RenderableConfig,
-    Alg: Clone + Algorithm + OffPolicyAlgorithm + SgmAlgorithm<Env> + 'static,
+    Alg: Clone + Algorithm + OffPolicyAlgorithm + SaveableAlgorithm + SgmAlgorithm<Env> + 'static,
     Alg::Config: Clone + Serialize + RenderableConfig,
     Obs: Clone + TensorConvertible + 'static,
     Act: Clone + TensorConvertible + Sampleable + 'static,

@@ -3,6 +3,7 @@ use {
         RunMode,
         Algorithm,
         OffPolicyAlgorithm,
+        SaveableAlgorithm,
     },
     crate::{
         configs::DDPG_Config,
@@ -400,32 +401,6 @@ impl DDPG<'_> {
     pub fn new_buffer(&mut self, buffer_capacity: usize) {
         self.replay_buffer = ReplayBuffer::new(buffer_capacity);
     }
-
-    pub fn save(
-        &self,
-        path: &dyn AsRef<Path>,
-        suffix: &str,
-    ) -> Result<()> {
-        let path = Path::new("data/").join(path);
-
-        self.actor.varmap.save(path.join(format!("{}-actor.safetensor", suffix)))?;
-        self.critic.varmap.save(path.join(format!("{}-critic.safetensor", suffix)))?;
-
-        Ok(())
-    }
-
-    pub fn load(
-        &mut self,
-        path: &dyn AsRef<Path>,
-        suffix: &str,
-    ) -> Result<()> {
-        let path = Path::new("data/").join(path);
-
-        self.actor.varmap.load(path.join(format!("{}-actor.safetensor", suffix)))?;
-        self.critic.varmap.load(path.join(format!("{}-critic.safetensor", suffix)))?;
-
-        Ok(())
-    }
 }
 
 impl Algorithm for DDPG<'_> {
@@ -554,5 +529,29 @@ impl OffPolicyAlgorithm for DDPG<'_> {
 
     fn replay_buffer(&self) -> &ReplayBuffer {
         &self.replay_buffer
+    }
+}
+
+impl SaveableAlgorithm for DDPG<'_> {
+    fn save<P: AsRef<Path> + ?Sized>(
+        &self,
+        path: &P,
+        suffix: &str,
+    ) -> Result<()> {
+        self.actor.varmap.save(path.as_ref().join(format!("{}-actor.safetensor", suffix)))?;
+        self.critic.varmap.save(path.as_ref().join(format!("{}-critic.safetensor", suffix)))?;
+
+        Ok(())
+    }
+
+    fn load<P: AsRef<Path> + ?Sized>(
+        &mut self,
+        path: &P,
+        suffix: &str,
+    ) -> Result<()> {
+        self.actor.varmap.load(path.as_ref().join(format!("{}-actor.safetensor", suffix)))?;
+        self.critic.varmap.load(path.as_ref().join(format!("{}-critic.safetensor", suffix)))?;
+
+        Ok(())
     }
 }

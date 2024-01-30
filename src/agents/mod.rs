@@ -20,7 +20,10 @@ use {
         Result,
         Device,
     },
-    std::fmt::Display,
+    std::{
+        fmt::Display,
+        path::Path,
+    },
 };
 
 
@@ -38,6 +41,22 @@ impl Display for RunMode {
             RunMode::Test => write!(f, "Test"),
         }
     }
+}
+
+// foo<P: AsRef<Path>>(filename: &P)
+
+pub trait SaveableAlgorithm: Algorithm {
+    fn save<P: AsRef<Path> + ?Sized>(
+        &self,
+        path: &P,
+        suffix: &str,
+    ) -> Result<()>;
+
+    fn load<P: AsRef<Path> + ?Sized>(
+        &mut self,
+        path: &P,
+        suffix: &str,
+    ) -> Result<()>;
 }
 
 pub trait Algorithm {

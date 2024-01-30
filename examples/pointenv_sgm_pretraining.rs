@@ -2,6 +2,7 @@ use {
     graph_rl::{
         agents::{
             Algorithm,
+            SaveableAlgorithm,
             DDPG_SGM,
             DDPG,
         },
@@ -41,6 +42,7 @@ use {
         Level,
         warn,
     },
+    std::path::Path,
 };
 
 
@@ -168,7 +170,10 @@ fn main() -> Result<()> {
             successes.len(),
         );
 
-        ddpg.save(&args.name, &format!("pretrained-{n}"))?;
+        ddpg.save(
+            &Path::new("data/").join(&args.name),
+            &format!("pretrained-{n}"),
+        )?;
     }
 
     //// Create DDPG_SGM Algorithm (with a larger buffer) ////

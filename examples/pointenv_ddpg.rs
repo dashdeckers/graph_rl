@@ -2,6 +2,7 @@ use {
     graph_rl::{
         agents::{
             Algorithm,
+            SaveableAlgorithm,
             DDPG,
         },
         envs::{
@@ -39,6 +40,7 @@ use {
         Level,
         warn,
     },
+    std::path::Path,
 };
 
 
@@ -166,7 +168,10 @@ fn main() -> Result<()> {
             successes.len(),
         );
 
-        ddpg.save(&args.name, &format!("pretrained-{n}"))?;
+        ddpg.save(
+            &Path::new("data/").join(&args.name),
+            &format!("pretrained-{n}"),
+        )?;
     }
 
 

@@ -6,6 +6,7 @@ use {
             Algorithm,
             OffPolicyAlgorithm,
             SgmAlgorithm,
+            SaveableAlgorithm,
         },
         envs::{
             Environment,
@@ -213,22 +214,6 @@ where
 
             config: config.clone(),
         }))
-    }
-
-    pub fn save(
-        &self,
-        path: &dyn AsRef<Path>,
-        suffix: &str,
-    ) -> Result<()> {
-        self.ddpg.save(path, suffix)
-    }
-
-    pub fn load(
-        &mut self,
-        path: &dyn AsRef<Path>,
-        suffix: &str,
-    ) -> Result<()> {
-        self.ddpg.load(path, suffix)
     }
 }
 
@@ -506,3 +491,25 @@ where
     // }
 }
 
+impl<'a, Env> SaveableAlgorithm for DDPG_SGM<'a, Env>
+where
+    Env: Environment,
+    Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation + DistanceMeasure,
+    <Env::Observation as GoalAwareObservation>::State: Clone + Debug + Eq + Hash + TensorConvertible + DistanceMeasure,
+{
+    fn save<P: AsRef<Path> + ?Sized>(
+        &self,
+        path: &P,
+        suffix: &str,
+    ) -> Result<()> {
+        self.ddpg.save(path, suffix)
+    }
+
+    fn load<P: AsRef<Path> + ?Sized>(
+        &mut self,
+        path: &P,
+        suffix: &str,
+    ) -> Result<()> {
+        self.ddpg.load(path, suffix)
+    }
+}

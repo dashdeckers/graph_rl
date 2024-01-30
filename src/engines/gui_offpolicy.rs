@@ -11,6 +11,7 @@ use {
             RunMode,
             Algorithm,
             OffPolicyAlgorithm,
+            SaveableAlgorithm,
         },
         envs::{
             Environment,
@@ -47,6 +48,7 @@ use {
     std::{
         thread,
         time,
+        path::Path,
         panic::{
             catch_unwind,
             AssertUnwindSafe,
@@ -88,7 +90,7 @@ impl<Alg, Env, Obs, Act> eframe::App for OffPolicyGUI<Alg, Env, Obs, Act>
 where
     Env: Clone + Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
     Env::Config: Clone + Serialize + RenderableConfig,
-    Alg: Clone + Algorithm + OffPolicyAlgorithm + 'static,
+    Alg: Clone + Algorithm + OffPolicyAlgorithm + SaveableAlgorithm + 'static,
     Alg::Config: Clone + Serialize + RenderableConfig,
     Obs: Clone + TensorConvertible + 'static,
     Act: Clone + TensorConvertible + Sampleable + 'static,
@@ -134,7 +136,7 @@ impl<Alg, Env, Obs, Act> OffPolicyGUI<Alg, Env, Obs, Act>
 where
     Env: Clone + Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
     Env::Config: Clone + Serialize + RenderableConfig,
-    Alg: Clone + Algorithm + OffPolicyAlgorithm + 'static,
+    Alg: Clone + Algorithm + OffPolicyAlgorithm + SaveableAlgorithm + 'static,
     Alg::Config: Clone + Serialize + RenderableConfig,
     Obs: Clone + TensorConvertible + 'static,
     Act: Clone + TensorConvertible + Sampleable + 'static,
@@ -407,6 +409,12 @@ where
                 self.alg_config = self.alg.config().clone();
             };
         });
+        if ui.add(Button::new("Save Agent")).clicked() {
+            self.alg.save(
+                &Path::new("data/"),
+                &"GUI-saved",
+            ).unwrap();
+        };
 
         ui.separator();
         let mode = match &self.run_mode {
