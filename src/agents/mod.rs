@@ -43,8 +43,6 @@ impl Display for RunMode {
     }
 }
 
-// foo<P: AsRef<Path>>(filename: &P)
-
 pub trait SaveableAlgorithm: Algorithm {
     fn save<P: AsRef<Path> + ?Sized>(
         &self,
