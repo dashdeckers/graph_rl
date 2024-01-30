@@ -149,21 +149,24 @@ where
         let goal = self.get_closest(obs.desired_goal());
 
         if let (Some(start), Some(goal)) = (start, goal) {
-            let path = astar(
-                &self.sgm,
-                self.indices[&start],
-                |n| n == self.indices[&goal],
-                |e| *e.weight(),
-                |_| OrderedFloat(0.0),
-            );
+            let istart = self.indices.get(&start);
+            let igoal = self.indices.get(&goal);
 
-            match path {
-                Some((_, path)) => path.into_iter().rev().map(|n| self.sgm.node_weight(n).unwrap().clone()).collect(),
-                None => Vec::new(),
+            if let Some((istart, igoal)) = istart.zip(igoal) {
+                let path = astar(
+                    &self.sgm,
+                    *istart,
+                    |n| n == *igoal,
+                    |e| *e.weight(),
+                    |_| OrderedFloat(0.0),
+                );
+
+                if let Some((_, path)) = path {
+                    return path.into_iter().rev().map(|n| self.sgm.node_weight(n).unwrap().clone()).collect()
+                }
             }
-        } else {
-            Vec::new()
         }
+        Vec::new()
     }
 
     fn splice_state_as_goal_into_obs(
@@ -340,8 +343,13 @@ where
                 warn!("Removing edges: {:#?} <-> {:#?}", a, b);
 
                 for (from, to) in [(a, b), (b, a)] {
-                    if let Some(edge) = self.sgm.find_edge(self.indices[&from], self.indices[&to]) {
-                        self.sgm.remove_edge(edge);
+                    let ia = self.indices.get(from);
+                    let ib = self.indices.get(to);
+
+                    if let Some((ia, ib)) = ia.zip(ib) {
+                        if let Some(edge) = self.sgm.find_edge(*ia, *ib) {
+                            self.sgm.remove_edge(edge);
+                        }
                     }
                 }
             }
