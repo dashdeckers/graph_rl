@@ -12,7 +12,9 @@ use {
         Step,
         TensorConvertible,
         VectorConvertible,
+        GoalAwareObservation,
     },
+    crate::configs::RenderableConfig,
     serde::Serialize,
     anyhow::Result,
     candle_core::{
@@ -48,6 +50,7 @@ fn preprocess_view(mut value: Vec<f64>) -> Vec<f64> {
     value
 }
 
+#[derive(Clone)]
 pub struct PointMazeEnv {
     config: PointMazeConfig,
     env: PyObject,
@@ -100,9 +103,30 @@ impl Default for PointMazeConfig {
         }
     }
 }
+impl RenderableConfig for PointMazeConfig {
+    fn render_immutable(
+        &self,
+        ui: &mut egui::Ui,
+    ) {
+        ui.label("PointMazeEnv");
+        ui.label(format!("name: {}", self.name));
+        ui.label(format!("width: {}", self.width));
+        ui.label(format!("height: {}", self.height));
+        ui.label(format!("timelimit: {}", self.timelimit));
+        ui.label(format!("reward_mode: {:?}", self.reward_mode));
+        ui.label(format!("seed: {}", self.seed));
+    }
+
+    fn render_mutable(
+            &mut self,
+            ui: &mut egui::Ui,
+        ) {
+        self.render_immutable(ui);
+    }
+}
 
 #[allow(dead_code)]
-#[derive(Clone, Serialize)]
+#[derive(Clone, Debug, Serialize)]
 pub enum PointMazeReward {
     SparseNegative,
     Sparse,
@@ -269,6 +293,62 @@ pub struct PointMazeObservation {
     observation: PointMazeView,
     desired_goal: PointMazeState,
     achieved_goal: PointMazeState,
+}
+impl GoalAwareObservation for PointMazeObservation {
+    type State = PointMazeState;
+    type View = PointMazeView;
+
+    /// The achieved goal is the current [PointMazeState]
+    fn achieved_goal(&self) -> &Self::State {
+        &self.achieved_goal
+    }
+
+    /// The desired goal is the goal [PointMazeState]
+    fn desired_goal(&self) -> &Self::State {
+        &self.desired_goal
+    }
+
+    /// The observation is the current [PointMazeView]
+    fn observation(&self) -> &Self::View {
+        &self.observation
+    }
+
+    /// Set the achieved goal to the given value
+    fn set_achieved_goal(
+        &mut self,
+        value: &Self::State,
+    ) {
+        self.achieved_goal = value.clone();
+    }
+
+    /// Set the desired goal to the given value
+    fn set_desired_goal(
+        &mut self,
+        value: &Self::State,
+    ) {
+        self.desired_goal = value.clone();
+    }
+
+    /// Set the observation to the given value
+    fn set_observation(
+        &mut self,
+        value: &Self::View,
+    ) {
+        self.observation = value.clone();
+    }
+
+    /// Create a new [PointMazeObservation] from the given values
+    fn new(
+        achieved_goal: &Self::State,
+        desired_goal: &Self::State,
+        observation: &Self::View,
+    ) -> Self {
+        Self {
+            observation: observation.clone(),
+            desired_goal: desired_goal.clone(),
+            achieved_goal: achieved_goal.clone(),
+        }
+    }
 }
 impl VectorConvertible for PointMazeObservation {
     fn from_vec_pp(value: Vec<f64>) -> Self {
