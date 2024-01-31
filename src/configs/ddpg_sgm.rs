@@ -100,7 +100,7 @@ impl RenderableConfig for DDPG_SGM_Config {
         ui.separator();
         ui.label("SGM Options");
         ui.add(
-            Slider::new(&mut self.sgm_max_tries, 1..=10)
+            Slider::new(&mut self.sgm_max_tries, 1..=50)
                 .text("Max tries"),
         );
         ui.add(
