@@ -137,7 +137,10 @@ fn main() -> Result<()> {
     //// Maybe Load Pretrained Weights ////
 
     if let (path, Some(suffix)) = (&args.name, &args.load) {
-        ddpg.load(path, suffix)?;
+        ddpg.load(
+            &Path::new("data/").join(path),
+            suffix,
+        )?;
     }
 
 
