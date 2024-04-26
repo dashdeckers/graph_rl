@@ -47,13 +47,13 @@ pub trait SaveableAlgorithm: Algorithm {
     fn save<P: AsRef<Path> + ?Sized>(
         &self,
         path: &P,
-        suffix: &str,
+        name: &str,
     ) -> Result<()>;
 
     fn load<P: AsRef<Path> + ?Sized>(
         &mut self,
         path: &P,
-        suffix: &str,
+        name: &str,
     ) -> Result<()>;
 }
 

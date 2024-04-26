@@ -536,10 +536,10 @@ impl SaveableAlgorithm for DDPG<'_> {
     fn save<P: AsRef<Path> + ?Sized>(
         &self,
         path: &P,
-        suffix: &str,
+        name: &str,
     ) -> Result<()> {
-        self.actor.varmap.save(path.as_ref().join(format!("{}-actor.safetensor", suffix)))?;
-        self.critic.varmap.save(path.as_ref().join(format!("{}-critic.safetensor", suffix)))?;
+        self.actor.varmap.save(path.as_ref().join(format!("{}-actor.safetensor", name)))?;
+        self.critic.varmap.save(path.as_ref().join(format!("{}-critic.safetensor", name)))?;
 
         Ok(())
     }
@@ -547,10 +547,10 @@ impl SaveableAlgorithm for DDPG<'_> {
     fn load<P: AsRef<Path> + ?Sized>(
         &mut self,
         path: &P,
-        suffix: &str,
+        name: &str,
     ) -> Result<()> {
-        self.actor.varmap.load(path.as_ref().join(format!("{}-actor.safetensor", suffix)))?;
-        self.critic.varmap.load(path.as_ref().join(format!("{}-critic.safetensor", suffix)))?;
+        self.actor.varmap.load(path.as_ref().join(format!("{}-actor.safetensor", name)))?;
+        self.critic.varmap.load(path.as_ref().join(format!("{}-critic.safetensor", name)))?;
 
         Ok(())
     }

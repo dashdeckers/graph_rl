@@ -1,0 +1,12 @@
+(
+    width: 10.0,
+    height: 10.0,
+    walls: None,
+    timelimit: 100,
+    step_radius: 1.0,
+    term_radius: 0.5,
+    max_radius: None,
+    bounce_factor: 0.1,
+    reward: Distance,
+    seed: 42,
+)

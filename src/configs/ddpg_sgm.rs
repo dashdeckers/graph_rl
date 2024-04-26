@@ -4,21 +4,26 @@ use {
         DDPG_Config,
         DistanceMode,
     },
+    serde::{
+        Serialize,
+        Deserialize,
+    },
     egui::{
         Ui,
         Label,
         Slider,
         Button,
     },
-    serde::Serialize,
 };
 
 
 #[allow(non_camel_case_types)]
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct DDPG_SGM_Config {
     // The base DDPG parameters
     pub ddpg: DDPG_Config,
+    // Overwritten Replay Buffer size
+    pub buffer_size: usize,
     // Whether to use true or estimated distances
     pub distance_mode: DistanceMode,
     // Sparse Graphical Memory parameters
@@ -28,9 +33,25 @@ pub struct DDPG_SGM_Config {
     pub sgm_maxdist: f64,
     pub sgm_tau: f64,
 }
+impl Default for DDPG_SGM_Config {
+    fn default() -> Self {
+        Self {
+            ddpg: DDPG_Config::default(),
+            buffer_size: 10_000,
+            distance_mode: DistanceMode::True,
+            sgm_max_tries: 5,
+            sgm_close_enough: 0.5,
+            sgm_waypoint_reward: 1.0,
+            sgm_maxdist: 1.0,
+            sgm_tau: 0.4,
+        }
+    }
+}
 impl DDPG_SGM_Config {
+    #[allow(clippy::too_many_arguments)]
     pub fn new(
         ddpg: DDPG_Config,
+        buffer_size: usize,
         distance_mode: DistanceMode,
         sgm_max_tries: usize,
         sgm_close_enough: f64,
@@ -40,31 +61,13 @@ impl DDPG_SGM_Config {
     ) -> Self {
         Self {
             ddpg,
+            buffer_size,
             distance_mode,
             sgm_max_tries,
             sgm_close_enough,
             sgm_waypoint_reward,
             sgm_maxdist,
             sgm_tau,
-        }
-    }
-
-    pub fn large() -> Self {
-        Self {
-            ddpg: DDPG_Config::large(),
-            distance_mode: DistanceMode::True,
-            sgm_max_tries: 5,
-            sgm_close_enough: 0.5,
-            sgm_waypoint_reward: 1.0,
-            sgm_maxdist: 1.0,
-            sgm_tau: 0.4,
-        }
-    }
-
-    pub fn small() -> Self {
-        Self {
-            ddpg: DDPG_Config::small(),
-            ..Self::large()
         }
     }
 }

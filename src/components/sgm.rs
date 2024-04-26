@@ -23,7 +23,10 @@ use {
         },
         Undirected,
     },
-    serde::Serialize,
+    serde::{
+        Serialize,
+        Deserialize,
+    },
     std::{
         collections::HashMap,
         fmt::{
@@ -35,7 +38,7 @@ use {
 };
 
 
-#[derive(Clone, Copy, Serialize)]
+#[derive(Clone, Copy, Serialize, Deserialize)]
 pub enum DistanceMode {
     True,
     Estimated,

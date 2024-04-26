@@ -5,7 +5,10 @@ use {
         point_env::reachable,
         state::PointState,
     },
-    serde::Serialize,
+    serde::{
+        Serialize,
+        Deserialize,
+    },
 };
 
 
@@ -62,7 +65,7 @@ use {
 /// );
 /// ```
 ///
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PointReward {
     Euclidean,
     Distance,

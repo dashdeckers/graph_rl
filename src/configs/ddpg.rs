@@ -1,6 +1,9 @@
 use {
     super::RenderableConfig,
-    serde::Serialize,
+    serde::{
+        Serialize,
+        Deserialize,
+    },
     egui::{
         Ui,
         Label,
@@ -10,7 +13,7 @@ use {
 
 
 #[allow(non_camel_case_types)]
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct DDPG_Config {
     // The learning rates for the Actor and Critic networks
     pub actor_learning_rate: f64,
@@ -30,6 +33,23 @@ pub struct DDPG_Config {
     pub ou_theta: f64,
     pub ou_kappa: f64,
     pub ou_sigma: f64,
+}
+impl Default for DDPG_Config {
+    fn default() -> Self {
+        Self {
+            actor_learning_rate: 0.0003,
+            critic_learning_rate: 0.0003,
+            gamma: 0.99,
+            tau: 0.005,
+            hidden_1_size: 256,
+            hidden_2_size: 256,
+            replay_buffer_capacity: 1_000,
+            training_batch_size: 64,
+            ou_theta: 0.0,
+            ou_kappa: 0.15,
+            ou_sigma: 0.2,
+        }
+    }
 }
 impl DDPG_Config {
     #[allow(clippy::too_many_arguments)]
@@ -58,38 +78,6 @@ impl DDPG_Config {
             ou_theta,
             ou_kappa,
             ou_sigma,
-        }
-    }
-
-    pub fn large() -> Self {
-        Self {
-            actor_learning_rate: 1e-4,
-            critic_learning_rate: 1e-3,
-            gamma: 0.99,
-            tau: 0.005,
-            hidden_1_size: 400,
-            hidden_2_size: 300,
-            replay_buffer_capacity: 100_000,
-            training_batch_size: 100,
-            ou_theta: 0.0,
-            ou_kappa: 0.15,
-            ou_sigma: 0.1,
-        }
-    }
-
-    pub fn small() -> Self {
-        Self {
-            actor_learning_rate: 0.0003,
-            critic_learning_rate: 0.0003,
-            gamma: 0.99,
-            tau: 0.005,
-            hidden_1_size: 256,
-            hidden_2_size: 256,
-            replay_buffer_capacity: 1_000,
-            training_batch_size: 64,
-            ou_theta: 0.0,
-            ou_kappa: 0.15,
-            ou_sigma: 0.2,
         }
     }
 }

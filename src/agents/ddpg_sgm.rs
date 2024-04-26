@@ -37,7 +37,7 @@ use {
         algo::astar,
         Undirected,
     },
-    tracing::warn,
+    tracing::info,
     std::{
         collections::HashMap,
         fmt::Debug,
@@ -194,7 +194,7 @@ where
         config: &DDPG_SGM_Config,
         ddpg: DDPG<'a>,
     ) -> Result<Box<Self>> {
-        Ok(Box::new(Self {
+        let mut agent = Self {
             ddpg,
             device: device.clone(),
 
@@ -213,7 +213,9 @@ where
             sgm_tau: config.sgm_tau,
 
             config: config.clone(),
-        }))
+        };
+        agent.new_buffer(config.buffer_size);
+        Ok(Box::new(agent))
     }
 }
 
@@ -241,11 +243,14 @@ where
         self.sgm_tau = config.sgm_tau;
 
         self.config.distance_mode = config.distance_mode;
+        self.config.buffer_size = config.buffer_size;
         self.config.sgm_max_tries = config.sgm_max_tries;
         self.config.sgm_close_enough = config.sgm_close_enough;
         self.config.sgm_waypoint_reward = config.sgm_waypoint_reward;
         self.config.sgm_maxdist = config.sgm_maxdist;
         self.config.sgm_tau = config.sgm_tau;
+
+        self.new_buffer(config.buffer_size);
     }
 
     fn from_config(
@@ -254,7 +259,8 @@ where
         size_state: usize,
         size_action: usize,
     ) -> Result<Box<Self>> {
-        let ddpg = DDPG::from_config(device, &config.ddpg, size_state, size_action)?;
+        let mut ddpg = DDPG::from_config(device, &config.ddpg, size_state, size_action)?;
+        ddpg.new_buffer(config.buffer_size);
 
         Ok(Box::new(Self {
             ddpg: *ddpg,
@@ -312,7 +318,7 @@ where
             self.sgm_maxdist,
             self.sgm_tau,
         ).is_ok() {
-            warn!("Added node to graph: {:#?}", curr_obs);
+            info!("Added node to graph: {:#?}", curr_obs);
         };
 
         // IF we have a plan AND we have been trying too long
@@ -325,7 +331,7 @@ where
                 let a = &last_waypoint;
                 let b = self.plan.last().unwrap();
 
-                warn!("Removing edges: {:#?} <-> {:#?}", a, b);
+                info!("Removing edges: {:#?} <-> {:#?}", a, b);
 
                 for (from, to) in [(a, b), (b, a)] {
                     let ia = self.indices.get(from);
@@ -361,10 +367,10 @@ where
                 self.plan.last().unwrap(),
             );
 
-            warn!("Aiming for Waypoint: {:#?}", waypoint_obs);
+            info!("Aiming for Waypoint: {:#?}", waypoint_obs);
             self.ddpg.actions(&<Env::Observation>::to_tensor(waypoint_obs, &self.device)?, mode)
         } else {
-            warn!("Aiming for Goal: {:#?}", curr_obs);
+            info!("Aiming for Goal: {:#?}", curr_obs);
             self.ddpg.actions(state, mode)
         }
     }
@@ -412,7 +418,7 @@ where
             );
             let mut reward = reward.clone();
 
-            warn!(
+            info!(
                 "Checking distance between: {:#?} and {:#?}",
                 next_obs.achieved_goal(),
                 next_obs.desired_goal(),
@@ -435,7 +441,7 @@ where
                 reward = Tensor::new(vec![self.sgm_waypoint_reward], &self.device).unwrap();
             } else {
                 self.try_counter += 1;
-                warn!("Try counter: {}", self.try_counter);
+                info!("Try counter: {}", self.try_counter);
             }
 
             self.ddpg.remember(
@@ -500,16 +506,16 @@ where
     fn save<P: AsRef<Path> + ?Sized>(
         &self,
         path: &P,
-        suffix: &str,
+        name: &str,
     ) -> Result<()> {
-        self.ddpg.save(path, suffix)
+        self.ddpg.save(path, name)
     }
 
     fn load<P: AsRef<Path> + ?Sized>(
         &mut self,
         path: &P,
-        suffix: &str,
+        name: &str,
     ) -> Result<()> {
-        self.ddpg.load(path, suffix)
+        self.ddpg.load(path, name)
     }
 }

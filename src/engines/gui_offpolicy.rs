@@ -412,7 +412,7 @@ where
         if ui.add(Button::new("Save Agent")).clicked() {
             self.alg.save(
                 &Path::new("data/"),
-                &"GUI-saved",
+                "GUI-saved",
             ).unwrap();
         };
 

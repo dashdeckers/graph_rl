@@ -5,12 +5,15 @@ use {
         Label,
         Slider,
     },
-    serde::Serialize,
+    serde::{
+        Serialize,
+        Deserialize,
+    },
 };
 
 
 #[allow(non_camel_case_types)]
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct TrainConfig {
     // The total number of episodes.
     max_episodes: usize,
@@ -18,6 +21,15 @@ pub struct TrainConfig {
     training_iterations: usize,
     // Number of random actions to take at very beginning of training.
     initial_random_actions: usize,
+}
+impl Default for TrainConfig {
+    fn default() -> Self {
+        Self {
+            max_episodes: 500,
+            training_iterations: 30,
+            initial_random_actions: 500,
+        }
+    }
 }
 impl TrainConfig {
     pub fn new(
@@ -30,26 +42,6 @@ impl TrainConfig {
             training_iterations,
             initial_random_actions,
         }
-    }
-
-    pub fn pendulum() -> Self {
-        Self {
-            max_episodes: 30,
-            training_iterations: 200,
-            initial_random_actions: 0,
-        }
-    }
-
-    pub fn pointenv() -> Self {
-        Self {
-            max_episodes: 300,
-            training_iterations: 30,
-            initial_random_actions: 1000,
-        }
-    }
-
-    pub fn pointmaze() -> Self {
-        Self::pointenv()
     }
 }
 

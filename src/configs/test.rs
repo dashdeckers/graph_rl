@@ -5,36 +5,30 @@ use {
         Label,
         Slider,
     },
-    serde::Serialize,
+    serde::{
+        Serialize,
+        Deserialize,
+    },
 };
 
 #[allow(non_camel_case_types)]
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct TestConfig {
     // The total number of episodes.
     max_episodes: usize,
+}
+impl Default for TestConfig {
+    fn default() -> Self {
+        Self {
+            max_episodes: 30,
+        }
+    }
 }
 impl TestConfig {
     pub fn new(max_episodes: usize) -> Self {
         Self {
             max_episodes,
         }
-    }
-
-    pub fn pendulum() -> Self {
-        Self {
-            max_episodes: 30,
-        }
-    }
-
-    pub fn pointenv() -> Self {
-        Self {
-            max_episodes: 300,
-        }
-    }
-
-    pub fn pointmaze() -> Self {
-        Self::pointenv()
     }
 }
 

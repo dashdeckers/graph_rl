@@ -8,7 +8,10 @@ use {
         EnumIter,
         IntoEnumIterator,
     },
-    serde::Serialize,
+    serde::{
+        Serialize,
+        Deserialize,
+    },
     rand::{
         rngs::StdRng,
         Rng,
@@ -25,7 +28,7 @@ use {
 
 /// An enum representing the different wall configurations for the
 /// [`PointEnv`](super::point_env::PointEnv) environment.
-#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, EnumIter)]
+#[derive(Debug, Clone, PartialEq, PartialOrd, Serialize, Deserialize, EnumIter)]
 pub enum PointEnvWalls {
     None,
     OneLine,
@@ -126,7 +129,7 @@ impl PointEnvWalls {
 /// assert_eq!(config.bounce_factor, 0.1);
 /// assert_eq!(config.reward, PointReward::Distance);
 /// ```
-#[derive(Debug, Clone, Serialize)]
+#[derive(Debug, Clone, Serialize, Deserialize)]
 pub struct PointEnvConfig {
     pub width: f64,
     pub height: f64,
@@ -142,10 +145,10 @@ pub struct PointEnvConfig {
 impl Default for PointEnvConfig {
     fn default() -> Self {
         Self {
-            width: 5.0,
-            height: 5.0,
+            width: 10.0,
+            height: 10.0,
             walls: PointEnvWalls::None,
-            timelimit: 30,
+            timelimit: 100,
             step_radius: 1.0,
             term_radius: 0.5,
             max_radius: None,

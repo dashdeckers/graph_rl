@@ -1,5 +1,6 @@
 use {
     graph_rl::{
+        util::read_config,
         agents::{
             Algorithm,
             SaveableAlgorithm,
@@ -9,8 +10,6 @@ use {
             Environment,
             PointEnv,
             PointEnvConfig,
-            PointEnvWalls,
-            PointReward,
         },
         configs::{
             DDPG_Config,
@@ -65,20 +64,32 @@ struct Args {
     #[arg(long, value_enum, default_value_t=ArgDevice::Cpu)]
     pub device: ArgDevice,
 
-    /// Number of pretraining runs to perform.
-    #[arg(long, default_value = "0")]
-    pub pretrain: usize,
-
-    /// Load a pretrained model from a file in the same directory as name.
+    /// Pretrain the model according to the given config.
     #[arg(long)]
-    pub load: Option<String>,
+    pub pretrain_config: Option<String>,
+
+    /// Train the model according to the given config.
+    #[arg(long)]
+    pub train_config: Option<String>,
+
+    /// Environment config.
+    #[arg(long)]
+    pub env_config: Option<String>,
+
+    /// Algorithm config.
+    #[arg(long)]
+    pub alg_config: Option<String>,
+
+    /// Load a pretrained model from a file.
+    #[arg(long)]
+    pub load_model: Option<String>,
 
     /// Setup logging
     #[arg(long, value_enum, default_value_t=ArgLoglevel::Warn)]
     pub log: ArgLoglevel,
 
     /// Experiment name to use for logging / collecting data.
-    #[arg(long, default_value = "ddpg-test")]
+    #[arg(long)]
     pub name: String,
 
     /// Run as a GUI instead of just training.
@@ -106,94 +117,88 @@ fn main() -> Result<()> {
     };
 
 
-    //// Create the PointEnv Environment for Training ////
+    //// Create the Environment ////
 
-    let mut pointenv = *PointEnv::new(
-        PointEnvConfig::new(
-            10.0,
-            10.0,
-            PointEnvWalls::None,
-            10,
-            1.0,
-            0.5,
-            Some(2.5),
-            0.1,
-            PointReward::Distance,
-            42,
-        ),
-    )?;
+    let mut env = *PointEnv::new(match args.env_config {
+        Some(config_path) => read_config(config_path)?,
+        None => PointEnvConfig::default(),
+    })?;
 
 
-    //// Create DDPG Algorithm ////
+    //// Read the Algorithm Config ////
+
+    let alg_config = match args.alg_config {
+        Some(config_path) => read_config(config_path)?,
+        None => DDPG_Config::default(),
+    };
+
+
+    //// Create DDPG ////
 
     let mut ddpg = *DDPG::from_config(
         &device,
-        &DDPG_Config::small(),
-        pointenv.observation_space().iter().product::<usize>(),
-        pointenv.action_space().iter().product::<usize>(),
+        &alg_config,
+        env.observation_space().iter().product::<usize>(),
+        env.action_space().iter().product::<usize>(),
     )?;
 
 
-    //// Maybe Load Pretrained Weights ////
+    //// Maybe load DDPG Weights ////
 
-    if let (path, Some(suffix)) = (&args.name, &args.load) {
+    if let Some(model_path) = args.load_model {
         ddpg.load(
-            &Path::new("data/").join(path),
-            suffix,
+            &Path::new(&model_path),
+            &args.name,
         )?;
+    }
+
+
+    //// Maybe Pretrain DDPG ////
+
+    if let Some(config_path) = args.pretrain_config {
+        let (mc_returns, _) = loop_off_policy(
+            &mut env,
+            &mut ddpg,
+            ParamRunMode::Train(read_config(config_path)?),
+            &device,
+        )?;
+
+        ddpg.save(
+            &Path::new("data/").join(&args.name),
+            &format!("{}-pretrained", &args.name),
+        )?;
+
+        warn!(
+            "Pretrained with: \n{:#?}",
+            mc_returns,
+        );
     }
 
 
     //// Create the TrainConfig ////
 
-    let train_config = TrainConfig::new(
-        300,
-        30,
-        if args.load.is_none() {500} else {0},
-    );
-
-
-    //// Pretrain DDPG_SGM Algorithm ////
-
-    for n in 0..args.pretrain {
-        let (mc_returns, successes) = loop_off_policy(
-            &mut pointenv,
-            &mut ddpg.clone(),
-            ParamRunMode::Train(train_config.clone()),
-            &device,
-        )?;
-
-        warn!(
-            "Pretrain run #{} - Avg return: {:.3}, Successes: {}/{}",
-            n,
-            mc_returns.iter().sum::<f64>() / mc_returns.len() as f64,
-            successes.iter().filter(|&&s| s).count(),
-            successes.len(),
-        );
-
-        ddpg.save(
-            &Path::new("data/").join(&args.name),
-            &format!("pretrained-{n}"),
-        )?;
-    }
+    let train_config = match args.train_config {
+        Some(config_path) => read_config(config_path)?,
+        None => TrainConfig::default(),
+    };
 
 
     if args.gui {
-        //// Check Pretrained DDPG Performance via GUI ////
+        //// Check Pretrained DDPG via GUI ////
 
         OffPolicyGUI::<DDPG, PointEnv, _, _>::open(
-            ParamEnv::AsEnvironment(pointenv),
+            ParamEnv::AsEnvironment(env),
             ParamAlg::AsAlgorithm(ddpg),
             ParamRunMode::Train(train_config),
             device,
         );
     } else {
-        //// Run Pretrained DDPG Algorithm in Experiment ////
+        //// Run Pretrained DDPG in Experiment ////
 
         run_experiment_off_policy::<DDPG, PointEnv, _, _>(
             &args.name,
-            100,
-            ParamEnv::AsEnvironment(pointenv),
+            10,
+            ParamEnv::AsEnvironment(env),
             ParamAlg::AsAlgorithm(ddpg),
             ParamRunMode::Train(train_config),
             &device,

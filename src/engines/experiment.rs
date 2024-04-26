@@ -1,5 +1,6 @@
 use {
     super::{
+        super::util::write_config,
         run::loop_off_policy,
         ParamAlg,
         ParamEnv,
@@ -31,7 +32,6 @@ use {
     std::{
         path::Path,
         fs::{File, create_dir_all},
-        io::Write,
     },
     tracing::warn,
 };
@@ -82,27 +82,9 @@ where
     };
 
     create_dir_all(path.as_path())?;
-
-    File::create(path.join("config_algorithm.ron"))?.write_all(
-        ron::ser::to_string_pretty(
-            &alg_config,
-            ron::ser::PrettyConfig::default(),
-        )?.as_bytes()
-    )?;
-
-    File::create(path.join("config_environment.ron"))?.write_all(
-        ron::ser::to_string_pretty(
-            &env_config,
-            ron::ser::PrettyConfig::default(),
-        )?.as_bytes()
-    )?;
-
-    File::create(path.join("config_training.ron"))?.write_all(
-        ron::ser::to_string_pretty(
-            &run_mode,
-            ron::ser::PrettyConfig::default(),
-        )?.as_bytes()
-    )?;
+    write_config(&alg_config, path.join("config_algorithm.ron"))?;
+    write_config(&env_config, path.join("config_environment.ron"))?;
+    write_config(&run_mode, path.join("config_training.ron"))?;
 
     for n in 0..n_runs {
         warn!("Collecting data, run {n}/{n_runs}");

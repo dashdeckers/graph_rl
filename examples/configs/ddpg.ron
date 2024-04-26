@@ -1,0 +1,13 @@
+(
+    actor_learning_rate: 0.0003,
+    critic_learning_rate: 0.0003,
+    gamma: 0.99,
+    tau: 0.005,
+    hidden_1_size: 256,
+    hidden_2_size: 256,
+    replay_buffer_capacity: 1000,
+    training_batch_size: 64,
+    ou_theta: 0.0,
+    ou_kappa: 0.15,
+    ou_sigma: 0.2,
+)
