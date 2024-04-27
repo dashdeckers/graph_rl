@@ -1,13 +1,8 @@
 use {
     graph_rl::{
         util::read_config,
-        agents::{
-            Algorithm,
-            SaveableAlgorithm,
-            DDPG_SGM,
-        },
+        agents::DDPG_SGM,
         envs::{
-            Environment,
             PointEnv,
             PointEnvConfig,
         },
@@ -18,7 +13,6 @@ use {
         engines::{
             setup_logging,
             run_experiment_off_policy,
-            loop_off_policy,
             ParamRunMode,
             ParamEnv,
             ParamAlg,
@@ -35,11 +29,7 @@ use {
         ValueEnum,
     },
     anyhow::Result,
-    tracing::{
-        Level,
-        warn,
-    },
-    std::path::Path,
+    tracing::Level,
 };
 
 
@@ -81,8 +71,8 @@ struct Args {
     pub alg_config: Option<String>,
 
     /// Load a pretrained model from a file.
-    #[arg(long)]
-    pub load_model: Option<String>,
+    #[arg(long, num_args = 2)]
+    pub load_model: Option<Vec<String>>,
 
     /// Setup logging
     #[arg(long, value_enum, default_value_t=ArgLoglevel::Warn)]
@@ -117,90 +107,50 @@ fn main() -> Result<()> {
     };
 
 
-    //// Create the Environment ////
-
-    let mut env = *PointEnv::new(match args.env_config {
-        Some(config_path) => read_config(config_path)?,
-        None => PointEnvConfig::default(),
-    })?;
-
-
-    //// Read the Algorithm Config ////
-
-    let alg_config = match args.alg_config {
-        Some(config_path) => read_config(config_path)?,
-        None => DDPG_SGM_Config::default(),
-    };
-
-
-    //// Create DDPG_SGM ////
-
-    let mut ddpg_sgm = *DDPG_SGM::from_config(
-        &device,
-        &alg_config,
-        env.observation_space().iter().product::<usize>(),
-        env.action_space().iter().product::<usize>(),
-    )?;
-
-
-    //// Maybe load DDPG_SGM Weights ////
-
-    if let Some(model_path) = args.load_model {
-        ddpg_sgm.load(
-            &Path::new(&model_path),
-            &args.name,
-        )?;
-    }
-
-
-    //// Maybe Pretrain DDPG ////
-
-    if let Some(config_path) = args.pretrain_config {
-        let (mc_returns, _) = loop_off_policy(
-            &mut env,
-            &mut ddpg_sgm,
-            ParamRunMode::Train(read_config(config_path)?),
-            &device,
-        )?;
-
-        ddpg_sgm.save(
-            &Path::new("data/").join(&args.name),
-            &format!("{}-pretrained", &args.name),
-        )?;
-
-        warn!(
-            "Pretrained with: \n{:#?}",
-            mc_returns,
-        );
-    }
-
-
-    //// Create the TrainConfig ////
-
-    let train_config = match args.train_config {
-        Some(config_path) => read_config(config_path)?,
-        None => TrainConfig::default(),
-    };
-
-
     if args.gui {
-        //// Check Pretrained DDPG_SGM via GUI ////
+        //// Run Algorithm in GUI ////
 
         SgmGUI::<DDPG_SGM<PointEnv>, PointEnv, _, _>::open(
-            ParamEnv::AsEnvironment(env),
-            ParamAlg::AsAlgorithm(ddpg_sgm),
-            ParamRunMode::Train(train_config),
+            ParamEnv::AsConfig(match args.env_config {
+                Some(env_config) => read_config(env_config)?,
+                None => PointEnvConfig::default(),
+            }),
+            ParamAlg::AsConfig(match args.alg_config {
+                Some(alg_config) => read_config(alg_config)?,
+                None => DDPG_SGM_Config::default(),
+            }),
+            ParamRunMode::Train(match args.train_config {
+                Some(train_config) => read_config(train_config)?,
+                None => TrainConfig::default(),
+            }),
+            match args.load_model.as_deref() {
+                Some([model_path, model_name]) => Some((model_path.to_string(), model_name.to_string())),
+                _ => None,
+            },
             device,
         );
     } else {
-        //// Run Pretrained DDPG_SGM in Experiment ////
+        //// Run Algorithm as Experiment ////
 
         run_experiment_off_policy::<DDPG_SGM<PointEnv>, PointEnv, _, _>(
             &args.name,
             10,
-            ParamEnv::AsEnvironment(env),
-            ParamAlg::AsAlgorithm(ddpg_sgm),
-            ParamRunMode::Train(train_config),
+            ParamEnv::AsConfig(match args.env_config {
+                Some(env_config) => read_config(env_config)?,
+                None => PointEnvConfig::default(),
+            }),
+            ParamAlg::AsConfig(match args.alg_config {
+                Some(alg_config) => read_config(alg_config)?,
+                None => DDPG_SGM_Config::default(),
+            }),
+            match args.train_config {
+                Some(train_config) => read_config(train_config)?,
+                None => TrainConfig::default(),
+            },
+            match args.load_model.as_deref() {
+                Some([model_path, model_name]) => Some((model_path.to_string(), model_name.to_string())),
+                _ => None,
+            },
             &device,
         )?;
     }

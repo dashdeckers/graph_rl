@@ -26,6 +26,7 @@ use {
         },
     },
     anyhow::Result,
+    tracing::warn,
     serde::Serialize,
     candle_core::Device,
     eframe::egui,
@@ -145,6 +146,7 @@ where
         init_env: ParamEnv<Env, Obs, Act>,
         init_alg: ParamAlg<Alg>,
         run_mode: ParamRunMode,
+        load_model: Option<(String, String)>,
         device: Device,
     ) -> Self {
         let (env, env_config) = match init_env {
@@ -155,7 +157,7 @@ where
             },
         };
 
-        let (alg, alg_config) = match &init_alg {
+        let (mut alg, alg_config) = match &init_alg {
             ParamAlg::AsAlgorithm(alg) => (alg.clone(), alg.config().clone()),
             ParamAlg::AsConfig(config) => {
                 let alg = *Alg::from_config(
@@ -167,6 +169,14 @@ where
                 (alg.clone(), alg.config().clone())
             },
         };
+
+        if let Some((model_path, model_name)) = load_model {
+            warn!("Loading model weights from {model_path} with name {model_name}");
+            alg.load(
+                &Path::new(&model_path),
+                &model_name,
+            ).unwrap();
+        }
 
         Self {
             env,
@@ -190,6 +200,7 @@ where
         init_env: ParamEnv<Env, Obs, Act>,
         init_alg: ParamAlg<Alg>,
         run_mode: ParamRunMode,
+        load_model: Option<(String, String)>,
         device: Device,
     ) {
         let _ = catch_unwind(AssertUnwindSafe(|| eframe::run_native(
@@ -202,6 +213,7 @@ where
                 init_env,
                 init_alg,
                 run_mode,
+                load_model,
                 device,
             ))),
         )));

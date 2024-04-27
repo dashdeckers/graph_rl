@@ -130,6 +130,7 @@ where
         init_env: ParamEnv<Env, Obs, Act>,
         init_alg: ParamAlg<Alg>,
         run_mode: ParamRunMode,
+        load_model: Option<(String, String)>,
         device: Device,
     ) {
         let _ = catch_unwind(AssertUnwindSafe(|| eframe::run_native(
@@ -143,6 +144,7 @@ where
                     init_env,
                     init_alg,
                     run_mode,
+                    load_model,
                     device,
                 ),
                 render_graph: false,

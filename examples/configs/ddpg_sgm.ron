@@ -12,6 +12,7 @@
         ou_kappa: 0.15,
         ou_sigma: 0.2,
     ),
+    buffer_size: 10_000,
     distance_mode: True,
     sgm_max_tries: 5,
     sgm_close_enough: 0.5,

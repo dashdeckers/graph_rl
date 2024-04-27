@@ -1,7 +1,7 @@
 (
-    width: 5.0,
-    height: 5.0,
-    walls: None,
+    width: 10.0,
+    height: 10.0,
+    walls: OneLine,
     timelimit: 100,
     step_radius: 1.0,
     term_radius: 0.5,
