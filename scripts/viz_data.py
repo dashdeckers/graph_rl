@@ -9,38 +9,28 @@ import sys
 plt.rcParams["figure.dpi"] = 300
 plt.rcParams["figure.figsize"] = (12, 8)
 
-root_path = Path("data")
-recognized_envs = [
-    "pendulum",
-    "pointmaze",
-    "pointenv",
-]
+root_path = Path.cwd() #("data")
 
 parser = argparse.ArgumentParser()
 parser.add_argument('-d', "--dirs", nargs='+', default=[])
+parser.add_argument('-o', "--output", default="plot.png")
+parser.add_argument('-t', "--title", default="")
+parser.add_argument('-y', "--ylim", nargs='*', type=float, default=None)
 parser.add_argument('-s', "--successes", default=False, action=argparse.BooleanOptionalAction)
 args = parser.parse_args()
 if not args.dirs:
     print("No paths provided")
     sys.exit()
-
-environment = [
-    envname for envname in recognized_envs
-    if all(envname in dirname for dirname in args.dirs)
-]
-if len(environment) > 1:
-    print("All provided paths must contain the same (unique) environment name")
-    sys.exit()
-elif len(environment) == 0:
-    environment = "unknown"
-elif len(environment) == 1:
-    environment = environment[0]
+if args.ylim is not None and len(args.ylim) != 2:
+    print("Invalid nargs for ylim")
 
 suffix = "successes" if args.successes else "total_rewards"
-
 episode_nums = []
+
 for directory, color in zip(args.dirs, sns.color_palette(n_colors=len(args.dirs))):
-    files = list((root_path / Path(directory)).glob("run_*_data.parquet"))
+
+    directory = Path(directory)
+    files = list((root_path / directory).glob("run_*_data.parquet"))
 
     df = (
         pl.concat(
@@ -69,7 +59,7 @@ for directory, color in zip(args.dirs, sns.color_palette(n_colors=len(args.dirs)
         x=range(1, len(mean) + 1),
         y=mean,
         color=color,
-        label=f"{directory} (n_runs={len(files)})",
+        label=f"{directory.parts[-1]} (n_runs={len(files)})",
     )
     plt.fill_between(
         range(1, len(mean) + 1),
@@ -80,23 +70,14 @@ for directory, color in zip(args.dirs, sns.color_palette(n_colors=len(args.dirs)
     )
 
 plt.xlim((1, max(episode_nums)))
-if args.successes:
-    plt.ylim((0, 1))
-else:
-    if environment == "pendulum":
-        plt.ylim((-1750, 0))
-
 plt.xlabel("Episode")
+
+plt.ylim(args.ylim)
 plt.ylabel("Total reward" if not args.successes else "Success rate")
+
 plt.grid()
 plt.legend(loc="lower right")
-plt.title(f"Learning Curves for {environment}")
-
-stripped = [dirname.replace(f"{environment}_", "", 1) for dirname in args.dirs]
-filename = f"{'s' if args.successes else 'r'}_{'_'.join(stripped)}.png"
-if len(args.dirs) == 1:
-    plt.savefig(root_path / args.dirs[0] / filename)
-else:
-    plt.savefig(root_path / filename)
+plt.title(f"Learning Curves for {args.title}")
+plt.savefig(root_path / args.output)
 
 print("Success")

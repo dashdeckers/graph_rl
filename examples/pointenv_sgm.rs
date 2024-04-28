@@ -85,6 +85,10 @@ struct Args {
     /// Run as a GUI instead of just training.
     #[arg(long, default_value_t=false)]
     pub gui: bool,
+
+    /// Number of repetitions for the experiment.
+    #[arg(long, default_value_t=10)]
+    pub n_repetitions: usize,
 }
 
 
@@ -134,7 +138,7 @@ fn main() -> Result<()> {
 
         run_experiment_off_policy::<DDPG_SGM<PointEnv>, PointEnv, _, _>(
             &args.name,
-            10,
+            args.n_repetitions,
             ParamEnv::AsConfig(match args.env_config {
                 Some(env_config) => read_config(env_config)?,
                 None => PointEnvConfig::default(),
