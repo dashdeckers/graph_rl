@@ -108,7 +108,8 @@ cargo run \
     --train-config "./examples/configs/train_ddpg_pointenv.ron" \
     --env-config "./examples/configs/pointenv_10x10_empty.ron" \
     --alg-config "./examples/configs/ddpg.ron" \
-    --n-repetitions 50 \
+    --n-repetitions 100 \
+    --device cuda \
     --log warn \
     --name ddpg-pointenv-empty \
     &
@@ -142,7 +143,8 @@ cargo run \
     --train-config "./examples/configs/train_ddpg_pointenv.ron" \
     --env-config "./examples/configs/pointenv_10x10_one_line.ron" \
     --alg-config "./examples/configs/ddpg_sgm.ron" \
-    --n-repetitions 50 \
+    --n-repetitions 100 \
+    --device cuda \
     --log warn \
     --name sgm-pointenv-empty \
     &
@@ -179,7 +181,8 @@ cargo run \
     --train-config "./examples/configs/train_ddpg_pointenv.ron" \
     --env-config "./examples/configs/pointenv_10x10_one_line.ron" \
     --alg-config "./examples/configs/ddpg.ron" \
-    --n-repetitions 50 \
+    --n-repetitions 100 \
+    --device cuda \
     --log warn \
     --name ddpg-pointenv-oneline \
     &
@@ -214,7 +217,8 @@ cargo run \
     --train-config "./examples/configs/train_ddpg_pointenv.ron" \
     --env-config "./examples/configs/pointenv_10x10_one_line.ron" \
     --alg-config "./examples/configs/ddpg_sgm.ron" \
-    --n-repetitions 50 \
+    --n-repetitions 100 \
+    --device cuda \
     --log warn \
     --name sgm-pointenv-oneline \
     &
