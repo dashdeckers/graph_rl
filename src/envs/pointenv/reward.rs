@@ -68,7 +68,6 @@ use {
 #[derive(Debug, Clone, Serialize, Deserialize)]
 pub enum PointReward {
     Euclidean,
-    Distance,
     Sparse,
 }
 impl PointReward {
@@ -84,18 +83,11 @@ impl PointReward {
     ) -> f64 {
         match self {
             PointReward::Euclidean => -PointState::distance(state, goal),
-            PointReward::Distance => {
-                if reachable(state, goal, term_radius, walls) {
-                    1.0
-                } else {
-                    -1.0
-                }
-            }
             PointReward::Sparse => {
                 if reachable(state, goal, term_radius, walls) {
-                    1.0
-                } else {
                     0.0
+                } else {
+                    -1.0
                 }
             }
         }
@@ -113,8 +105,7 @@ impl PointReward {
         let timelimit = timelimit as f64;
         match self {
             PointReward::Euclidean => (-((width.powi(2) + height.powi(2)).sqrt()) * timelimit, 0.0),
-            PointReward::Distance => (-1.0 * timelimit, 1.0),
-            PointReward::Sparse => (0.0, 1.0),
+            PointReward::Sparse => (-1.0 * timelimit, 0.0),
         }
     }
 }
