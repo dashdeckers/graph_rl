@@ -13,7 +13,7 @@ use {
     ordered_float::OrderedFloat,
     petgraph::{
         stable_graph::StableGraph,
-        Undirected,
+        Directed,
     },
     candle_core::{
         Tensor,
@@ -97,7 +97,7 @@ pub trait OffPolicyAlgorithm: Algorithm {
 
 pub trait SgmAlgorithm<Env: Environment>: Algorithm {
     fn plan(&self) -> &Vec<Env::Observation>;
-    fn graph(&self) -> &StableGraph<Env::Observation, OrderedFloat<f64>, Undirected>;
+    fn graph(&self) -> &StableGraph<Env::Observation, OrderedFloat<f64>, Directed>;
     fn clear_graph(&mut self);
     // fn construct_graph(&mut self);
     // fn set_from_config(&mut self, config: &Self::Config);

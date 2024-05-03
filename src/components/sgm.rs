@@ -13,7 +13,6 @@ use {
         envs::TensorConvertible,
         components::ReplayBuffer,
     },
-    anyhow::Result,
     ordered_float::OrderedFloat,
     petgraph::{
         dot::Dot,
@@ -21,7 +20,7 @@ use {
             NodeIndex,
             StableGraph,
         },
-        Undirected,
+        Directed,
     },
     serde::{
         Serialize,
@@ -54,20 +53,20 @@ impl Display for DistanceMode {
 }
 
 /// Return a dotviz representation of the given graph.
-pub fn dot<S: Debug>(graph: &StableGraph<S, OrderedFloat<f64>, Undirected>) -> String {
+pub fn dot<S: Debug>(graph: &StableGraph<S, OrderedFloat<f64>, Directed>) -> String {
     format!("{:?}", Dot::new(graph)).to_string()
 }
 
-
-/// Adds a single node to the graph if it is TWC-consistent.
-pub fn try_adding_node<S, D>(
-    graph: &mut StableGraph<S, OrderedFloat<f64>, Undirected>,
-    indices: &mut HashMap<S, NodeIndex>,
+/// Returns the edges to add to the graph if s1 is TWC-consistent.
+#[allow(clippy::type_complexity)]
+pub fn test_adding_node<S, D>(
+    graph: &StableGraph<S, OrderedFloat<f64>, Directed>,
+    indices: &HashMap<S, NodeIndex>,
     s1: &S,
     d: D,
     maxdist: f64,
     tau: f64,
-) -> Result<()>
+) -> Option<(Vec<(NodeIndex, OrderedFloat<f64>)>, Vec<(NodeIndex, OrderedFloat<f64>)>)>
 where
     S: Clone + Eq + Hash + TensorConvertible,
     D: Fn(&S, &S) -> f64,
@@ -86,13 +85,10 @@ where
             c_out >= tau && c_in >= tau
         });
 
-    if is_twc_consistent {
-        // add node
-        let i1 = graph.add_node(s1.clone());
-        indices.insert(s1.clone(), i1);
+    let mut edges_from: Vec<(NodeIndex, OrderedFloat<f64>)> = Vec::new();
+    let mut edges_to: Vec<(NodeIndex, OrderedFloat<f64>)> = Vec::new();
 
-        // add edges
-        let mut edges_to_add = Vec::new();
+    if is_twc_consistent {
         for s2 in graph.node_weights() {
             // no self edges
             if s1 == s2 {
@@ -103,16 +99,38 @@ where
             let d_in = d(s2, s1);
 
             if d_out < maxdist && d_in < maxdist {
-                edges_to_add.push((i1, indices[s2], d_out));
-                edges_to_add.push((indices[s2], i1, d_in));
+                edges_to.push((indices[s2], OrderedFloat(d_out)));
+                edges_from.push((indices[s2], OrderedFloat(d_in)));
             }
         }
-        for (a, b, weight) in edges_to_add {
-            graph.add_edge(a, b, OrderedFloat(weight));
-        }
+        Some((edges_from, edges_to))
+    } else {
+        None
     }
+}
 
-    is_twc_consistent.then_some(()).ok_or_else(|| anyhow::anyhow!("Not TWC consistent"))
+/// Actually add the node to the graph.
+pub fn add_node_to_graph<S>(
+    graph: &mut StableGraph<S, OrderedFloat<f64>, Directed>,
+    indices: &mut HashMap<S, NodeIndex>,
+    s1: &S,
+    edges_from: Vec<(NodeIndex, OrderedFloat<f64>)>,
+    edges_to: Vec<(NodeIndex, OrderedFloat<f64>)>,
+)
+where
+    S: Clone + Eq + Hash
+{
+    // add node
+    let i1 = graph.add_node(s1.clone());
+    indices.insert(s1.clone(), i1);
+
+    // add edges
+    for (i2, weight) in edges_from {
+        graph.add_edge(i2, i1, weight);
+    }
+    for (i2, weight) in edges_to {
+        graph.add_edge(i1, i2, weight);
+    }
 }
 
 impl ReplayBuffer {
@@ -134,7 +152,7 @@ impl ReplayBuffer {
         maxdist: f64,
         tau: f64,
     ) -> (
-        StableGraph<S, OrderedFloat<f64>, Undirected>,
+        StableGraph<S, OrderedFloat<f64>, Directed>,
         HashMap<S, NodeIndex>,
     )
     where
@@ -142,7 +160,7 @@ impl ReplayBuffer {
         D: Fn(&S, &S) -> f64,
     {
         // initialize the SGM data structures
-        let mut graph: StableGraph<S, OrderedFloat<f64>, Undirected> = StableGraph::default();
+        let mut graph: StableGraph<S, OrderedFloat<f64>, Directed> = StableGraph::default();
         let mut indices: HashMap<S, NodeIndex> = HashMap::new();
 
         // iterate over the set of nodes in the buffer
@@ -153,7 +171,11 @@ impl ReplayBuffer {
                 let i1 = graph.add_node(s1.clone());
                 indices.insert(s1.clone(), i1);
             } else {
-                let _ = try_adding_node(&mut graph, &mut indices, s1, &d, maxdist, tau);
+                // let _ = try_adding_node(&mut graph, &mut indices, s1, &d, maxdist, tau);
+
+                if let Some((edges_from, edges_to)) = test_adding_node(&graph, &indices, s1, &d, maxdist, tau) {
+                    add_node_to_graph(&mut graph, &mut indices, s1, edges_from, edges_to);
+                }
             }
         }
 

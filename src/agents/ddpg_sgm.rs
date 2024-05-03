@@ -18,7 +18,8 @@ use {
             ReplayBuffer,
             sgm::{
                 DistanceMode,
-                try_adding_node,
+                test_adding_node,
+                add_node_to_graph,
             },
         },
         configs::DDPG_SGM_Config,
@@ -35,7 +36,7 @@ use {
             NodeIndex,
         },
         algo::astar,
-        Undirected,
+        Directed,
     },
     tracing::info,
     std::{
@@ -58,7 +59,7 @@ where
     ddpg: DDPG<'a>,
     device: Device,
 
-    sgm: StableGraph<Env::Observation, OrderedFloat<f64>, Undirected>,
+    sgm: StableGraph<Env::Observation, OrderedFloat<f64>, Directed>,
     indices: HashMap<Env::Observation, NodeIndex>,
     plan: Vec<Env::Observation>,
     goal_obs: Option<Env::Observation>,
@@ -302,24 +303,29 @@ where
         }
 
         // try adding curr_obs to the graph
-
-        if try_adding_node(
-            &mut self.sgm,
-            &mut self.indices,
+        if let Some((edges_from, edges_to)) = test_adding_node(
+            &self.sgm,
+            &self.indices,
             &curr_obs,
-            Env::Observation::distance,
-            // &|s1: &Env::Observation, s2: &Env::Observation| {
-            //     self.distance(
-            //         s1.achieved_goal(),
-            //         s2.achieved_goal(),
-            //         s1.observation(),
-            //     )
-            // },
+            |s1: &Env::Observation, s2: &Env::Observation| {
+                self.distance(
+                    s1.achieved_goal(),
+                    s2.achieved_goal(),
+                    s1.observation(),
+                )
+            },
             self.sgm_maxdist,
             self.sgm_tau,
-        ).is_ok() {
+        ) {
+            add_node_to_graph(
+                &mut self.sgm,
+                &mut self.indices,
+                &curr_obs,
+                edges_from,
+                edges_to,
+            );
             info!("Added node to graph: {:#?}", curr_obs);
-        };
+        }
 
         // IF we have a plan AND we have been trying too long
         //      remove the edge
@@ -471,7 +477,7 @@ where
         &self.plan
     }
 
-    fn graph(&self) -> &StableGraph<Env::Observation, OrderedFloat<f64>, Undirected> {
+    fn graph(&self) -> &StableGraph<Env::Observation, OrderedFloat<f64>, Directed> {
         &self.sgm
     }
 
