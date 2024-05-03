@@ -54,7 +54,6 @@ pub fn run_experiment_off_policy<Alg, Env, Obs, Act>(
     init_env: ParamEnv<Env, Obs, Act>,
     init_alg: ParamAlg<Alg>,
     train_config: TrainConfig,
-    // pretrain_config: Option<TrainConfig>,
     load_model: Option<(String, String)>,
     device: &Device,
 ) -> Result<()>
@@ -114,26 +113,6 @@ where
             )?;
         }
 
-        // Pretrain with maxdist (--> different env config!)
-
-        // // Maybe pretrain the Agent
-
-        // if let Some(pretrain_config) = pretrain_config.clone() {
-        //     write_config(&pretrain_config, path.join("config_pretraining.ron"))?;
-
-        //     let (pretrain_mc_returns, _) = loop_off_policy(
-        //         &mut env,
-        //         &mut alg,
-        //         ParamRunMode::Train(pretrain_config),
-        //         device,
-        //     )?;
-
-        //     warn!(
-        //         "Pretrained with Avg return: \n{:#?}",
-        //         pretrain_mc_returns.iter().sum::<f64>() / pretrain_mc_returns.len() as f64,
-        //     );
-        // }
-
         // Train the Agent on the Environment
 
         let (mc_returns, successes) = loop_off_policy(
@@ -155,10 +134,16 @@ where
                 &successes,
             )
         ])?;
-
         ParquetWriter::new(
             File::create(path.join(format!("run_{n}_data.parquet")))?
         ).finish(&mut df)?;
+
+        // Save the latest model
+
+        alg.save(
+            &path,
+            "latest_model",
+        )?;
     }
     Ok(())
 }
