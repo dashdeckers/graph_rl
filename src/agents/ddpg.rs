@@ -401,6 +401,10 @@ impl DDPG<'_> {
     pub fn new_buffer(&mut self, buffer_capacity: usize) {
         self.replay_buffer = ReplayBuffer::new(buffer_capacity);
     }
+
+    pub fn set_buffer_capacity(&mut self, buffer_capacity: usize) {
+        self.replay_buffer.set_capacity(buffer_capacity);
+    }
 }
 
 impl Algorithm for DDPG<'_> {

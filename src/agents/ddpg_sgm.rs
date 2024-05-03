@@ -108,10 +108,13 @@ where
                     ),
                     &self.device,
                 ).unwrap();
-                self.ddpg.critic_forward_item(
+
+                let prediction = self.ddpg.critic_forward_item(
                     &state,
                     &self.ddpg.actor_forward_item(&state).unwrap(),
-                ).unwrap().to_vec1::<f64>().unwrap()[0]
+                ).unwrap().to_vec1::<f64>().unwrap()[0];
+
+                -1.0 * prediction
             },
         }
     }
@@ -251,7 +254,7 @@ where
         self.config.sgm_maxdist = config.sgm_maxdist;
         self.config.sgm_tau = config.sgm_tau;
 
-        self.new_buffer(config.buffer_size);
+        self.ddpg.set_buffer_capacity(config.buffer_size);
     }
 
     fn from_config(
@@ -424,17 +427,18 @@ where
             );
             let mut reward = reward.clone();
 
-            info!(
-                "Checking distance between: {:#?} and {:#?}",
-                next_obs.achieved_goal(),
-                next_obs.desired_goal(),
-            );
-
             // Then we check if we have reached the next waypoint
             let distance_to_waypoint = self.distance(
                 next_obs.achieved_goal(),
                 next_obs.desired_goal(),
                 next_obs.observation(),
+            );
+
+            info!(
+                "Checking distance between: {:#?} and {:#?} = {:#?}",
+                next_obs.achieved_goal(),
+                next_obs.desired_goal(),
+                distance_to_waypoint,
             );
 
             // If we have reached the next waypoint, we:
@@ -486,21 +490,21 @@ where
         self.indices = HashMap::new();
     }
 
-    // fn construct_graph(&mut self) {
-    //     (self.sgm, self.indices) = self
-    //         .replay_buffer()
-    //         .construct_sgm(
-    //             |s1: &Env::Observation, s2: &Env::Observation| {
-    //                 self.distance(
-    //                     s1.achieved_goal(),
-    //                     s2.achieved_goal(),
-    //                     s1.observation(),
-    //                 )
-    //             },
-    //             self.sgm_maxdist,
-    //             self.sgm_tau,
-    //         );
-    // }
+    fn construct_graph(&mut self) {
+        (self.sgm, self.indices) = self
+            .replay_buffer()
+            .construct_sgm(
+                |s1: &Env::Observation, s2: &Env::Observation| {
+                    self.distance(
+                        s1.achieved_goal(),
+                        s2.achieved_goal(),
+                        s1.observation(),
+                    )
+                },
+                self.sgm_maxdist,
+                self.sgm_tau,
+            );
+    }
 }
 
 impl<'a, Env> SaveableAlgorithm for DDPG_SGM<'a, Env>

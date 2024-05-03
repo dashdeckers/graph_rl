@@ -84,6 +84,14 @@ impl ReplayBuffer {
         self.size == self.capacity
     }
 
+    /// Set capacity
+    pub fn set_capacity(
+        &mut self,
+        capacity: usize,
+    ) {
+        self.capacity = capacity;
+    }
+
     /// Push a transition into the buffer.
     ///
     /// If the buffer is full, the oldest transition is removed to make room for
