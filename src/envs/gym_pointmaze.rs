@@ -15,7 +15,10 @@ use {
         GoalAwareObservation,
     },
     crate::configs::RenderableConfig,
-    serde::Serialize,
+    serde::{
+        Serialize,
+        Deserialize,
+    },
     anyhow::Result,
     candle_core::{
         Device,
@@ -65,7 +68,7 @@ pub struct PointMazeEnv {
     observation_space: Vec<usize>,
 }
 
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct PointMazeConfig {
     name: String,
     maze: Vec<Vec<char>>,
@@ -126,7 +129,7 @@ impl RenderableConfig for PointMazeConfig {
 }
 
 #[allow(dead_code)]
-#[derive(Clone, Debug, Serialize)]
+#[derive(Clone, Debug, Serialize, Deserialize)]
 pub enum PointMazeReward {
     SparseNegative,
     Sparse,

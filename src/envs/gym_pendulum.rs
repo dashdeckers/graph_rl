@@ -13,7 +13,10 @@ use {
         TensorConvertible,
         VectorConvertible,
     },
-    serde::Serialize,
+    serde::{
+        Serialize,
+        Deserialize,
+    },
     anyhow::Result,
     candle_core::{
         Device,
@@ -58,7 +61,7 @@ pub struct PendulumEnv {
 ///
 /// The Pendulum environment has no configuration options, so this struct
 /// just contains the name of the environment (which is "Pendulum-v1").
-#[derive(Clone, Serialize)]
+#[derive(Clone, Serialize, Deserialize)]
 pub struct PendulumConfig {
     name: String,
 }

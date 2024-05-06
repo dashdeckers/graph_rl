@@ -22,6 +22,7 @@ use {
         },
         Directed,
     },
+    tracing::info,
     serde::{
         Serialize,
         Deserialize,
@@ -170,12 +171,16 @@ impl ReplayBuffer {
             if graph.node_count() == 0 {
                 let i1 = graph.add_node(s1.clone());
                 indices.insert(s1.clone(), i1);
-            } else {
-                // let _ = try_adding_node(&mut graph, &mut indices, s1, &d, maxdist, tau);
-
-                if let Some((edges_from, edges_to)) = test_adding_node(&graph, &indices, s1, &d, maxdist, tau) {
-                    add_node_to_graph(&mut graph, &mut indices, s1, edges_from, edges_to);
-                }
+            } else if let Some((edges_from, edges_to)) = test_adding_node(
+                &graph,
+                &indices,
+                s1,
+                &d,
+                maxdist,
+                tau,
+            ) {
+                info!("Adding node to graph with edges from: {:#?}", edges_from);
+                add_node_to_graph(&mut graph, &mut indices, s1, edges_from, edges_to);
             }
         }
 
