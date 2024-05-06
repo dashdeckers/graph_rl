@@ -132,6 +132,7 @@ fn main() -> Result<()> {
                 _ => None,
             },
             device,
+            1.2,
         );
     } else {
         //// Run Algorithm as Experiment ////

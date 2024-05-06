@@ -103,20 +103,22 @@ where
     ) {
         // render the settings and options
         egui::SidePanel::left("settings").show(ctx, |ui| {
-            self.render_settings(ui);
-            self.render_gui_options(ui);
+            egui::ScrollArea::vertical().show(ui, |ui| {
+                self.render_settings(ui);
+                self.render_gui_options(ui);
+            });
         });
 
         // render episodic rewards / learning curve
         egui::TopBottomPanel::top("rewards").show(ctx, |ui| {
-            Plot::new("rewards_plot").show(ui, |plot_ui| {
+            Plot::new("rewards_plot").show_axes([false; 2]).show(ui, |plot_ui| {
                 self.render_returns(plot_ui);
             });
         });
 
         // render the environment / graph
         egui::CentralPanel::default().show(ctx, |ui| {
-            Plot::new("environment").show(ui, |plot_ui| {
+            Plot::new("environment").show_axes([false; 2]).show(ui, |plot_ui| {
                 //.view_aspect(1.0)
                 self.env.render(plot_ui);
                 if self.render_buffer {
@@ -202,11 +204,12 @@ where
         run_mode: ParamRunMode,
         load_model: Option<(String, String)>,
         device: Device,
+        size: f32,
     ) {
         let _ = catch_unwind(AssertUnwindSafe(|| eframe::run_native(
             "Actor-Critic Graph-Learner",
             eframe::NativeOptions {
-                min_window_size: Some(egui::vec2(800.0 * 1.3, 600.0 * 1.3)),
+                min_window_size: Some(egui::vec2(800.0 * size, 600.0 * size)),
                 ..Default::default()
             },
             Box::new(|_| Box::new(Self::create(
