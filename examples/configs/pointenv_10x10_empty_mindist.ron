@@ -6,7 +6,7 @@
     step_radius: 1.0,
     term_radius: 0.5,
     max_radius: None,
-    min_radius: None,
+    min_radius: 5.0,
     bounce_factor: 0.1,
     reward: Sparse,
     seed: 42,

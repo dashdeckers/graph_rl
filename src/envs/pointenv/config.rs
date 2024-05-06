@@ -138,6 +138,7 @@ pub struct PointEnvConfig {
     pub step_radius: f64,
     pub term_radius: f64,
     pub max_radius: Option<f64>,
+    pub min_radius: Option<f64>,
     pub bounce_factor: f64,
     pub reward: PointReward,
     pub seed: u64,
@@ -152,8 +153,9 @@ impl Default for PointEnvConfig {
             step_radius: 1.0,
             term_radius: 0.5,
             max_radius: None,
+            min_radius: None,
             bounce_factor: 0.1,
-            reward: PointReward::Distance,
+            reward: PointReward::Sparse,
             seed: StdRng::from_entropy().gen::<u64>(),
         }
     }
@@ -169,6 +171,7 @@ impl PointEnvConfig {
         step_radius: f64,
         term_radius: f64,
         max_radius: Option<f64>,
+        min_radius: Option<f64>,
         bounce_factor: f64,
         reward: PointReward,
         seed: u64,
@@ -181,6 +184,7 @@ impl PointEnvConfig {
             step_radius,
             term_radius,
             max_radius,
+            min_radius,
             bounce_factor,
             reward,
             seed,
@@ -213,6 +217,9 @@ impl RenderableConfig for PointEnvConfig {
         ui.add(Label::new(format!("Term radius: {term_radius:#.2}")));
         if let Some(max_radius) = self.max_radius {
             ui.add(Label::new(format!("Max radius: {max_radius:#.2}")));
+        }
+        if let Some(min_radius) = self.min_radius {
+            ui.add(Label::new(format!("Min radius: {min_radius:#.2}")));
         }
         ui.add(Label::new(format!("Bounce factor: {bounce_factor:#.2}")));
         ui.add(Label::new(format!("Reward: {reward:?}")));
@@ -271,6 +278,17 @@ impl RenderableConfig for PointEnvConfig {
             None
         } else {
             Some(max_radius)
+        };
+        let mut min_radius = self.min_radius.unwrap_or(0.0);
+        ui.add(
+            Slider::new(&mut min_radius, 0.0..=10.0)
+            .step_by(0.1)
+            .text("Min radius")
+        );
+        self.min_radius = if min_radius == 0.0 {
+            None
+        } else {
+            Some(min_radius)
         };
         ui.add(
             Slider::new(&mut self.bounce_factor, 0.1..=1.0)

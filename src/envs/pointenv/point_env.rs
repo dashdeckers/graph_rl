@@ -44,6 +44,7 @@ fn generate_start_goal(
     height: f64,
     step_radius: f64,
     max_radius: Option<f64>,
+    min_radius: Option<f64>,
     walls: &[PointLine],
     rng: &mut dyn RngCore,
 ) -> (PointState, PointState) {
@@ -53,6 +54,12 @@ fn generate_start_goal(
 
         if let Some(max_radius) = max_radius {
             if !state.in_radius_of(&goal, max_radius) {
+                continue;
+            }
+        }
+
+        if let Some(min_radius) = min_radius {
+            if state.in_radius_of(&goal, min_radius) {
                 continue;
             }
         }
@@ -171,6 +178,7 @@ pub struct PointEnv {
     step_radius: f64,
     term_radius: f64,
     max_radius: Option<f64>,
+    min_radius: Option<f64>,
     bounce_factor: f64,
     reward: PointReward,
 
@@ -198,6 +206,7 @@ impl PointEnv {
             config.height,
             config.step_radius,
             config.max_radius,
+            config.min_radius,
             &walls,
             &mut rng,
         );
@@ -222,6 +231,7 @@ impl PointEnv {
         let step_radius = config.step_radius;
         let term_radius = config.term_radius;
         let max_radius = config.max_radius;
+        let min_radius = config.min_radius;
         let bounce_factor = config.bounce_factor;
 
 
@@ -243,6 +253,7 @@ impl PointEnv {
             step_radius,
             term_radius,
             max_radius,
+            min_radius,
             bounce_factor,
             reward: config.reward,
 
@@ -316,6 +327,7 @@ impl Environment for PointEnv {
             self.height,
             self.step_radius,
             self.max_radius,
+            self.min_radius,
             &self.walls,
             &mut self.rng,
         );
