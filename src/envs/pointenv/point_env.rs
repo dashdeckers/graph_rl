@@ -20,6 +20,7 @@ use {
         PlotBounds,
         PlotUi,
         Points,
+        Polygon,
     },
     ordered_float::OrderedFloat,
     rand::{
@@ -509,6 +510,39 @@ impl RenderableEnvironment for PointEnv {
                 .iter()
                 .map(|p| [p.x(), p.y()])
                 .collect::<Vec<_>>(),
-        ))
+        ));
+        // Plot a small circle around the spawn centers (if exist) with radius spawn_radius_max
+        if let Some((start, goal)) = self.spawn_centers {
+
+            // draw a polygon around the spawn centers with radius spawn_radius_max
+            // draw eight points to more accurately represent a circle
+            let radius = self.spawn_radius_max.unwrap();
+            plot_ui.polygon(
+                Polygon::new(
+                    (0..8)
+                        .map(|i| {
+                            let angle = i as f64 * std::f64::consts::PI / 4.0;
+                            let x = start.x() + radius * angle.cos();
+                            let y = start.y() + radius * angle.sin();
+                            [x, y]
+                        })
+                        .collect::<Vec<_>>(),
+                )
+                .stroke((2.0, Color32::WHITE))
+            );
+            plot_ui.polygon(
+                Polygon::new(
+                    (0..8)
+                        .map(|i| {
+                            let angle = i as f64 * std::f64::consts::PI / 4.0;
+                            let x = goal.x() + radius * angle.cos();
+                            let y = goal.y() + radius * angle.sin();
+                            [x, y]
+                        })
+                        .collect::<Vec<_>>(),
+                )
+                .stroke((2.0, Color32::GREEN))
+            );
+        }
     }
 }

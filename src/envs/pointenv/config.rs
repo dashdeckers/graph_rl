@@ -216,10 +216,15 @@ impl PointEnvConfig {
             return Err(anyhow::anyhow!("Step radius * 4.0 must be less than width and height"));
         }
 
-        if self.spawn_centers.is_none() {
-            if let Some(spawn_radius) = self.spawn_radius_max {
-                if spawn_radius <= self.step_radius {
-                    return Err(anyhow::anyhow!("Spawn radius max must be greater than or equal to step radius if spawn centers are not set"));
+        if self.spawn_centers.is_some() {
+            match self.spawn_radius_max {
+                Some(spawn_radius_max) => {
+                    if spawn_radius_max <= self.step_radius {
+                        return Err(anyhow::anyhow!("Spawn radius max must be greater than step radius if spawn centers are set"));
+                    }
+                }
+                None => {
+                    return Err(anyhow::anyhow!("Spawn radius max must be set if spawn centers are set"));
                 }
             }
         }
