@@ -77,7 +77,7 @@ cargo run \
 
 
 
-## DDPG / H-DDPG / HGB-DDPG
+## DDPG / H-DDPG / HGB-DDPG on PointEnv-(Empty, OneLine, Hook)-(Close, Mid, Far)
 
 ```powershell
 $REPS=50; `
@@ -87,7 +87,7 @@ $ENV="pointenv"; `
 $ENV_V1="empty"; `
 $ENV_V2="far"; `
 $EXAMPLE=("$ENV" + "_" + "$ALG"); `
-$NAME="$ALG$ALG_VARIANT-$ENV$ENV_V1-$ENV_V2"; `
+$NAME="$ALG-$ALG_VARIANT-$ENV-$ENV_V1-$ENV_V2"; `
 $ALG_CONFIG=("$ALG" + ".ron"); `
 $TRAIN_CONFIG=("$ALG" + "_" + "$ENV" + "_training.ron"); `
 $ENV_CONFIG=("$ENV" + "_" + "$ENV_V1" + "_" + "$ENV_V2" + ".ron"); `
@@ -111,19 +111,18 @@ cargo run `
 ```bash
 REPS=50; \
 ALG="ddpg"; \
-ALG_VARIANT=""; \
+ALG_VARIANT="sgm"; \
 ENV="pointenv"; \
 ENV_V1="empty"; \
-ENV_V2="far"; \
+ENV_V2="mid"; \
 EXAMPLE="${ENV}_${ALG}"; \
-NAME="${ALG}${ALG_VARIANT}-${ENV}${ENV_V1}-${ENV_V2}"; \
+NAME="${ALG}-${ALG_VARIANT}-${ENV}-${ENV_V1}-${ENV_V2}"; \
 ALG_CONFIG="${ALG}.ron"; \
 TRAIN_CONFIG="${ALG}_${ENV}_training.ron"; \
 ENV_CONFIG="${ENV}_${ENV_V1}_${ENV_V2}.ron"; \
 PRETRAIN_TRAIN_CONFIG="${ALG}_${ENV}_pretraining.ron"; \
 PRETRAIN_ENV_CONFIG="${ENV}_${ENV_V1}_pretrain.ron"; \
 RUST_BACKTRACE=1; \
-nohup \
 cargo run \
     --release \
     --example ${EXAMPLE} \

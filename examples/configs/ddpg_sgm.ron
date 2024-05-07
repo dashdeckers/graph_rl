@@ -16,7 +16,7 @@
     distance_mode: True,
     sgm_max_tries: 5,
     sgm_close_enough: 0.5,
-    sgm_waypoint_reward: 1.0,
+    sgm_waypoint_reward: 0.0,
     sgm_maxdist: 1.0,
     sgm_tau: 0.4,
 )
