@@ -78,7 +78,7 @@ impl RenderableConfig for TrainConfig {
                 .text("Max Episodes")
         );
         ui.add(
-            Slider::new(&mut self.training_iterations, 1..=1000)
+            Slider::new(&mut self.training_iterations, 0..=1000)
                 .text("Training Iterations")
         );
         ui.add(
