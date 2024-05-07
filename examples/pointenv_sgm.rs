@@ -95,6 +95,14 @@ fn main() -> Result<()> {
                 Some(train_config) => read_config(train_config)?,
                 None => TrainConfig::default(),
             },
+            match args.pretrain_train_config {
+                Some(pretrain_train_config) => Some(read_config(pretrain_train_config)?),
+                None => None,
+            },
+            match args.pretrain_env_config {
+                Some(pretrain_env_config) => Some(read_config(pretrain_env_config)?),
+                None => None,
+            },
             match args.load_model.as_deref() {
                 Some([model_path, model_name]) => Some((model_path.to_string(), model_name.to_string())),
                 _ => None,

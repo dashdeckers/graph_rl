@@ -68,7 +68,11 @@ pub mod cli {
 
         /// Pretrain the model according to the given config.
         #[arg(long)]
-        pub pretrain_config: Option<String>,
+        pub pretrain_train_config: Option<String>,
+
+        /// Pretrain the model on an Environment with the given config.
+        #[arg(long)]
+        pub pretrain_env_config: Option<String>,
 
         /// Train the model according to the given config.
         #[arg(long)]

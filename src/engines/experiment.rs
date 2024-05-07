@@ -54,6 +54,8 @@ pub fn run_experiment_off_policy<Alg, Env, Obs, Act>(
     init_env: ParamEnv<Env, Obs, Act>,
     init_alg: ParamAlg<Alg>,
     train_config: TrainConfig,
+    pretrain_train_config: Option<TrainConfig>,
+    pretrain_env_config: Option<Env::Config>,
     load_model: Option<(String, String)>,
     device: &Device,
 ) -> Result<()>
@@ -89,6 +91,12 @@ where
     write_config(&alg_config, path.join("config_algorithm.ron"))?;
     write_config(&env_config, path.join("config_environment.ron"))?;
     write_config(&train_config, path.join("config_training.ron"))?;
+    if let Some(pretrain_train_config) = pretrain_train_config.clone() {
+        write_config(&pretrain_train_config, path.join("config_pretraining.ron"))?;
+    }
+    if let Some(pretrain_env_config) = pretrain_env_config.clone() {
+        write_config(&pretrain_env_config, path.join("config_pretraining_environment.ron"))?;
+    }
 
     for n in 0..n_repetitions {
         warn!("Collecting data, run {n}/{n_repetitions}");
@@ -111,6 +119,31 @@ where
                 &Path::new(&model_path),
                 &model_name,
             )?;
+        }
+
+        // Maybe pretrain the Agent
+
+        if let Some(pretrain_train_config) = pretrain_train_config.clone() {
+
+            let (pretrain_mc_returns, _) = loop_off_policy(
+                &mut match pretrain_env_config {
+                    Some(ref env_config) => *Env::new(env_config.clone()).unwrap(),
+                    None => env.clone(),
+                },
+                &mut alg,
+                ParamRunMode::Train(pretrain_train_config),
+                device,
+            )?;
+
+            warn!(
+                "Pretrained with Avg return: \n{:#?}",
+                pretrain_mc_returns.iter().sum::<f64>() / pretrain_mc_returns.len() as f64,
+            );
+
+            warn!(
+                "Size of Replay Buffer: {:#?}",
+                alg.replay_buffer().size(),
+            )
         }
 
         // Train the Agent on the Environment

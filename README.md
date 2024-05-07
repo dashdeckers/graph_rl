@@ -15,33 +15,61 @@ otherwise terminate when the connection is dropped).
 ## GUI
 
 ```powershell
-$ENV_CONFIG="pointenv_empty_far.ron"; `
+$REPS=50; `
+$ALG="ddpg"; `
+$ALG_VARIANT=""; `
+$ENV="pointenv"; `
+$ENV_V1="empty"; `
+$ENV_V2="far"; `
+$EXAMPLE=("$ENV" + "_" + "$ALG"); `
+$NAME="$ALG$ALG_VARIANT-$ENV$ENV_V1-$ENV_V2"; `
+$ALG_CONFIG=("$ALG" + ".ron"); `
+$TRAIN_CONFIG=("$ALG" + "_" + "$ENV" + "_training.ron"); `
+$ENV_CONFIG=("$ENV" + "_" + "$ENV_V1" + "_" + "$ENV_V2" + ".ron"); `
+$PRETRAIN_TRAIN_CONFIG=("$ALG" + "_" + "$ENV" + "_pretraining.ron"); `
+$PRETRAIN_ENV_CONFIG=("$ENV" + "_" + "$ENV_V1" + "_pretrain.ron"); `
 $env:RUST_BACKTRACE=1; `
 cargo run `
     --release `
-    --example pointenv_sgm `
+    --example $EXAMPLE `
     -- `
     --log warn `
     --name gui `
-    --train-config ".\examples\configs\train_ddpg_pointenv.ron" `
+    --pretrain-train-config ".\examples\configs\$PRETRAIN_TRAIN_CONFIG" `
+    --pretrain-env-config ".\examples\configs\$PRETRAIN_ENV_CONFIG" `
+    --train-config ".\examples\configs\$TRAIN_CONFIG" `
     --env-config ".\examples\configs\$ENV_CONFIG" `
-    --alg-config ".\examples\configs\ddpg_sgm.ron" `
+    --alg-config ".\examples\configs\$ALG_CONFIG" `
     `
     --load-model ".\data" "decent-ddpg-pointenv" `
     --gui
 ```
 ```bash
-ENV_CONFIG="pointenv_empty_far.ron"; \
+REPS=50; \
+ALG="ddpg"; \
+ALG_VARIANT=""; \
+ENV="pointenv"; \
+ENV_V1="empty"; \
+ENV_V2="far"; \
+EXAMPLE="${ENV}_${ALG}"; \
+NAME="${ALG}${ALG_VARIANT}-${ENV}${ENV_V1}-${ENV_V2}"; \
+ALG_CONFIG="${ALG}.ron"; \
+TRAIN_CONFIG="${ALG}_${ENV}_training.ron"; \
+ENV_CONFIG="${ENV}_${ENV_V1}_${ENV_V2}.ron"; \
+PRETRAIN_TRAIN_CONFIG="${ALG}_${ENV}_pretraining.ron"; \
+PRETRAIN_ENV_CONFIG="${ENV}_${ENV_V1}_pretrain.ron"; \
 RUST_BACKTRACE=1; \
 cargo run \
     --release \
-    --example pointenv_sgm \
+    --example ${EXAMPLE} \
     -- \
     --log warn \
     --name gui \
-    --train-config "./examples/configs/train_ddpg_pointenv.ron" \
+    --pretrain-train-config "./examples/configs/${PRETRAIN_TRAIN_CONFIG}" \
+    --pretrain-env-config "./examples/configs/${PRETRAIN_ENV_CONFIG}" \
+    --train-config "./examples/configs/${TRAIN_CONFIG}" \
     --env-config "./examples/configs/${ENV_CONFIG}" \
-    --alg-config "./examples/configs/ddpg_sgm.ron" \
+    --alg-config "./examples/configs/${ALG_CONFIG}" \
     \
     --load-model "./data" "decent-ddpg-pointenv" \
     --gui
@@ -49,77 +77,71 @@ cargo run \
 
 
 
-## H-DDPG / DDPG
+## DDPG / H-DDPG / HGB-DDPG
 
 ```powershell
-$ENV_CONFIG="pointenv_empty_far.ron"; `
+$REPS=50; `
+$ALG="ddpg"; `
+$ALG_VARIANT=""; `
+$ENV="pointenv"; `
+$ENV_V1="empty"; `
+$ENV_V2="far"; `
+$EXAMPLE=("$ENV" + "_" + "$ALG"); `
+$NAME="$ALG$ALG_VARIANT-$ENV$ENV_V1-$ENV_V2"; `
+$ALG_CONFIG=("$ALG" + ".ron"); `
+$TRAIN_CONFIG=("$ALG" + "_" + "$ENV" + "_training.ron"); `
+$ENV_CONFIG=("$ENV" + "_" + "$ENV_V1" + "_" + "$ENV_V2" + ".ron"); `
+$PRETRAIN_TRAIN_CONFIG=("$ALG" + "_" + "$ENV" + "_pretraining.ron"); `
+$PRETRAIN_ENV_CONFIG=("$ENV" + "_" + "$ENV_V1" + "_pretrain.ron"); `
 $env:RUST_BACKTRACE=1; `
 cargo run `
     --release `
-    --example pointenv_ddpg `
+    --example $EXAMPLE `
     -- `
     --log warn `
-    --name "H-DDPG-$ENV_CONFIG" `
-    --train-config ".\examples\configs\train_ddpg_pointenv.ron" `
+    --name $NAME `
+    --pretrain-train-config ".\examples\configs\$PRETRAIN_TRAIN_CONFIG" `
+    --pretrain-env-config ".\examples\configs\$PRETRAIN_ENV_CONFIG" `
+    --train-config ".\examples\configs\$TRAIN_CONFIG" `
     --env-config ".\examples\configs\$ENV_CONFIG" `
-    --alg-config ".\examples\configs\ddpg.ron" `
+    --alg-config ".\examples\configs\$ALG_CONFIG" `
     `
-    --n-repetitions 50
+    --n-repetitions $REPS
 ```
 ```bash
-ENV_CONFIG="pointenv_empty_far.ron"; \
+REPS=50; \
+ALG="ddpg"; \
+ALG_VARIANT=""; \
+ENV="pointenv"; \
+ENV_V1="empty"; \
+ENV_V2="far"; \
+EXAMPLE="${ENV}_${ALG}"; \
+NAME="${ALG}${ALG_VARIANT}-${ENV}${ENV_V1}-${ENV_V2}"; \
+ALG_CONFIG="${ALG}.ron"; \
+TRAIN_CONFIG="${ALG}_${ENV}_training.ron"; \
+ENV_CONFIG="${ENV}_${ENV_V1}_${ENV_V2}.ron"; \
+PRETRAIN_TRAIN_CONFIG="${ALG}_${ENV}_pretraining.ron"; \
+PRETRAIN_ENV_CONFIG="${ENV}_${ENV_V1}_pretrain.ron"; \
 RUST_BACKTRACE=1; \
 nohup \
 cargo run \
     --release \
-    --example pointenv_ddpg \
+    --example ${EXAMPLE} \
     -- \
     --log warn \
-    --name "H-DDPG-${ENV_CONFIG}" \
-    --train-config "./examples/configs/train_ddpg_pointenv.ron" \
+    --name ${NAME} \
+    --pretrain-train-config "./examples/configs/${PRETRAIN_TRAIN_CONFIG}" \
+    --pretrain-env-config "./examples/configs/${PRETRAIN_ENV_CONFIG}" \
+    --train-config "./examples/configs/${TRAIN_CONFIG}" \
     --env-config "./examples/configs/${ENV_CONFIG}" \
-    --alg-config "./examples/configs/ddpg.ron" \
+    --alg-config "./examples/configs/${ALG_CONFIG}" \
     \
     --device cuda \
-    --n-repetitions 50
+    --n-repetitions ${REPS}
 ```
 
 
 
-## HGB-DDPG
-
-```powershell
-$ENV_CONFIG="pointenv_empty_far.ron"; `
-$env:RUST_BACKTRACE=1; `
-cargo run `
-    --release `
-    --example pointenv_sgm `
-    -- `
-    --log warn `
-    --name "HGB-DDPG-$ENV_CONFIG" `
-    --train-config ".\examples\configs\train_ddpg_pointenv.ron" `
-    --env-config ".\examples\configs\$ENV_CONFIG" `
-    --alg-config ".\examples\configs\ddpg_sgm.ron" `
-    `
-    --n-repetitions 50
-```
-```bash
-ENV_CONFIG="pointenv_empty_far.ron"; \
-RUST_BACKTRACE=1; \
-nohup \
-cargo run \
-    --release \
-    --example pointenv_sgm \
-    -- \
-    --log warn \
-    --name "HGB-DDPG-${ENV_CONFIG}" \
-    --train-config "./examples/configs/train_ddpg_pointenv.ron" \
-    --env-config "./examples/configs/${ENV_CONFIG}" \
-    --alg-config "./examples/configs/ddpg_sgm.ron" \
-    \
-    --device cuda \
-    --n-repetitions 50
-```
 
 
 

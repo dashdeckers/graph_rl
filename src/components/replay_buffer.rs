@@ -92,6 +92,11 @@ impl ReplayBuffer {
         self.capacity = capacity;
     }
 
+    /// Get the size of the buffer.
+    pub fn size(&self) -> usize {
+        self.size
+    }
+
     /// Push a transition into the buffer.
     ///
     /// If the buffer is full, the oldest transition is removed to make room for
