@@ -1,5 +1,5 @@
 (
-    max_episodes: 1_000,
+    max_episodes: 5_000,
     training_iterations: 0,
     initial_random_actions: 10_000,
 )

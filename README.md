@@ -106,7 +106,7 @@ cargo run `
 ```
 ```bash
 REPS=50; \
-ALG="ddpg"; \
+ALG="ddpg_hgb"; \
 ENV="pointenv"; \
 ENV_V1="empty"; \
 ENV_V2="mid"; \
@@ -132,7 +132,8 @@ cargo run \
     --alg-config "./examples/configs/${ALG_CONFIG}" \
     \
     --device cuda \
-    --n-repetitions ${REPS}
+    --n-repetitions ${REPS} \
+    &
 ```
 
 
