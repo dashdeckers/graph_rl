@@ -27,14 +27,14 @@ mod experiment;
 mod run;
 mod tick;
 mod gui_offpolicy;
-mod gui_sgm;
+mod gui_hgb;
 
 pub use experiment::run_experiment_off_policy;
 pub use run::loop_off_policy;
 pub use tick::{tick, tick_off_policy};
 
 pub use gui_offpolicy::OffPolicyGUI;
-pub use gui_sgm::SgmGUI;
+pub use gui_hgb::HgbGUI;
 
 use {
     serde::Serialize,

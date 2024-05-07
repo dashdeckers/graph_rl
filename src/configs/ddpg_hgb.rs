@@ -19,7 +19,7 @@ use {
 
 #[allow(non_camel_case_types)]
 #[derive(Clone, Serialize, Deserialize)]
-pub struct DDPG_SGM_Config {
+pub struct DDPG_HGB_Config {
     // The base DDPG parameters
     pub ddpg: DDPG_Config,
     // Overwritten Replay Buffer size
@@ -33,7 +33,7 @@ pub struct DDPG_SGM_Config {
     pub sgm_maxdist: f64,
     pub sgm_tau: f64,
 }
-impl Default for DDPG_SGM_Config {
+impl Default for DDPG_HGB_Config {
     fn default() -> Self {
         Self {
             ddpg: DDPG_Config::default(),
@@ -47,7 +47,7 @@ impl Default for DDPG_SGM_Config {
         }
     }
 }
-impl DDPG_SGM_Config {
+impl DDPG_HGB_Config {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         ddpg: DDPG_Config,
@@ -72,7 +72,7 @@ impl DDPG_SGM_Config {
     }
 }
 
-impl RenderableConfig for DDPG_SGM_Config {
+impl RenderableConfig for DDPG_HGB_Config {
     fn render_immutable(
         &self,
         ui: &mut Ui,

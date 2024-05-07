@@ -1,8 +1,8 @@
 mod ddpg;
-mod ddpg_sgm;
+mod ddpg_hgb;
 
 pub use ddpg::DDPG;
-pub use ddpg_sgm::DDPG_SGM;
+pub use ddpg_hgb::DDPG_HGB;
 
 
 use {
@@ -95,7 +95,7 @@ pub trait OffPolicyAlgorithm: Algorithm {
     fn replay_buffer(&self) -> &ReplayBuffer;
 }
 
-pub trait SgmAlgorithm<Env: Environment>: Algorithm {
+pub trait HgbAlgorithm<Env: Environment>: Algorithm {
     fn plan(&self) -> &Vec<Env::Observation>;
     fn graph(&self) -> &StableGraph<Env::Observation, OrderedFloat<f64>, Directed>;
     fn clear_graph(&mut self);

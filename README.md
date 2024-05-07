@@ -16,18 +16,17 @@ otherwise terminate when the connection is dropped).
 
 ```powershell
 $REPS=50; `
-$ALG="ddpg"; `
-$ALG_VARIANT=""; `
+$ALG="ddpg_hgb"; `
 $ENV="pointenv"; `
 $ENV_V1="empty"; `
-$ENV_V2="far"; `
-$EXAMPLE=("$ENV" + "_" + "$ALG"); `
-$NAME="$ALG$ALG_VARIANT-$ENV$ENV_V1-$ENV_V2"; `
-$ALG_CONFIG=("$ALG" + ".ron"); `
-$TRAIN_CONFIG=("$ALG" + "_" + "$ENV" + "_training.ron"); `
-$ENV_CONFIG=("$ENV" + "_" + "$ENV_V1" + "_" + "$ENV_V2" + ".ron"); `
-$PRETRAIN_TRAIN_CONFIG=("$ALG" + "_" + "$ENV" + "_pretraining.ron"); `
-$PRETRAIN_ENV_CONFIG=("$ENV" + "_" + "$ENV_V1" + "_pretrain.ron"); `
+$ENV_V2="mid"; `
+$EXAMPLE="${ENV}_${ALG}"; `
+$NAME="${ALG}_${ENV}_${ENV_V1}_${ENV_V2}"; `
+$ALG_CONFIG="${ALG}.ron"; `
+$TRAIN_CONFIG="${ENV}_training.ron"; `
+$ENV_CONFIG="${ENV}_${ENV_V1}_${ENV_V2}.ron"; `
+$PRETRAIN_TRAIN_CONFIG="${ENV}_pretraining.ron"; `
+$PRETRAIN_ENV_CONFIG="${ENV}_${ENV_V1}_pretrain.ron"; `
 $env:RUST_BACKTRACE=1; `
 cargo run `
     --release `
@@ -41,22 +40,20 @@ cargo run `
     --env-config ".\examples\configs\$ENV_CONFIG" `
     --alg-config ".\examples\configs\$ALG_CONFIG" `
     `
-    --load-model ".\data" "decent-ddpg-pointenv" `
     --gui
 ```
 ```bash
 REPS=50; \
 ALG="ddpg"; \
-ALG_VARIANT=""; \
 ENV="pointenv"; \
 ENV_V1="empty"; \
-ENV_V2="far"; \
+ENV_V2="mid"; \
 EXAMPLE="${ENV}_${ALG}"; \
-NAME="${ALG}${ALG_VARIANT}-${ENV}${ENV_V1}-${ENV_V2}"; \
+NAME="${ALG}_${ENV}_${ENV_V1}_${ENV_V2}"; \
 ALG_CONFIG="${ALG}.ron"; \
-TRAIN_CONFIG="${ALG}_${ENV}_training.ron"; \
+TRAIN_CONFIG="${ENV}_training.ron"; \
 ENV_CONFIG="${ENV}_${ENV_V1}_${ENV_V2}.ron"; \
-PRETRAIN_TRAIN_CONFIG="${ALG}_${ENV}_pretraining.ron"; \
+PRETRAIN_TRAIN_CONFIG="${ENV}_pretraining.ron"; \
 PRETRAIN_ENV_CONFIG="${ENV}_${ENV_V1}_pretrain.ron"; \
 RUST_BACKTRACE=1; \
 cargo run \
@@ -82,17 +79,16 @@ cargo run \
 ```powershell
 $REPS=50; `
 $ALG="ddpg"; `
-$ALG_VARIANT=""; `
 $ENV="pointenv"; `
 $ENV_V1="empty"; `
-$ENV_V2="far"; `
-$EXAMPLE=("$ENV" + "_" + "$ALG"); `
-$NAME="$ALG-$ALG_VARIANT-$ENV-$ENV_V1-$ENV_V2"; `
-$ALG_CONFIG=("$ALG" + ".ron"); `
-$TRAIN_CONFIG=("$ALG" + "_" + "$ENV" + "_training.ron"); `
-$ENV_CONFIG=("$ENV" + "_" + "$ENV_V1" + "_" + "$ENV_V2" + ".ron"); `
-$PRETRAIN_TRAIN_CONFIG=("$ALG" + "_" + "$ENV" + "_pretraining.ron"); `
-$PRETRAIN_ENV_CONFIG=("$ENV" + "_" + "$ENV_V1" + "_pretrain.ron"); `
+$ENV_V2="mid"; `
+$EXAMPLE="${ENV}_${ALG}"; `
+$NAME="${ALG}_${ENV}_${ENV_V1}_${ENV_V2}"; `
+$ALG_CONFIG="${ALG}.ron"; `
+$TRAIN_CONFIG="${ENV}_training.ron"; `
+$ENV_CONFIG="${ENV}_${ENV_V1}_${ENV_V2}.ron"; `
+$PRETRAIN_TRAIN_CONFIG="${ENV}_pretraining.ron"; `
+$PRETRAIN_ENV_CONFIG="${ENV}_${ENV_V1}_pretrain.ron"; `
 $env:RUST_BACKTRACE=1; `
 cargo run `
     --release `
@@ -111,18 +107,18 @@ cargo run `
 ```bash
 REPS=50; \
 ALG="ddpg"; \
-ALG_VARIANT="sgm"; \
 ENV="pointenv"; \
 ENV_V1="empty"; \
 ENV_V2="mid"; \
 EXAMPLE="${ENV}_${ALG}"; \
-NAME="${ALG}-${ALG_VARIANT}-${ENV}-${ENV_V1}-${ENV_V2}"; \
+NAME="${ALG}_${ENV}_${ENV_V1}_${ENV_V2}"; \
 ALG_CONFIG="${ALG}.ron"; \
-TRAIN_CONFIG="${ALG}_${ENV}_training.ron"; \
+TRAIN_CONFIG="${ENV}_training.ron"; \
 ENV_CONFIG="${ENV}_${ENV_V1}_${ENV_V2}.ron"; \
-PRETRAIN_TRAIN_CONFIG="${ALG}_${ENV}_pretraining.ron"; \
+PRETRAIN_TRAIN_CONFIG="${ENV}_pretraining.ron"; \
 PRETRAIN_ENV_CONFIG="${ENV}_${ENV_V1}_pretrain.ron"; \
 RUST_BACKTRACE=1; \
+nohup \
 cargo run \
     --release \
     --example ${EXAMPLE} \

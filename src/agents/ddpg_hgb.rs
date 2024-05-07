@@ -5,7 +5,7 @@ use {
             DDPG,
             Algorithm,
             OffPolicyAlgorithm,
-            SgmAlgorithm,
+            HgbAlgorithm,
             SaveableAlgorithm,
         },
         envs::{
@@ -22,7 +22,7 @@ use {
                 add_node_to_graph,
             },
         },
-        configs::DDPG_SGM_Config,
+        configs::DDPG_HGB_Config,
     },
     candle_core::{
         Device,
@@ -50,7 +50,7 @@ use {
 
 #[allow(non_camel_case_types)]
 #[derive(Clone)]
-pub struct DDPG_SGM<'a, Env>
+pub struct DDPG_HGB<'a, Env>
 where
     Env: Environment,
     Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation + DistanceMeasure,
@@ -73,10 +73,10 @@ where
     sgm_maxdist: f64,
     sgm_tau: f64,
 
-    config: DDPG_SGM_Config,
+    config: DDPG_HGB_Config,
 }
 
-impl<'a, Env> DDPG_SGM<'a, Env>
+impl<'a, Env> DDPG_HGB<'a, Env>
 where
     Env: Environment,
     Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation + DistanceMeasure,
@@ -195,7 +195,7 @@ where
 
     pub fn from_config_with_ddpg(
         device: &Device,
-        config: &DDPG_SGM_Config,
+        config: &DDPG_HGB_Config,
         ddpg: DDPG<'a>,
     ) -> Result<Box<Self>> {
         let mut agent = Self {
@@ -223,13 +223,13 @@ where
     }
 }
 
-impl<'a, Env> Algorithm for DDPG_SGM<'a, Env>
+impl<'a, Env> Algorithm for DDPG_HGB<'a, Env>
 where
     Env: Environment,
     Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation + DistanceMeasure,
     <Env::Observation as GoalAwareObservation>::State: Clone + Debug + Eq + Hash + TensorConvertible + DistanceMeasure,
 {
-    type Config = DDPG_SGM_Config;
+    type Config = DDPG_HGB_Config;
 
     fn config(&self) -> &Self::Config {
         &self.config
@@ -259,7 +259,7 @@ where
 
     fn from_config(
         device: &Device,
-        config: &DDPG_SGM_Config,
+        config: &DDPG_HGB_Config,
         size_state: usize,
         size_action: usize,
     ) -> Result<Box<Self>> {
@@ -389,7 +389,7 @@ where
     }
 }
 
-impl<'a, Env> OffPolicyAlgorithm for DDPG_SGM<'a, Env>
+impl<'a, Env> OffPolicyAlgorithm for DDPG_HGB<'a, Env>
 where
     Env: Environment,
     Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation + DistanceMeasure,
@@ -471,7 +471,7 @@ where
 }
 
 
-impl<'a, Env> SgmAlgorithm<Env> for DDPG_SGM<'a, Env>
+impl<'a, Env> HgbAlgorithm<Env> for DDPG_HGB<'a, Env>
 where
     Env: Environment,
     Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation + DistanceMeasure,
@@ -507,7 +507,7 @@ where
     }
 }
 
-impl<'a, Env> SaveableAlgorithm for DDPG_SGM<'a, Env>
+impl<'a, Env> SaveableAlgorithm for DDPG_HGB<'a, Env>
 where
     Env: Environment,
     Env::Observation: Clone + Debug + Eq + Hash + TensorConvertible + GoalAwareObservation + DistanceMeasure,

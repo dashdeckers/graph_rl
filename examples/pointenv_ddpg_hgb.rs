@@ -6,13 +6,13 @@ use {
             ArgDevice,
             Args,
         },
-        agents::DDPG_SGM,
+        agents::DDPG_HGB,
         envs::{
             PointEnv,
             PointEnvConfig,
         },
         configs::{
-            DDPG_SGM_Config,
+            DDPG_HGB_Config,
             TrainConfig,
         },
         engines::{
@@ -21,7 +21,7 @@ use {
             ParamRunMode,
             ParamEnv,
             ParamAlg,
-            SgmGUI,
+            HgbGUI,
         },
     },
     candle_core::{
@@ -57,14 +57,14 @@ fn main() -> Result<()> {
     if args.gui {
         //// Run Algorithm in GUI ////
 
-        SgmGUI::<DDPG_SGM<PointEnv>, PointEnv, _, _>::open(
+        HgbGUI::<DDPG_HGB<PointEnv>, PointEnv, _, _>::open(
             ParamEnv::AsConfig(match args.env_config {
                 Some(env_config) => read_config(env_config)?,
                 None => PointEnvConfig::default(),
             }),
             ParamAlg::AsConfig(match args.alg_config {
                 Some(alg_config) => read_config(alg_config)?,
-                None => DDPG_SGM_Config::default(),
+                None => DDPG_HGB_Config::default(),
             }),
             ParamRunMode::Train(match args.train_config {
                 Some(train_config) => read_config(train_config)?,
@@ -80,7 +80,7 @@ fn main() -> Result<()> {
     } else {
         //// Run Algorithm as Experiment ////
 
-        run_experiment_off_policy::<DDPG_SGM<PointEnv>, PointEnv, _, _>(
+        run_experiment_off_policy::<DDPG_HGB<PointEnv>, PointEnv, _, _>(
             &args.name,
             args.n_repetitions,
             ParamEnv::AsConfig(match args.env_config {
@@ -89,7 +89,7 @@ fn main() -> Result<()> {
             }),
             ParamAlg::AsConfig(match args.alg_config {
                 Some(alg_config) => read_config(alg_config)?,
-                None => DDPG_SGM_Config::default(),
+                None => DDPG_HGB_Config::default(),
             }),
             match args.train_config {
                 Some(train_config) => read_config(train_config)?,

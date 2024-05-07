@@ -9,7 +9,7 @@ use {
         agents::{
             Algorithm,
             OffPolicyAlgorithm,
-            SgmAlgorithm,
+            HgbAlgorithm,
             SaveableAlgorithm,
         },
         envs::{
@@ -48,7 +48,7 @@ use {
     },
 };
 
-pub struct SgmGUI<Alg, Env, Obs, Act>
+pub struct HgbGUI<Alg, Env, Obs, Act>
 where
     Env: Environment<Action = Act, Observation = Obs> + RenderableEnvironment,
     Env::Config: Clone + Serialize + RenderableConfig,
@@ -62,11 +62,11 @@ where
     render_plan: bool,
 }
 
-impl<Alg, Env, Obs, Act> eframe::App for SgmGUI<Alg, Env, Obs, Act>
+impl<Alg, Env, Obs, Act> eframe::App for HgbGUI<Alg, Env, Obs, Act>
 where
     Env: Clone + Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
     Env::Config: Clone + Serialize + RenderableConfig,
-    Alg: Clone + Algorithm + OffPolicyAlgorithm + SaveableAlgorithm + SgmAlgorithm<Env> + 'static,
+    Alg: Clone + Algorithm + OffPolicyAlgorithm + SaveableAlgorithm + HgbAlgorithm<Env> + 'static,
     Alg::Config: Clone + Serialize + RenderableConfig,
     Obs: Clone + TensorConvertible + 'static,
     Act: Clone + TensorConvertible + Sampleable + 'static,
@@ -122,11 +122,11 @@ where
     }
 }
 
-impl<Alg, Env, Obs, Act> SgmGUI<Alg, Env, Obs, Act>
+impl<Alg, Env, Obs, Act> HgbGUI<Alg, Env, Obs, Act>
 where
     Env: Clone + Environment<Action = Act, Observation = Obs> + RenderableEnvironment + 'static,
     Env::Config: Clone + Serialize + RenderableConfig,
-    Alg: Clone + Algorithm + OffPolicyAlgorithm + SaveableAlgorithm + SgmAlgorithm<Env> + 'static,
+    Alg: Clone + Algorithm + OffPolicyAlgorithm + SaveableAlgorithm + HgbAlgorithm<Env> + 'static,
     Alg::Config: Clone + Serialize + RenderableConfig,
     Obs: Clone + TensorConvertible + 'static,
     Act: Clone + TensorConvertible + Sampleable + 'static,
