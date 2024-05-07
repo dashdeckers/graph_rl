@@ -37,39 +37,90 @@ use {
 /// step, and there are no wall collisions i.e. neither start nor goal is
 /// contained within a wall / [PointLine].
 ///
-/// If `max_radius` is provided, we also make sure that the distance between
-/// start and goal is less than `max_radius`.
+/// If `spawn_radius_max` is provided, we also make sure that the distance between
+/// start and goal is less than `spawn_radius_max`.
+#[allow(clippy::too_many_arguments)]
 fn generate_start_goal(
     width: f64,
     height: f64,
     step_radius: f64,
-    max_radius: Option<f64>,
-    min_radius: Option<f64>,
+    spawn_radius_max: Option<f64>,
+    spawn_radius_min: Option<f64>,
+    spawn_centers: Option<(PointState, PointState)>,
     walls: &[PointLine],
     rng: &mut dyn RngCore,
 ) -> (PointState, PointState) {
-    loop {
-        let state = PointState::sample(rng, &[0.0..=width, 0.0..=height]);
-        let goal = PointState::sample(rng, &[0.0..=width, 0.0..=height]);
 
-        if let Some(max_radius) = max_radius {
-            if !state.in_radius_of(&goal, max_radius) {
-                continue;
+    let mut sample_single_state = |
+        domain: &[std::ops::RangeInclusive<f64>],
+        radius_min: Option<f64>,
+        radius_max: Option<f64>,
+        center: PointState,
+    | {
+        loop {
+            let state = PointState::sample(rng, domain);
+            if let Some(radius_max) = radius_max {
+                if !state.in_radius_of(&center, radius_max) {
+                    continue;
+                }
+            }
+            if let Some(radius_min) = radius_min {
+                if state.in_radius_of(&center, radius_min) {
+                    continue;
+                }
+            }
+            if !walls.iter().any(|w| w.contains(&state)) {
+                break state;
             }
         }
+    };
 
-        if let Some(min_radius) = min_radius {
-            if state.in_radius_of(&goal, min_radius) {
-                continue;
+    if let Some((start_center, goal_center)) = spawn_centers {
+        let radius = spawn_radius_max.unwrap_or(f64::MAX);
+        let x_bounds = |center: PointState| {
+            (center.x() - radius).max(0.0)..=(center.x() + radius).min(width)
+        };
+        let y_bounds = |center: PointState| {
+            (center.y() - radius).max(0.0)..=(center.y() + radius).min(height)
+        };
+
+        let start = sample_single_state(
+            &[x_bounds(start_center), y_bounds(start_center)],
+            spawn_radius_min,
+            spawn_radius_max,
+            start_center,
+        );
+        let goal = sample_single_state(
+            &[x_bounds(goal_center), y_bounds(goal_center)],
+            spawn_radius_min,
+            spawn_radius_max,
+            goal_center,
+        );
+        (start, goal)
+    } else {
+        loop {
+            let start = PointState::sample(rng, &[0.0..=width, 0.0..=height]);
+            let goal = PointState::sample(rng, &[0.0..=width, 0.0..=height]);
+
+            if let Some(spawn_radius_max) = spawn_radius_max {
+                if !start.in_radius_of(&goal, spawn_radius_max) {
+                    continue;
+                }
             }
-        }
 
-        let wall_contains_state = walls
-            .iter()
-            .any(|w| w.contains(&state) || w.contains(&goal));
+            if let Some(spawn_radius_min) = spawn_radius_min {
+                if start.in_radius_of(&goal, spawn_radius_min) {
+                    continue;
+                }
+            }
 
-        if !wall_contains_state && !reachable(&state, &goal, step_radius, walls) {
-            break (state, goal);
+            let wall_contains_state = walls
+                .iter()
+                .any(|w| w.contains(&start) || w.contains(&goal));
+
+            if !wall_contains_state && !reachable(&start, &goal, step_radius, walls) {
+                break (start, goal)
+            }
         }
     }
 }
@@ -177,8 +228,9 @@ pub struct PointEnv {
 
     step_radius: f64,
     term_radius: f64,
-    max_radius: Option<f64>,
-    min_radius: Option<f64>,
+    spawn_radius_max: Option<f64>,
+    spawn_radius_min: Option<f64>,
+    spawn_centers: Option<(PointState, PointState)>,
     bounce_factor: f64,
     reward: PointReward,
 
@@ -186,15 +238,7 @@ pub struct PointEnv {
 }
 impl PointEnv {
     fn new(config: PointEnvConfig) -> Result<Box<Self>> {
-        // assertion guards for valid parameter values
-        assert!(config.step_radius > 0.0 && config.step_radius <= 1.0);
-        assert!(config.bounce_factor > 0.0 && config.bounce_factor <= 1.0);
-        assert!(config.bounce_factor <= (config.step_radius / 10.0));
-        // assertion guards for minimum map-size compared to step_radius
-        assert!(
-            (config.step_radius * 4.0) < config.width
-                && (config.step_radius * 4.0) < config.height
-        );
+        config.check()?;
 
         // add walls
         let walls = config.walls.to_walls(config.width, config.height);
@@ -205,40 +249,17 @@ impl PointEnv {
             config.width,
             config.height,
             config.step_radius,
-            config.max_radius,
-            config.min_radius,
+            config.spawn_radius_max,
+            config.spawn_radius_min,
+            config.spawn_centers.map(|(start, goal)| (start.into(), goal.into())),
             &walls,
             &mut rng,
         );
 
-
-        // // assertion guards for square map
-        // assert!(config.width == config.height);
-        // // scale the map down to a 1x1 square
-        // let scale = config.width;
-
-        // let width = config.width / scale;
-        // let height = config.height / scale;
-        // let walls = walls.into_iter().map(|l| l / scale).collect();
-        // let start = start / scale;
-        // let goal = goal / scale;
-        // let step_radius = config.step_radius / scale;
-        // let term_radius = config.term_radius / scale;
-        // let bounce_factor = config.bounce_factor / scale;
-
-        let width = config.width;
-        let height = config.height;
-        let step_radius = config.step_radius;
-        let term_radius = config.term_radius;
-        let max_radius = config.max_radius;
-        let min_radius = config.min_radius;
-        let bounce_factor = config.bounce_factor;
-
-
         Ok(Box::new(PointEnv {
             config: config.clone(),
-            width,
-            height,
+            width: config.width,
+            height: config.height,
             walls,
 
             state: start,
@@ -250,11 +271,12 @@ impl PointEnv {
             timelimit: config.timelimit,
             reset_count: 0,
 
-            step_radius,
-            term_radius,
-            max_radius,
-            min_radius,
-            bounce_factor,
+            step_radius: config.step_radius,
+            term_radius: config.term_radius,
+            spawn_radius_max: config.spawn_radius_max,
+            spawn_radius_min: config.spawn_radius_min,
+            spawn_centers: config.spawn_centers.map(|(start, goal)| (start.into(), goal.into())),
+            bounce_factor: config.bounce_factor,
             reward: config.reward,
 
             rng,
@@ -321,13 +343,15 @@ impl Environment for PointEnv {
         self.timestep = 0;
         self.reset_count += 1;
 
+        // compute random start and goal
         self.rng = StdRng::seed_from_u64(seed);
         (self.start, self.goal) = generate_start_goal(
             self.width,
             self.height,
             self.step_radius,
-            self.max_radius,
-            self.min_radius,
+            self.spawn_radius_max,
+            self.spawn_radius_min,
+            self.spawn_centers,
             &self.walls,
             &mut self.rng,
         );

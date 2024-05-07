@@ -24,6 +24,7 @@ use {
         ComboBox,
     },
     std::fmt::Display,
+    anyhow::Result,
 };
 
 /// An enum representing the different wall configurations for the
@@ -105,7 +106,9 @@ impl PointEnvWalls {
 /// * `timelimit` - The maximum number of steps before the episode is truncated.
 /// * `step_radius` - The radius that defines the maximum distance the agent can reach in one step.
 /// * `term_radius` - If the agent is within this radius of the goal, the episode is terminated.
-/// * `max_radius` - The maximum distance allowed between the randomly generated start and goal.
+/// * `spawn_radius_max` - The maximum distance allowed between the randomly generated start and goal.
+/// * `spawn_radius_max` - The maximum distance allowed between the randomly generated start and goal.
+/// * `spawn_centers` - When these points are given, then spawn start and goal with set radius around those points.
 /// * `bounce_factor` - The percentage of the traveled distance that the agent bounces back when it hits a wall.
 /// * `reward` - The reward function. For more information, see [`PointReward`](super::reward::PointReward)
 /// * `seed` - The seed for the random number generator.
@@ -125,7 +128,7 @@ impl PointEnvWalls {
 /// assert_eq!(config.timelimit, 30);
 /// assert_eq!(config.step_radius, 1.0);
 /// assert_eq!(config.term_radius, 0.5);
-/// assert_eq!(config.max_radius, None);
+/// assert_eq!(config.spawn_radius_max, None);
 /// assert_eq!(config.bounce_factor, 0.1);
 /// assert_eq!(config.reward, PointReward::Distance);
 /// ```
@@ -137,8 +140,9 @@ pub struct PointEnvConfig {
     pub timelimit: usize,
     pub step_radius: f64,
     pub term_radius: f64,
-    pub max_radius: Option<f64>,
-    pub min_radius: Option<f64>,
+    pub spawn_radius_max: Option<f64>,
+    pub spawn_radius_min: Option<f64>,
+    pub spawn_centers: Option<((f64, f64), (f64, f64))>,
     pub bounce_factor: f64,
     pub reward: PointReward,
     pub seed: u64,
@@ -152,8 +156,9 @@ impl Default for PointEnvConfig {
             timelimit: 100,
             step_radius: 1.0,
             term_radius: 0.5,
-            max_radius: None,
-            min_radius: None,
+            spawn_radius_max: None,
+            spawn_radius_min: None,
+            spawn_centers: None,
             bounce_factor: 0.1,
             reward: PointReward::Sparse,
             seed: StdRng::from_entropy().gen::<u64>(),
@@ -170,8 +175,9 @@ impl PointEnvConfig {
         timelimit: usize,
         step_radius: f64,
         term_radius: f64,
-        max_radius: Option<f64>,
-        min_radius: Option<f64>,
+        spawn_radius_max: Option<f64>,
+        spawn_radius_min: Option<f64>,
+        spawn_centers: Option<((f64, f64), (f64, f64))>,
         bounce_factor: f64,
         reward: PointReward,
         seed: u64,
@@ -183,12 +189,42 @@ impl PointEnvConfig {
             timelimit,
             step_radius,
             term_radius,
-            max_radius,
-            min_radius,
+            spawn_radius_max,
+            spawn_radius_min,
+            spawn_centers,
             bounce_factor,
             reward,
             seed,
         }
+    }
+
+    pub fn check(&self) -> Result<()> {
+        if !(self.step_radius > 0.0 && self.step_radius <= 1.0) {
+            return Err(anyhow::anyhow!("Step radius must be in the range (0.0, 1.0]"));
+        }
+
+        if !(self.bounce_factor > 0.0 && self.bounce_factor <= 1.0) {
+            return Err(anyhow::anyhow!("Bounce factor must be in the range (0.0, 1.0]"));
+        }
+
+        #[allow(clippy::neg_cmp_op_on_partial_ord)]
+        if !(self.bounce_factor <= (self.step_radius / 10.0)) {
+            return Err(anyhow::anyhow!("Bounce factor must be less than or equal to step radius / 10.0"));
+        }
+
+        if !((self.step_radius * 4.0) < self.width && (self.step_radius * 4.0) < self.height) {
+            return Err(anyhow::anyhow!("Step radius * 4.0 must be less than width and height"));
+        }
+
+        if self.spawn_centers.is_none() {
+            if let Some(spawn_radius) = self.spawn_radius_max {
+                if spawn_radius <= self.step_radius {
+                    return Err(anyhow::anyhow!("Spawn radius max must be greater than or equal to step radius if spawn centers are not set"));
+                }
+            }
+        }
+
+        Ok(())
     }
 }
 
@@ -203,6 +239,9 @@ impl RenderableConfig for PointEnvConfig {
         let timelimit = self.timelimit;
         let step_radius = self.step_radius;
         let term_radius = self.term_radius;
+        let spawn_radius_max = self.spawn_radius_max;
+        let spawn_radius_min = self.spawn_radius_min;
+        let spawn_centers = self.spawn_centers;
         let bounce_factor = self.bounce_factor;
         let reward = &self.reward;
         let seed = self.seed;
@@ -215,12 +254,13 @@ impl RenderableConfig for PointEnvConfig {
         ui.add(Label::new(format!("Timelimit: {timelimit:#.2}")));
         ui.add(Label::new(format!("Step radius: {step_radius:#.2}")));
         ui.add(Label::new(format!("Term radius: {term_radius:#.2}")));
-        if let Some(max_radius) = self.max_radius {
-            ui.add(Label::new(format!("Max radius: {max_radius:#.2}")));
+        if let Some(spawn_radius_max) = spawn_radius_max {
+            ui.add(Label::new(format!("Max radius: {spawn_radius_max:#.2}")));
         }
-        if let Some(min_radius) = self.min_radius {
-            ui.add(Label::new(format!("Min radius: {min_radius:#.2}")));
+        if let Some(spawn_radius_min) = spawn_radius_min {
+            ui.add(Label::new(format!("Min radius: {spawn_radius_min:#.2}")));
         }
+        ui.add(Label::new(format!("Spawn centers: {spawn_centers:?}")));
         ui.add(Label::new(format!("Bounce factor: {bounce_factor:#.2}")));
         ui.add(Label::new(format!("Reward: {reward:?}")));
         ui.add(Label::new(format!("Seed: {seed:#.2}")));
@@ -268,27 +308,27 @@ impl RenderableConfig for PointEnvConfig {
             .step_by(0.1)
             .text("Term radius")
         );
-        let mut max_radius = self.max_radius.unwrap_or(0.0);
+        let mut spawn_radius_max = self.spawn_radius_max.unwrap_or(0.0);
         ui.add(
-            Slider::new(&mut max_radius, 0.0..=10.0)
+            Slider::new(&mut spawn_radius_max, 0.0..=10.0)
             .step_by(0.1)
             .text("Max radius")
         );
-        self.max_radius = if max_radius == 0.0 {
+        self.spawn_radius_max = if spawn_radius_max == 0.0 {
             None
         } else {
-            Some(max_radius)
+            Some(spawn_radius_max)
         };
-        let mut min_radius = self.min_radius.unwrap_or(0.0);
+        let mut spawn_radius_min = self.spawn_radius_min.unwrap_or(0.0);
         ui.add(
-            Slider::new(&mut min_radius, 0.0..=10.0)
+            Slider::new(&mut spawn_radius_min, 0.0..=10.0)
             .step_by(0.1)
             .text("Min radius")
         );
-        self.min_radius = if min_radius == 0.0 {
+        self.spawn_radius_min = if spawn_radius_min == 0.0 {
             None
         } else {
-            Some(min_radius)
+            Some(spawn_radius_min)
         };
         ui.add(
             Slider::new(&mut self.bounce_factor, 0.1..=1.0)
@@ -299,5 +339,36 @@ impl RenderableConfig for PointEnvConfig {
             Slider::new(&mut self.seed, 0..=1000)
             .text("Seed")
         );
+
+
+        // Allow the user to either set spawn centers for start and goal or leave them to be randomly generated
+        let mut use_spawn_centers = self.spawn_centers.is_some();
+        ui.checkbox(&mut use_spawn_centers, "Use spawn centers");
+        self.spawn_centers = if !use_spawn_centers {
+            None
+        } else {
+            let mut spawn_centers = self.spawn_centers.unwrap_or(((0.0, 0.0), (0.0, 0.0)));
+            ui.add(
+                Slider::new(&mut spawn_centers.0 .0, 0.0..=self.width)
+                .step_by(0.1)
+                .text("Start x")
+            );
+            ui.add(
+                Slider::new(&mut spawn_centers.0 .1, 0.0..=self.height)
+                .step_by(0.1)
+                .text("Start y")
+            );
+            ui.add(
+                Slider::new(&mut spawn_centers.1 .0, 0.0..=self.width)
+                .step_by(0.1)
+                .text("Goal x")
+            );
+            ui.add(
+                Slider::new(&mut spawn_centers.1 .1, 0.0..=self.height)
+                .step_by(0.1)
+                .text("Goal y")
+            );
+            Some(spawn_centers)
+        };
     }
 }
