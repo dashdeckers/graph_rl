@@ -32,17 +32,24 @@ for directory, color in zip(args.dirs, sns.color_palette(n_colors=len(args.dirs)
     directory = Path(directory)
     files = list((root_path / directory).glob("run_*_data.parquet"))
 
+    parquets = [
+        pl.read_parquet(filepath)
+        for filepath in files
+        # if pl.read_parquet(filepath)[f"{filepath.parts[-1][:6].strip('_')}_total_rewards"].mean() > -90
+    ]
+
     df = (
         pl.concat(
-            [
-                pl.read_parquet(filepath)
-                for filepath in files
-            ],
+            # [
+            #     pl.read_parquet(filepath)
+            #     for filepath in files
+            # ],
+            parquets,
             how="horizontal",
         )
         .with_columns(
             pl.concat_list(f"^run_.*_{suffix}$").list.eval(
-                pl.element().std()
+                pl.element().std()                                  / (pl.element().count()).sqrt()
             ).list.first().alias("std"),
 
             pl.concat_list(f"^run_.*_{suffix}$").list.eval(
@@ -59,7 +66,7 @@ for directory, color in zip(args.dirs, sns.color_palette(n_colors=len(args.dirs)
         x=range(1, len(mean) + 1),
         y=mean,
         color=color,
-        label=f"{directory.parts[-1]} (n_runs={len(files)})",
+        label=f"{directory.parts[-1]} (n_runs={len(parquets)})",
     )
     plt.fill_between(
         range(1, len(mean) + 1),
