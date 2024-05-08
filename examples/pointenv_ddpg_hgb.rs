@@ -18,7 +18,6 @@ use {
         engines::{
             setup_logging,
             run_experiment_off_policy,
-            ParamRunMode,
             ParamEnv,
             ParamAlg,
             HgbGUI,
@@ -66,10 +65,10 @@ fn main() -> Result<()> {
                 Some(alg_config) => read_config(alg_config)?,
                 None => DDPG_HGB_Config::default(),
             }),
-            ParamRunMode::Train(match args.train_config {
+            match args.train_config {
                 Some(train_config) => read_config(train_config)?,
                 None => TrainConfig::default(),
-            }),
+            },
             match args.load_model.as_deref() {
                 Some([model_path, model_name]) => Some((model_path.to_string(), model_name.to_string())),
                 _ => None,

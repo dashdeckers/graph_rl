@@ -2,7 +2,6 @@ use {
     super::{
         ParamAlg,
         ParamEnv,
-        ParamRunMode,
         OffPolicyGUI,
     },
     crate::{
@@ -18,7 +17,10 @@ use {
             Sampleable,
             TensorConvertible,
         },
-        configs::RenderableConfig,
+        configs::{
+            RenderableConfig,
+            TrainConfig,
+        },
     },
     serde::Serialize,
     candle_core::Device,
@@ -134,7 +136,7 @@ where
     pub fn open(
         init_env: ParamEnv<Env, Obs, Act>,
         init_alg: ParamAlg<Alg>,
-        run_mode: ParamRunMode,
+        config: TrainConfig,
         load_model: Option<(String, String)>,
         device: Device,
         size: f32,
@@ -149,7 +151,7 @@ where
                 gui: OffPolicyGUI::<Alg, Env, Obs, Act>::create(
                     init_env,
                     init_alg,
-                    run_mode,
+                    config,
                     load_model,
                     device,
                 ),

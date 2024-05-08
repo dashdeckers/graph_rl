@@ -26,7 +26,7 @@ $ALG_CONFIG="${ALG}.ron"; `
 $TRAIN_CONFIG="${ENV}_training.ron"; `
 $ENV_CONFIG="${ENV}_${ENV_V1}_${ENV_V2}.ron"; `
 $PRETRAIN_TRAIN_CONFIG="${ENV}_pretraining.ron"; `
-$PRETRAIN_ENV_CONFIG="${ENV}_${ENV_V1}_pretrain.ron"; `
+$PRETRAIN_ENV_CONFIG="${ENV}_pretrain.ron"; `
 $env:RUST_BACKTRACE=1; `
 cargo run `
     --release `
@@ -35,9 +35,9 @@ cargo run `
     --log warn `
     --name gui `
     --pretrain-train-config ".\examples\configs\$PRETRAIN_TRAIN_CONFIG" `
-    --pretrain-env-config ".\examples\configs\$PRETRAIN_ENV_CONFIG" `
+    --pretrain-env-config ".\examples\configs\env_configs\$PRETRAIN_ENV_CONFIG" `
     --train-config ".\examples\configs\$TRAIN_CONFIG" `
-    --env-config ".\examples\configs\$ENV_CONFIG" `
+    --env-config ".\examples\configs\env_configs\$ENV_CONFIG" `
     --alg-config ".\examples\configs\$ALG_CONFIG" `
     `
     --gui
@@ -54,7 +54,7 @@ ALG_CONFIG="${ALG}.ron"; \
 TRAIN_CONFIG="${ENV}_training.ron"; \
 ENV_CONFIG="${ENV}_${ENV_V1}_${ENV_V2}.ron"; \
 PRETRAIN_TRAIN_CONFIG="${ENV}_pretraining.ron"; \
-PRETRAIN_ENV_CONFIG="${ENV}_${ENV_V1}_pretrain.ron"; \
+PRETRAIN_ENV_CONFIG="${ENV}_pretrain.ron"; \
 RUST_BACKTRACE=1; \
 cargo run \
     --release \
@@ -63,9 +63,9 @@ cargo run \
     --log warn \
     --name gui \
     --pretrain-train-config "./examples/configs/${PRETRAIN_TRAIN_CONFIG}" \
-    --pretrain-env-config "./examples/configs/${PRETRAIN_ENV_CONFIG}" \
+    --pretrain-env-config "./examples/configs/env_configs/${PRETRAIN_ENV_CONFIG}" \
     --train-config "./examples/configs/${TRAIN_CONFIG}" \
-    --env-config "./examples/configs/${ENV_CONFIG}" \
+    --env-config "./examples/configs/env_configs/${ENV_CONFIG}" \
     --alg-config "./examples/configs/${ALG_CONFIG}" \
     \
     --load-model "./data" "decent-ddpg-pointenv" \
@@ -88,7 +88,7 @@ $ALG_CONFIG="${ALG}.ron"; `
 $TRAIN_CONFIG="${ENV}_training.ron"; `
 $ENV_CONFIG="${ENV}_${ENV_V1}_${ENV_V2}.ron"; `
 $PRETRAIN_TRAIN_CONFIG="${ENV}_pretraining.ron"; `
-$PRETRAIN_ENV_CONFIG="${ENV}_${ENV_V1}_pretrain.ron"; `
+$PRETRAIN_ENV_CONFIG="${ENV}_pretrain.ron"; `
 $env:RUST_BACKTRACE=1; `
 cargo run `
     --release `
@@ -97,18 +97,18 @@ cargo run `
     --log warn `
     --name $NAME `
     --pretrain-train-config ".\examples\configs\$PRETRAIN_TRAIN_CONFIG" `
-    --pretrain-env-config ".\examples\configs\$PRETRAIN_ENV_CONFIG" `
+    --pretrain-env-config ".\examples\configs\env_configs\$PRETRAIN_ENV_CONFIG" `
     --train-config ".\examples\configs\$TRAIN_CONFIG" `
-    --env-config ".\examples\configs\$ENV_CONFIG" `
+    --env-config ".\examples\configs\env_configs\$ENV_CONFIG" `
     --alg-config ".\examples\configs\$ALG_CONFIG" `
     `
     --n-repetitions $REPS
 ```
 ```bash
 REPS=50; \
-ALG="ddpg"; \
+ALG="ddpg_hgb"; \
 ENV="pointenv"; \
-ENV_V1="empty"; \
+ENV_V1="hooks"; \
 ENV_V2="mid"; \
 EXAMPLE="${ENV}_${ALG}"; \
 NAME="${ALG}_${ENV}_${ENV_V1}_${ENV_V2}"; \
@@ -116,7 +116,7 @@ ALG_CONFIG="${ALG}.ron"; \
 TRAIN_CONFIG="${ENV}_training.ron"; \
 ENV_CONFIG="${ENV}_${ENV_V1}_${ENV_V2}.ron"; \
 PRETRAIN_TRAIN_CONFIG="${ENV}_pretraining.ron"; \
-PRETRAIN_ENV_CONFIG="${ENV}_${ENV_V1}_pretrain.ron"; \
+PRETRAIN_ENV_CONFIG="${ENV}_pretrain.ron"; \
 RUST_BACKTRACE=1; \
 nohup \
 cargo run \
@@ -126,9 +126,9 @@ cargo run \
     --log warn \
     --name ${NAME} \
     --pretrain-train-config "./examples/configs/${PRETRAIN_TRAIN_CONFIG}" \
-    --pretrain-env-config "./examples/configs/${PRETRAIN_ENV_CONFIG}" \
+    --pretrain-env-config "./examples/configs/env_configs/${PRETRAIN_ENV_CONFIG}" \
     --train-config "./examples/configs/${TRAIN_CONFIG}" \
-    --env-config "./examples/configs/${ENV_CONFIG}" \
+    --env-config "./examples/configs/env_configs/${ENV_CONFIG}" \
     --alg-config "./examples/configs/${ALG_CONFIG}" \
     \
     --device cuda \

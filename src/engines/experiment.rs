@@ -4,7 +4,6 @@ use {
         run::loop_off_policy,
         ParamAlg,
         ParamEnv,
-        ParamRunMode,
     },
     crate::{
         agents::{
@@ -131,7 +130,7 @@ where
                     None => env.clone(),
                 },
                 &mut alg,
-                ParamRunMode::Train(pretrain_train_config),
+                pretrain_train_config,
                 device,
             )?;
 
@@ -151,7 +150,7 @@ where
         let (mc_returns, successes) = loop_off_policy(
             &mut env,
             &mut alg,
-            ParamRunMode::Train(train_config.clone()),
+            train_config.clone(),
             device,
         )?;
 

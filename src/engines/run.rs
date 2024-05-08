@@ -1,8 +1,6 @@
 use {
-    super::ParamRunMode,
     crate::{
         agents::{
-            RunMode,
             Algorithm,
             OffPolicyAlgorithm,
         },
@@ -11,7 +9,9 @@ use {
             Sampleable,
             TensorConvertible,
         },
+        configs::TrainConfig,
     },
+    super::RunMode,
     anyhow::Result,
     candle_core::{
         Device,
@@ -33,7 +33,7 @@ use {
 pub fn loop_off_policy<Alg, Env, Obs, Act>(
     env: &mut Env,
     alg: &mut Alg,
-    run_mode: ParamRunMode,
+    config: TrainConfig,
     device: &Device,
 ) -> Result<(Vec<f64>, Vec<bool>)>
 where
@@ -50,12 +50,7 @@ where
     let mut successes = Vec::new();
     let mut rng = rand::thread_rng();
 
-    let max_episodes = match &run_mode {
-        ParamRunMode::Train(config) => config.max_episodes(),
-        ParamRunMode::Test(config) => config.max_episodes(),
-    };
-
-    for episode in 0..max_episodes {
+    for episode in 0..config.max_episodes() {
         let mut total_reward = 0.0;
         env.reset(rng.gen::<u64>())?;
 
@@ -63,15 +58,10 @@ where
             let state = &<Obs>::to_tensor(env.current_observation(), device)?;
 
             // select an action, or randomly sample one
-            let action = &match &run_mode {
-                ParamRunMode::Train(config) => {
-                    if steps_taken < config.initial_random_actions() {
-                        <Act>::to_tensor(<Act>::sample(&mut rng, &env.action_domain()), device)?
-                    } else {
-                        alg.actions(state, RunMode::Train)?
-                    }
-                },
-                ParamRunMode::Test(_) => alg.actions(state, RunMode::Test)?,
+            let action = &if steps_taken < config.initial_random_actions() {
+                <Act>::to_tensor(<Act>::sample(&mut rng, &env.action_domain()), device)?
+            } else {
+                alg.actions(state, config.run_mode())?
             };
 
             let step = env.step(<Act>::from_tensor_pp(action.clone()))?;
@@ -96,13 +86,10 @@ where
         warn!("episode {episode} with total reward of {total_reward}");
         mc_returns.push(total_reward);
 
-        match &run_mode {
-            ParamRunMode::Train(config) => {
-                for _ in 0..config.training_iterations() {
-                    alg.train()?;
-                }
-            },
-            ParamRunMode::Test(_) => (),
+        if let RunMode::Train = config.run_mode() {
+            for _ in 0..config.training_iterations() {
+                alg.train()?;
+            }
         }
     }
     Ok((mc_returns, successes))

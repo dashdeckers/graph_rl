@@ -4,11 +4,9 @@ use {
         loop_off_policy,
         ParamAlg,
         ParamEnv,
-        ParamRunMode,
     },
     crate::{
         agents::{
-            RunMode,
             Algorithm,
             OffPolicyAlgorithm,
             SaveableAlgorithm,
@@ -22,8 +20,8 @@ use {
         configs::{
             RenderableConfig,
             TrainConfig,
-            TestConfig,
         },
+        engines::RunMode,
     },
     anyhow::Result,
     tracing::warn,
@@ -75,7 +73,7 @@ where
     pub alg: Alg,
     pub env_config: Env::Config,
     pub alg_config: Alg::Config,
-    pub run_mode: ParamRunMode,
+    pub config: TrainConfig,
     pub device: Device,
 
     pub run_data: Vec<(RunMode, f64, bool)>,
@@ -147,7 +145,7 @@ where
     pub fn create(
         init_env: ParamEnv<Env, Obs, Act>,
         init_alg: ParamAlg<Alg>,
-        run_mode: ParamRunMode,
+        config: TrainConfig,
         load_model: Option<(String, String)>,
         device: Device,
     ) -> Self {
@@ -185,7 +183,7 @@ where
             alg,
             env_config,
             alg_config,
-            run_mode,
+            config,
             device,
 
             run_data: Vec::new(),
@@ -201,7 +199,7 @@ where
     pub fn open(
         init_env: ParamEnv<Env, Obs, Act>,
         init_alg: ParamAlg<Alg>,
-        run_mode: ParamRunMode,
+        config: TrainConfig,
         load_model: Option<(String, String)>,
         device: Device,
         size: f32,
@@ -215,7 +213,7 @@ where
             Box::new(|_| Box::new(Self::create(
                 init_env,
                 init_alg,
-                run_mode,
+                config,
                 load_model,
                 device,
             ))),
@@ -229,18 +227,13 @@ where
         } else {
             self.slowdown_ticker = self.slowdown_ms;
 
-            let mode = match &self.run_mode {
-                ParamRunMode::Train(_) => RunMode::Train,
-                ParamRunMode::Test(_) => RunMode::Test,
-            };
-
             match self.play_mode {
                 PlayMode::Pause => (),
                 PlayMode::Ticks => {
                     tick_off_policy(
                         &mut self.env,
                         &mut self.alg,
-                        mode,
+                        self.config.run_mode(),
                         &self.device,
                     )?;
                 }
@@ -248,21 +241,15 @@ where
                     let (mc_returns, successes) = loop_off_policy(
                         &mut self.env,
                         &mut self.alg,
-                        match &self.run_mode {
-                            ParamRunMode::Train(_) => ParamRunMode::Train(
-                                TrainConfig::new(
-                                    1,
-                                    0,
-                                    0,
-                                )
-                            ),
-                            ParamRunMode::Test(_) => ParamRunMode::Test(
-                                TestConfig::new(1)
-                            ),
-                        },
+                        TrainConfig::new(
+                            1,
+                            0,
+                            0,
+                            self.config.run_mode(),
+                        ),
                         &self.device,
                     )?;
-                    self.run_data.push((mode, mc_returns[0], successes[0]));
+                    self.run_data.push((self.config.run_mode(), mc_returns[0], successes[0]));
                 }
             }
         }
@@ -273,16 +260,11 @@ where
         let (mc_returns, successes) = loop_off_policy(
             &mut self.env,
             &mut self.alg,
-            self.run_mode.clone(),
+            self.config.clone(),
             &self.device,
         )?;
 
-        let (n, mode) = match &self.run_mode {
-            ParamRunMode::Test(config) => (config.max_episodes(), RunMode::Test),
-            ParamRunMode::Train(config) => (config.max_episodes(), RunMode::Train),
-        };
-
-        self.run_data.extend((0..n).map(|i| (mode, mc_returns[i], successes[i])));
+        self.run_data.extend((0..self.config.max_episodes()).map(|i| (self.config.run_mode(), mc_returns[i], successes[i])));
         Ok(())
     }
 
@@ -335,60 +317,17 @@ where
     ) {
         ui.heading("Settings");
 
-        match self.run_mode.clone() {
-            ParamRunMode::Test(mut config) => {
-                config.render_mutable(ui);
+        self.config.render_mutable(ui);
 
-                ui.horizontal(|ui| {
-                    if ui
-                        .add(Button::new("Run"))
-                        .clicked()
-                    {
-                        self.run_agent().unwrap();
-                        println!("Done!");
-                    };
-                    if ui
-                        .add(Button::new("Toggle Mode"))
-                        .clicked()
-                    {
-                        self.run_mode = ParamRunMode::Train(
-                            TrainConfig::new(
-                                config.max_episodes(),
-                                30,
-                                0,
-                            ),
-                        );
-                    } else {
-                        self.run_mode = ParamRunMode::Test(config);
-                    }
-                });
-            }
-            ParamRunMode::Train(mut config) => {
-                config.render_mutable(ui);
-
-                ui.horizontal(|ui| {
-                    if ui
-                        .add(Button::new("Run"))
-                        .clicked()
-                    {
-                        self.run_agent().unwrap();
-                        println!("Done!");
-                    };
-                    if ui
-                        .add(Button::new("Toggle Mode"))
-                        .clicked()
-                    {
-                        self.run_mode = ParamRunMode::Test(
-                            TestConfig::new(
-                                config.max_episodes(),
-                            ),
-                        );
-                    } else {
-                        self.run_mode = ParamRunMode::Train(config);
-                    }
-                });
-            }
-        }
+        ui.horizontal(|ui| {
+            if ui
+                .add(Button::new("Run"))
+                .clicked()
+            {
+                self.run_agent().unwrap();
+                println!("Done!");
+            };
+        });
 
         self.env_config.render_mutable(ui);
 
@@ -432,11 +371,8 @@ where
         };
 
         ui.separator();
-        let mode = match &self.run_mode {
-            ParamRunMode::Train(_) => "TrainMode",
-            ParamRunMode::Test(_) => "TestMode",
-        };
-        ui.label(format!("Watch Agent ({mode})"));
+        let mode = self.config.run_mode();
+        ui.label(format!("Watch Agent ({mode:?})"));
         ui.horizontal(|ui| {
             if ui.add(Button::new("Pause")).clicked() {
                 self.play_mode = PlayMode::Pause;

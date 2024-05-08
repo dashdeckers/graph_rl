@@ -65,6 +65,7 @@ where
     goal_obs: Option<Env::Observation>,
     last_waypoint: Option<Env::Observation>,
     try_counter: usize,
+    eps_counter: usize,
 
     dist_mode: DistanceMode,
     sgm_max_tries: usize,
@@ -206,6 +207,7 @@ where
             indices: HashMap::new(),
             plan: Vec::new(),
             try_counter: 0,
+            eps_counter: 0,
 
             goal_obs: None,
             last_waypoint: None,
@@ -274,6 +276,7 @@ where
             indices: HashMap::new(),
             plan: Vec::new(),
             try_counter: 0,
+            eps_counter: 0,
 
             goal_obs: None,
             last_waypoint: None,
@@ -294,6 +297,19 @@ where
         mode: RunMode,
     ) -> Result<Tensor> {
         let curr_obs = <Env::Observation>::from_tensor(state.clone());
+
+        // IF the goal has changed (we are in a new episode) AND we are in RunMode::Train
+        //      reconstruct the graph every 10 episodes
+
+        if let RunMode::Train = mode {
+            if self.goal_obs.is_some() && curr_obs.desired_goal() != self.goal_obs.as_ref().unwrap().desired_goal() {
+                self.eps_counter += 1;
+                if self.eps_counter % 10 == 0 {
+                    info!("Reconstructing graph");
+                    self.construct_graph();
+                }
+            }
+        }
 
         // IF the goal has changed OR we have no goal
         //      forget the plan

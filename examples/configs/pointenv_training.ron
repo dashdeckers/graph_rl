@@ -2,4 +2,5 @@
     max_episodes: 300,
     training_iterations: 200,
     initial_random_actions: 0,
+    run_mode: Train,
 )

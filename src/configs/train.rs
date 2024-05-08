@@ -1,4 +1,5 @@
 use {
+    crate::engines::RunMode,
     super::RenderableConfig,
     egui::{
         Ui,
@@ -21,6 +22,8 @@ pub struct TrainConfig {
     training_iterations: usize,
     // Number of random actions to take at very beginning of training.
     initial_random_actions: usize,
+    // The RunMode
+    run_mode: RunMode,
 }
 impl Default for TrainConfig {
     fn default() -> Self {
@@ -28,6 +31,7 @@ impl Default for TrainConfig {
             max_episodes: 500,
             training_iterations: 30,
             initial_random_actions: 500,
+            run_mode: RunMode::Train,
         }
     }
 }
@@ -36,11 +40,13 @@ impl TrainConfig {
         max_episodes: usize,
         training_iterations: usize,
         initial_random_actions: usize,
+        run_mode: RunMode,
     ) -> Self {
         Self {
             max_episodes,
             training_iterations,
             initial_random_actions,
+            run_mode,
         }
     }
 }
@@ -55,6 +61,9 @@ impl TrainConfig {
     pub fn initial_random_actions(&self) -> usize {
         self.initial_random_actions
     }
+    pub fn run_mode(&self) -> RunMode {
+        self.run_mode.clone()
+    }
     pub fn set_max_episodes(&mut self, max_episodes: usize) {
         self.max_episodes = max_episodes;
     }
@@ -63,6 +72,9 @@ impl TrainConfig {
     }
     pub fn set_initial_random_actions(&mut self, initial_random_actions: usize) {
         self.initial_random_actions = initial_random_actions;
+    }
+    pub fn set_run_mode(&mut self, run_mode: RunMode) {
+        self.run_mode = run_mode;
     }
 }
 
@@ -85,6 +97,7 @@ impl RenderableConfig for TrainConfig {
             Slider::new(&mut self.initial_random_actions, 0..=1000)
                 .text("Initial Random Actions")
         );
+        ui.radio_value(&mut self.run_mode, RunMode::Train, "Train");
     }
 
     fn render_immutable(
@@ -94,11 +107,13 @@ impl RenderableConfig for TrainConfig {
         let max_episodes = self.max_episodes;
         let training_iterations = self.training_iterations;
         let initial_random_actions = self.initial_random_actions;
+        let run_mode = self.run_mode.clone();
 
         ui.separator();
         ui.label("Run Options (Train)");
         ui.add(Label::new(format!("Max Episodes: {max_episodes}")));
         ui.add(Label::new(format!("Training Iterations: {training_iterations}")));
         ui.add(Label::new(format!("Initial Random Actions: {initial_random_actions}")));
+        ui.add(Label::new(format!("Run Mode: {run_mode:?}")));
     }
 }

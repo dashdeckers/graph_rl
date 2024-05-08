@@ -37,14 +37,13 @@ pub use gui_offpolicy::OffPolicyGUI;
 pub use gui_hgb::HgbGUI;
 
 use {
-    serde::Serialize,
+    serde::{
+        Serialize,
+        Deserialize,
+    },
     crate::{
         agents::Algorithm,
         envs::Environment,
-        configs::{
-            TrainConfig,
-            TestConfig,
-        },
     }
 };
 
@@ -66,10 +65,10 @@ where
     AsConfig(Env::Config),
 }
 
-#[derive(Clone, Serialize)]
-pub enum ParamRunMode {
-    Train(TrainConfig),
-    Test(TestConfig),
+#[derive(Clone, Debug, PartialEq, Eq, Serialize, Deserialize)]
+pub enum RunMode {
+    Train,
+    Test,
 }
 
 

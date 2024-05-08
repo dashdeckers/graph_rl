@@ -1,10 +1,8 @@
 mod train;
-mod test;
 mod ddpg;
 mod ddpg_hgb;
 
 pub use train::TrainConfig;
-pub use test::TestConfig;
 pub use ddpg::DDPG_Config;
 pub use ddpg_hgb::DDPG_HGB_Config;
 

@@ -7,6 +7,7 @@ pub use ddpg_hgb::DDPG_HGB;
 
 use {
     crate::{
+        engines::RunMode,
         envs::Environment,
         components::ReplayBuffer,
     },
@@ -20,28 +21,9 @@ use {
         Result,
         Device,
     },
-    std::{
-        fmt::Display,
-        path::Path,
-    },
+    std::path::Path,
 };
 
-
-/// The execution mode of an agent is either training or testing.
-#[derive(Clone, Copy, PartialEq, Eq)]
-pub enum RunMode {
-    Train,
-    Test,
-}
-
-impl Display for RunMode {
-    fn fmt(&self, f: &mut std::fmt::Formatter<'_>) -> std::fmt::Result {
-        match self {
-            RunMode::Train => write!(f, "Train"),
-            RunMode::Test => write!(f, "Test"),
-        }
-    }
-}
 
 pub trait SaveableAlgorithm: Algorithm {
     fn save<P: AsRef<Path> + ?Sized>(

@@ -1,7 +1,6 @@
 use {
     crate::{
         agents::{
-            RunMode,
             Algorithm,
             OffPolicyAlgorithm,
         },
@@ -10,6 +9,7 @@ use {
             TensorConvertible,
         },
     },
+    super::RunMode,
     anyhow::Result,
     tracing::warn,
     candle_core::{
