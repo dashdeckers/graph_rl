@@ -2,7 +2,7 @@
     width: 10.0,
     height: 10.0,
     walls: None,
-    timelimit: 3,
+    timelimit: 5,
     step_radius: 1.0,
     term_radius: 0.5,
     spawn_radius_max: Some(1.5),

@@ -106,7 +106,7 @@ cargo run `
 ```
 ```bash
 REPS=50; \
-ALG="ddpg_hgb"; \
+ALG="ddpg"; \
 ENV="pointenv"; \
 ENV_V1="empty"; \
 ENV_V2="mid"; \
@@ -177,10 +177,8 @@ python `
 python \
     "./scripts/viz_data.py" \
     -d \
-        "./data/ddpg-pointenv-empty" \
-        "./data/ddpg-pointenv-oneline" \
-        "./data/sgm-pointenv-empty" \
-        "./data/sgm-pointenv-oneline" \
+        "./data/ddpg_hgb_pointenv_empty_mid" \
+        "./data/ddpg_pointenv_empty_mid" \
     -o "plot.png" \
     -t "DDPG with and without SGM on various PointEnv difficulties"
 ```
