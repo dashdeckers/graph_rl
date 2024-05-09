@@ -15,9 +15,9 @@ otherwise terminate when the connection is dropped).
 
 ```powershell
 $REPS=50; `
-$ALG="ddpg"; `
+$ALG="ddpg_hgb"; `
 $ENV="pointenv"; `
-$ENV_V1="empty"; `
+$ENV_V1="hooks"; `
 $ENV_V2="mid"; `
 $EXAMPLE="${ENV}_${ALG}"; `
 $NAME="${ALG}_${ENV}_${ENV_V1}_${ENV_V2}"; `
@@ -38,7 +38,6 @@ cargo run `
     --train-config ".\examples\configs\$TRAIN_CONFIG" `
     --env-config ".\examples\configs\env_configs\$ENV_CONFIG" `
     --alg-config ".\examples\configs\$ALG_CONFIG" `
-    `
     --n-repetitions $REPS `
 ```
 ```powershell
@@ -72,7 +71,6 @@ cargo run \
     --train-config "./examples/configs/${TRAIN_CONFIG}" \
     --env-config "./examples/configs/env_configs/${ENV_CONFIG}" \
     --alg-config "./examples/configs/${ALG_CONFIG}" \
-    \
     --device cuda \
     --n-repetitions ${REPS} \
     &
