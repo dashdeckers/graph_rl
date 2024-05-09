@@ -53,9 +53,9 @@ pub fn run_experiment_off_policy<Alg, Env, Obs, Act>(
     init_env: ParamEnv<Env, Obs, Act>,
     init_alg: ParamAlg<Alg>,
     train_config: TrainConfig,
+    load_model: Option<(String, String)>,
     pretrain_train_config: Option<TrainConfig>,
     pretrain_env_config: Option<Env::Config>,
-    load_model: Option<(String, String)>,
     device: &Device,
 ) -> Result<()>
 where

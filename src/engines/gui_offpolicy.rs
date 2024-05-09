@@ -147,6 +147,8 @@ where
         init_alg: ParamAlg<Alg>,
         config: TrainConfig,
         load_model: Option<(String, String)>,
+        pretrain_train_config: Option<TrainConfig>,
+        pretrain_env_config: Option<Env::Config>,
         device: Device,
     ) -> Self {
         let (env, env_config) = match init_env {
@@ -170,12 +172,40 @@ where
             },
         };
 
+        // Maybe load model weights
+
         if let Some((model_path, model_name)) = load_model {
             warn!("Loading model weights from {model_path} with name {model_name}");
             alg.load(
                 &Path::new(&model_path),
                 &model_name,
             ).unwrap();
+        }
+
+
+        // Maybe pretrain the Agent
+
+        if let Some(pretrain_train_config) = pretrain_train_config.clone() {
+
+            let (pretrain_mc_returns, _) = loop_off_policy(
+                &mut match pretrain_env_config {
+                    Some(ref env_config) => *Env::new(env_config.clone()).unwrap(),
+                    None => env.clone(),
+                },
+                &mut alg,
+                pretrain_train_config,
+                &device,
+            ).unwrap();
+
+            warn!(
+                "Pretrained with Avg return: \n{:#?}",
+                pretrain_mc_returns.iter().sum::<f64>() / pretrain_mc_returns.len() as f64,
+            );
+
+            warn!(
+                "Size of Replay Buffer: {:#?}",
+                alg.replay_buffer().size(),
+            )
         }
 
         Self {
@@ -196,11 +226,14 @@ where
         }
     }
 
+    #[allow(clippy::too_many_arguments)]
     pub fn open(
         init_env: ParamEnv<Env, Obs, Act>,
         init_alg: ParamAlg<Alg>,
         config: TrainConfig,
         load_model: Option<(String, String)>,
+        pretrain_train_config: Option<TrainConfig>,
+        pretrain_env_config: Option<Env::Config>,
         device: Device,
         size: f32,
     ) {
@@ -215,6 +248,8 @@ where
                 init_alg,
                 config,
                 load_model,
+                pretrain_train_config,
+                pretrain_env_config,
                 device,
             ))),
         )));

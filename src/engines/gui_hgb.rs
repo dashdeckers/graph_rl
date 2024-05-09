@@ -133,11 +133,14 @@ where
     Obs: Clone + TensorConvertible + 'static,
     Act: Clone + TensorConvertible + Sampleable + 'static,
 {
+    #[allow(clippy::too_many_arguments)]
     pub fn open(
         init_env: ParamEnv<Env, Obs, Act>,
         init_alg: ParamAlg<Alg>,
         config: TrainConfig,
         load_model: Option<(String, String)>,
+        pretrain_train_config: Option<TrainConfig>,
+        pretrain_env_config: Option<Env::Config>,
         device: Device,
         size: f32,
     ) {
@@ -153,6 +156,8 @@ where
                     init_alg,
                     config,
                     load_model,
+                    pretrain_train_config,
+                    pretrain_env_config,
                     device,
                 ),
                 render_graph: false,
