@@ -14,6 +14,7 @@
     ),
     buffer_size: 10_000,
     distance_mode: True,
+    sgm_reconstruct_freq: 50,
     sgm_max_tries: 5,
     sgm_close_enough: 0.5,
     sgm_waypoint_reward: 0.0,

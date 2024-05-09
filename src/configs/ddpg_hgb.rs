@@ -27,6 +27,7 @@ pub struct DDPG_HGB_Config {
     // Whether to use true or estimated distances
     pub distance_mode: DistanceMode,
     // Sparse Graphical Memory parameters
+    pub sgm_reconstruct_freq: usize,
     pub sgm_max_tries: usize,
     pub sgm_close_enough: f64,
     pub sgm_waypoint_reward: f64,
@@ -39,6 +40,7 @@ impl Default for DDPG_HGB_Config {
             ddpg: DDPG_Config::default(),
             buffer_size: 10_000,
             distance_mode: DistanceMode::True,
+            sgm_reconstruct_freq: 50,
             sgm_max_tries: 5,
             sgm_close_enough: 0.5,
             sgm_waypoint_reward: 1.0,
@@ -53,6 +55,7 @@ impl DDPG_HGB_Config {
         ddpg: DDPG_Config,
         buffer_size: usize,
         distance_mode: DistanceMode,
+        sgm_reconstruct_freq: usize,
         sgm_max_tries: usize,
         sgm_close_enough: f64,
         sgm_waypoint_reward: f64,
@@ -63,6 +66,7 @@ impl DDPG_HGB_Config {
             ddpg,
             buffer_size,
             distance_mode,
+            sgm_reconstruct_freq,
             sgm_max_tries,
             sgm_close_enough,
             sgm_waypoint_reward,
@@ -79,6 +83,7 @@ impl RenderableConfig for DDPG_HGB_Config {
     ) {
         self.ddpg.render_immutable(ui);
 
+        let sgm_reconstruct_freq = self.sgm_reconstruct_freq;
         let sgm_max_tries = self.sgm_max_tries;
         let close_enough = self.sgm_close_enough;
         let maxdist = self.sgm_maxdist;
@@ -87,6 +92,7 @@ impl RenderableConfig for DDPG_HGB_Config {
 
         ui.separator();
         ui.label("SGM Options");
+        ui.add(Label::new(format!("Reconstruct freq: {sgm_reconstruct_freq}")));
         ui.add(Label::new(format!("Max tries: {sgm_max_tries}")));
         ui.add(Label::new(format!("Close enough: {close_enough:#.2}")));
         ui.add(Label::new(format!("Max distance: {maxdist:#.2}")));
@@ -102,6 +108,10 @@ impl RenderableConfig for DDPG_HGB_Config {
 
         ui.separator();
         ui.label("SGM Options");
+        ui.add(
+            Slider::new(&mut self.sgm_reconstruct_freq, 0..=100)
+                .text("Reconstruct freq"),
+        );
         ui.add(
             Slider::new(&mut self.sgm_max_tries, 1..=50)
                 .text("Max tries"),

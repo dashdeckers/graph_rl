@@ -302,9 +302,9 @@ where
         //      reconstruct the graph every 10 episodes
 
         if let RunMode::Train = mode {
-            if self.goal_obs.is_some() && curr_obs.desired_goal() != self.goal_obs.as_ref().unwrap().desired_goal() {
+            if self.config.sgm_reconstruct_freq > 0 && self.goal_obs.is_some() && curr_obs.desired_goal() != self.goal_obs.as_ref().unwrap().desired_goal() {
                 self.eps_counter += 1;
-                if self.eps_counter % 10 == 0 {
+                if self.eps_counter % self.config.sgm_reconstruct_freq == 0 {
                     info!("Reconstructing graph");
                     self.construct_graph();
                 }
