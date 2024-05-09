@@ -39,6 +39,7 @@ cargo run `
     --train-config ".\examples\configs\$TRAIN_CONFIG" `
     --env-config ".\examples\configs\env_configs\$ENV_CONFIG" `
     --alg-config ".\examples\configs\$ALG_CONFIG" `
+    --load-model ".\data" "decent-ddpg-pointenv" `
     `
     --gui
 ```

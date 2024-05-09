@@ -97,7 +97,10 @@ impl RenderableConfig for TrainConfig {
             Slider::new(&mut self.initial_random_actions, 0..=1000)
                 .text("Initial Random Actions")
         );
-        ui.radio_value(&mut self.run_mode, RunMode::Train, "Train");
+        ui.horizontal(|ui| {
+            ui.radio_value(&mut self.run_mode, RunMode::Train, "Train");
+            ui.radio_value(&mut self.run_mode, RunMode::Test, "Test");
+        });
     }
 
     fn render_immutable(
