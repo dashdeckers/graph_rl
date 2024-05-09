@@ -11,70 +11,6 @@ additionally run with the `nohup` command to run in the background
 otherwise terminate when the connection is dropped).
 
 
-
-## GUI
-
-```powershell
-$REPS=50; `
-$ALG="ddpg_hgb"; `
-$ENV="pointenv"; `
-$ENV_V1="empty"; `
-$ENV_V2="mid"; `
-$EXAMPLE="${ENV}_${ALG}"; `
-$NAME="${ALG}_${ENV}_${ENV_V1}_${ENV_V2}"; `
-$ALG_CONFIG="${ALG}.ron"; `
-$TRAIN_CONFIG="${ENV}_training.ron"; `
-$ENV_CONFIG="${ENV}_${ENV_V1}_${ENV_V2}.ron"; `
-$PRETRAIN_TRAIN_CONFIG="${ENV}_pretraining.ron"; `
-$PRETRAIN_ENV_CONFIG="${ENV}_pretrain.ron"; `
-$env:RUST_BACKTRACE=1; `
-cargo run `
-    --release `
-    --example $EXAMPLE `
-    -- `
-    --log warn `
-    --name gui `
-    --pretrain-train-config ".\examples\configs\$PRETRAIN_TRAIN_CONFIG" `
-    --pretrain-env-config ".\examples\configs\env_configs\$PRETRAIN_ENV_CONFIG" `
-    --train-config ".\examples\configs\$TRAIN_CONFIG" `
-    --env-config ".\examples\configs\env_configs\$ENV_CONFIG" `
-    --alg-config ".\examples\configs\$ALG_CONFIG" `
-    --load-model ".\data" "decent-ddpg-pointenv" `
-    `
-    --gui
-```
-```bash
-REPS=50; \
-ALG="ddpg"; \
-ENV="pointenv"; \
-ENV_V1="empty"; \
-ENV_V2="mid"; \
-EXAMPLE="${ENV}_${ALG}"; \
-NAME="${ALG}_${ENV}_${ENV_V1}_${ENV_V2}"; \
-ALG_CONFIG="${ALG}.ron"; \
-TRAIN_CONFIG="${ENV}_training.ron"; \
-ENV_CONFIG="${ENV}_${ENV_V1}_${ENV_V2}.ron"; \
-PRETRAIN_TRAIN_CONFIG="${ENV}_pretraining.ron"; \
-PRETRAIN_ENV_CONFIG="${ENV}_pretrain.ron"; \
-RUST_BACKTRACE=1; \
-cargo run \
-    --release \
-    --example ${EXAMPLE} \
-    -- \
-    --log warn \
-    --name gui \
-    --pretrain-train-config "./examples/configs/${PRETRAIN_TRAIN_CONFIG}" \
-    --pretrain-env-config "./examples/configs/env_configs/${PRETRAIN_ENV_CONFIG}" \
-    --train-config "./examples/configs/${TRAIN_CONFIG}" \
-    --env-config "./examples/configs/env_configs/${ENV_CONFIG}" \
-    --alg-config "./examples/configs/${ALG_CONFIG}" \
-    \
-    --load-model "./data" "decent-ddpg-pointenv" \
-    --gui
-```
-
-
-
 ## DDPG / H-DDPG / HGB-DDPG on PointEnv-(Empty, OneLine, Hook)-(Close, Mid, Far)
 
 ```powershell
@@ -103,7 +39,12 @@ cargo run `
     --env-config ".\examples\configs\env_configs\$ENV_CONFIG" `
     --alg-config ".\examples\configs\$ALG_CONFIG" `
     `
-    --n-repetitions $REPS
+    --n-repetitions $REPS `
+```
+```powershell
+# GUI commands
+    --load-model ".\data" "decent-ddpg-pointenv" `
+    --gui `
 ```
 ```bash
 REPS=50; \
@@ -136,7 +77,11 @@ cargo run \
     --n-repetitions ${REPS} \
     &
 ```
-
+```bash
+# GUI commands
+    --load-model "./data" "decent-ddpg-pointenv" \
+    --gui
+```
 
 
 

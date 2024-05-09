@@ -38,7 +38,7 @@ fn main() -> Result<()> {
     let args = Args::parse();
 
     setup_logging(
-        &args.name,
+        if !args.gui {&args.name} else {&"gui"},
         match args.log {
             ArgLoglevel::Error => Some(Level::ERROR),
             ArgLoglevel::Warn => Some(Level::WARN),
