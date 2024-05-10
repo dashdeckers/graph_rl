@@ -68,6 +68,7 @@ where
     eps_counter: usize,
 
     dist_mode: DistanceMode,
+    sgm_reconstruct_freq: usize,
     sgm_max_tries: usize,
     sgm_close_enough: f64,
     sgm_waypoint_reward: f64,
@@ -212,6 +213,7 @@ where
             goal_obs: None,
             last_waypoint: None,
             dist_mode: config.distance_mode,
+            sgm_reconstruct_freq: config.sgm_reconstruct_freq,
             sgm_max_tries: config.sgm_max_tries,
             sgm_close_enough: config.sgm_close_enough,
             sgm_waypoint_reward: config.sgm_waypoint_reward,
@@ -242,6 +244,7 @@ where
         config: &Self::Config,
     ) {
         self.dist_mode = config.distance_mode;
+        self.sgm_reconstruct_freq = config.sgm_reconstruct_freq;
         self.sgm_max_tries = config.sgm_max_tries;
         self.sgm_close_enough = config.sgm_close_enough;
         self.sgm_waypoint_reward = config.sgm_waypoint_reward;
@@ -249,6 +252,7 @@ where
         self.sgm_tau = config.sgm_tau;
 
         self.config.distance_mode = config.distance_mode;
+        self.config.sgm_reconstruct_freq = config.sgm_reconstruct_freq;
         self.config.buffer_size = config.buffer_size;
         self.config.sgm_max_tries = config.sgm_max_tries;
         self.config.sgm_close_enough = config.sgm_close_enough;
@@ -281,6 +285,7 @@ where
             goal_obs: None,
             last_waypoint: None,
             dist_mode: config.distance_mode,
+            sgm_reconstruct_freq: config.sgm_reconstruct_freq,
             sgm_max_tries: config.sgm_max_tries,
             sgm_close_enough: config.sgm_close_enough,
             sgm_waypoint_reward: config.sgm_waypoint_reward,
@@ -302,9 +307,9 @@ where
         //      reconstruct the graph every 10 episodes
 
         if let RunMode::Train = mode {
-            if self.config.sgm_reconstruct_freq > 0 && self.goal_obs.is_some() && curr_obs.desired_goal() != self.goal_obs.as_ref().unwrap().desired_goal() {
+            if self.sgm_reconstruct_freq > 0 && self.goal_obs.is_some() && curr_obs.desired_goal() != self.goal_obs.as_ref().unwrap().desired_goal() {
                 self.eps_counter += 1;
-                if self.eps_counter % self.config.sgm_reconstruct_freq == 0 {
+                if self.eps_counter % self.sgm_reconstruct_freq == 0 {
                     info!("Reconstructing graph");
                     self.construct_graph();
                 }

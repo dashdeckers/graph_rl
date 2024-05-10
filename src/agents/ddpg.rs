@@ -420,7 +420,7 @@ impl Algorithm for DDPG<'_> {
     ) {
         self.gamma = config.gamma;
         self.tau = config.tau;
-        self.new_buffer(config.replay_buffer_capacity);
+        self.set_buffer_capacity(config.replay_buffer_capacity);
         self.batch_size = config.training_batch_size;
 
         self.config.gamma = config.gamma;
