@@ -285,6 +285,7 @@ pub struct DDPG<'a> {
 
     size_state: usize,
     size_action: usize,
+    device: Device,
     config: DDPG_Config,
 }
 
@@ -364,6 +365,7 @@ impl DDPG<'_> {
             ou_noise,
             size_state,
             size_action,
+            device: device.clone(),
             config: DDPG_Config {
                 hidden_1_size,
                 hidden_2_size,
@@ -427,6 +429,19 @@ impl Algorithm for DDPG<'_> {
         self.config.tau = config.tau;
         self.config.replay_buffer_capacity = config.replay_buffer_capacity;
         self.config.training_batch_size = config.training_batch_size;
+
+        if let Ok(noise) = OuNoise::new(
+            config.ou_theta,
+            config.ou_kappa,
+            config.ou_sigma,
+            self.size_action,
+            &self.device,
+        ) {
+            self.ou_noise = noise;
+            self.config.ou_theta = config.ou_theta;
+            self.config.ou_kappa = config.ou_kappa;
+            self.config.ou_sigma = config.ou_sigma;
+        }
     }
 
     fn from_config(

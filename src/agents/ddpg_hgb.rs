@@ -258,6 +258,7 @@ where
         self.config.sgm_tau = config.sgm_tau;
 
         self.ddpg.override_config(&config.ddpg);
+        self.config.ddpg = self.ddpg.config().clone();
     }
 
     fn from_config(
