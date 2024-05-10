@@ -22,8 +22,6 @@ use {
 pub struct DDPG_HGB_Config {
     // The base DDPG parameters
     pub ddpg: DDPG_Config,
-    // Overwritten Replay Buffer size
-    pub buffer_size: usize,
     // Whether to use true or estimated distances
     pub distance_mode: DistanceMode,
     // Sparse Graphical Memory parameters
@@ -38,7 +36,6 @@ impl Default for DDPG_HGB_Config {
     fn default() -> Self {
         Self {
             ddpg: DDPG_Config::default(),
-            buffer_size: 10_000,
             distance_mode: DistanceMode::True,
             sgm_reconstruct_freq: 50,
             sgm_max_tries: 5,
@@ -53,7 +50,6 @@ impl DDPG_HGB_Config {
     #[allow(clippy::too_many_arguments)]
     pub fn new(
         ddpg: DDPG_Config,
-        buffer_size: usize,
         distance_mode: DistanceMode,
         sgm_reconstruct_freq: usize,
         sgm_max_tries: usize,
@@ -64,7 +60,6 @@ impl DDPG_HGB_Config {
     ) -> Self {
         Self {
             ddpg,
-            buffer_size,
             distance_mode,
             sgm_reconstruct_freq,
             sgm_max_tries,
@@ -83,21 +78,23 @@ impl RenderableConfig for DDPG_HGB_Config {
     ) {
         self.ddpg.render_immutable(ui);
 
+        let dist_mode = self.distance_mode;
         let sgm_reconstruct_freq = self.sgm_reconstruct_freq;
         let sgm_max_tries = self.sgm_max_tries;
         let close_enough = self.sgm_close_enough;
+        let waypoint_reward = self.sgm_waypoint_reward;
         let maxdist = self.sgm_maxdist;
         let tau = self.sgm_tau;
-        let dist_mode = self.distance_mode;
 
         ui.separator();
         ui.label("SGM Options");
+        ui.add(Label::new(format!("Distance mode: {dist_mode}")));
         ui.add(Label::new(format!("Reconstruct freq: {sgm_reconstruct_freq}")));
         ui.add(Label::new(format!("Max tries: {sgm_max_tries}")));
         ui.add(Label::new(format!("Close enough: {close_enough:#.2}")));
+        ui.add(Label::new(format!("Waypoint reward: {waypoint_reward:#.2}")));
         ui.add(Label::new(format!("Max distance: {maxdist:#.2}")));
         ui.add(Label::new(format!("Tau: {tau:#.2}")));
-        ui.add(Label::new(format!("Distance mode: {dist_mode}")));
     }
 
     fn render_mutable(
@@ -108,6 +105,16 @@ impl RenderableConfig for DDPG_HGB_Config {
 
         ui.separator();
         ui.label("SGM Options");
+        let distance_mode = self.distance_mode;
+        if ui
+            .add(Button::new(format!("Toggle DistMode ({distance_mode})")))
+            .clicked()
+        {
+            self.distance_mode = match distance_mode {
+                DistanceMode::True => DistanceMode::Estimated,
+                DistanceMode::Estimated => DistanceMode::True,
+            };
+        };
         ui.add(
             Slider::new(&mut self.sgm_reconstruct_freq, 0..=100)
                 .text("Reconstruct freq"),
@@ -122,6 +129,11 @@ impl RenderableConfig for DDPG_HGB_Config {
                 .text("Close enough"),
         );
         ui.add(
+            Slider::new(&mut self.sgm_waypoint_reward, 0.0..=10.0)
+                .step_by(0.1)
+                .text("Waypoint reward"),
+        );
+        ui.add(
             Slider::new(&mut self.sgm_maxdist, 0.0..=1.0)
                 .step_by(0.01)
                 .text("Max distance"),
@@ -132,15 +144,5 @@ impl RenderableConfig for DDPG_HGB_Config {
                 .text("Tau"),
         );
 
-        let distance_mode = self.distance_mode;
-        if ui
-            .add(Button::new(format!("Toggle DistMode ({distance_mode})")))
-            .clicked()
-        {
-            self.distance_mode = match distance_mode {
-                DistanceMode::True => DistanceMode::Estimated,
-                DistanceMode::Estimated => DistanceMode::True,
-            };
-        };
     }
 }

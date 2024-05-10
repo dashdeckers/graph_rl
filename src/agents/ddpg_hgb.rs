@@ -200,18 +200,18 @@ where
         config: &DDPG_HGB_Config,
         ddpg: DDPG<'a>,
     ) -> Result<Box<Self>> {
-        let mut agent = Self {
+        Ok(Box::new(Self {
             ddpg,
             device: device.clone(),
 
             sgm: StableGraph::default(),
             indices: HashMap::new(),
             plan: Vec::new(),
+            goal_obs: None,
+            last_waypoint: None,
             try_counter: 0,
             eps_counter: 0,
 
-            goal_obs: None,
-            last_waypoint: None,
             dist_mode: config.distance_mode,
             sgm_reconstruct_freq: config.sgm_reconstruct_freq,
             sgm_max_tries: config.sgm_max_tries,
@@ -221,9 +221,7 @@ where
             sgm_tau: config.sgm_tau,
 
             config: config.clone(),
-        };
-        agent.new_buffer(config.buffer_size);
-        Ok(Box::new(agent))
+        }))
     }
 }
 
@@ -253,14 +251,13 @@ where
 
         self.config.distance_mode = config.distance_mode;
         self.config.sgm_reconstruct_freq = config.sgm_reconstruct_freq;
-        self.config.buffer_size = config.buffer_size;
         self.config.sgm_max_tries = config.sgm_max_tries;
         self.config.sgm_close_enough = config.sgm_close_enough;
         self.config.sgm_waypoint_reward = config.sgm_waypoint_reward;
         self.config.sgm_maxdist = config.sgm_maxdist;
         self.config.sgm_tau = config.sgm_tau;
 
-        self.ddpg.set_buffer_capacity(config.buffer_size);
+        self.ddpg.override_config(&config.ddpg);
     }
 
     fn from_config(
@@ -269,11 +266,8 @@ where
         size_state: usize,
         size_action: usize,
     ) -> Result<Box<Self>> {
-        let mut ddpg = DDPG::from_config(device, &config.ddpg, size_state, size_action)?;
-        ddpg.new_buffer(config.buffer_size);
-
         Ok(Box::new(Self {
-            ddpg: *ddpg,
+            ddpg: *DDPG::from_config(device, &config.ddpg, size_state, size_action)?,
             device: device.clone(),
 
             sgm: StableGraph::default(),
@@ -284,6 +278,7 @@ where
 
             goal_obs: None,
             last_waypoint: None,
+
             dist_mode: config.distance_mode,
             sgm_reconstruct_freq: config.sgm_reconstruct_freq,
             sgm_max_tries: config.sgm_max_tries,
