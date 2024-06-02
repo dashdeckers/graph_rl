@@ -82,5 +82,5 @@ pub trait HgbAlgorithm<Env: Environment>: Algorithm {
     fn graph(&self) -> &StableGraph<Env::Observation, OrderedFloat<f64>, Directed>;
     fn clear_graph(&mut self);
     fn construct_graph(&mut self);
-    // fn set_from_config(&mut self, config: &Self::Config);
+    fn replenish_graph(&mut self);
 }
