@@ -47,12 +47,12 @@ cargo run `
 ```
 ```bash
 REPS=50; \
-ALG="ddpg"; \
+ALG="ddpg_hgb"; \
 ENV="pointenv"; \
-ENV_V1="empty"; \
+ENV_V1="hooks"; \
 ENV_V2="far"; \
 EXAMPLE="${ENV}_${ALG}"; \
-NAME="${ALG}_${ENV}_${ENV_V1}_${ENV_V2}"; \
+NAME="${ALG}_${ENV}_${ENV_V1}_${ENV_V2}-replenish-100-loaded-model"; \
 ALG_CONFIG="${ALG}.ron"; \
 TRAIN_CONFIG="${ENV}_training.ron"; \
 ENV_CONFIG="${ENV}_${ENV_V1}_${ENV_V2}.ron"; \
@@ -73,12 +73,13 @@ cargo run \
     --alg-config "./examples/configs/${ALG_CONFIG}" \
     --device cuda \
     --n-repetitions ${REPS} \
+    --load-model "./data" "decent-ddpg-pointenv" \
     &
 ```
 ```bash
 # GUI commands
-    --load-model "./data" "decent-ddpg-pointenv" \
     --gui
+    --load-model "./data" "decent-ddpg-pointenv" \
 ```
 
 
@@ -87,24 +88,13 @@ cargo run \
 
 # Plot
 
-```powershell
-python `
-    ".\scripts\viz_data.py" `
-    -d `
-        ".\data\ddpg-pointenv-empty\" `
-        ".\data\ddpg-pointenv-oneline\" `
-        ".\data\sgm-pointenv-empty\" `
-        ".\data\sgm-pointenv-oneline\" `
-    -o "plot.png" `
-    -t "DDPG with and without SGM on various PointEnv difficulties"
-```
 ```bash
-NAME="plot_3"; \
-TITLE="H-DDPG vs HGB-DDPG on various PointEnv difficulties"; \
+NAME="plot_1"; \
+TITLE="H-DDPG vs HGB-DDPG on PointEnv-Hooks-far"; \
 declare -a files=(); \
-declare -a algs=("ddpg" "ddpg_hgb"); \
+declare -a algs=("ddpg_hgb ddpg"); \
 declare -a envs=("pointenv"); \
-declare -a env_v1s=("oneline"); \
+declare -a env_v1s=("hooks"); \
 declare -a env_v2s=("far"); \
 for alg in "${algs[@]}"; do \
     for env in "${envs[@]}"; do \
@@ -119,8 +109,10 @@ python \
     "./scripts/viz_data.py" \
     -d "${files[@]}" \
     -o "${NAME}.png" \
-    -t "${TITLE}"
+    -t "${TITLE}" \
+    -s
 ```
+
 
 
 
