@@ -85,6 +85,7 @@ plt.ylabel("Total reward" if not args.successes else "Success rate")
 plt.grid()
 plt.legend(loc="lower right")
 plt.title(f"Learning Curves for {args.title}")
+plt.tight_layout()
 plt.savefig(root_path / args.output)
 
 print("Success")
