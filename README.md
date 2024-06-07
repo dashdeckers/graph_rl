@@ -42,7 +42,7 @@ cargo run `
 ```
 ```powershell
 # GUI commands
-    --load-model ".\data" "decent-ddpg-pointenv" `
+    --load-model ".\data" "decent-ddpg-$ENV" `
     --gui `
 ```
 ```bash
@@ -78,7 +78,7 @@ cargo run \
 ```bash
 # GUI commands
     --gui
-    --load-model "./data" "decent-ddpg-pointenv" \
+    --load-model "./data" "decent-ddpg-${ENV}" \
 ```
 
 
