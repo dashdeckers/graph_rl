@@ -22,7 +22,6 @@ use {
         },
         Directed,
     },
-    tracing::info,
     serde::{
         Serialize,
         Deserialize,
@@ -58,22 +57,53 @@ pub fn dot<S: Debug>(graph: &StableGraph<S, OrderedFloat<f64>, Directed>) -> Str
     format!("{:?}", Dot::new(graph)).to_string()
 }
 
-/// Returns the edges to add to the graph if s1 is TWC-consistent.
+/// Get edges between candidate node and other nodes.
 #[allow(clippy::type_complexity)]
-pub fn test_adding_node<S, D>(
+pub fn get_edges<S, D>(
     graph: &StableGraph<S, OrderedFloat<f64>, Directed>,
     indices: &HashMap<S, NodeIndex>,
     s1: &S,
     d: D,
     maxdist: f64,
-    tau: f64,
-) -> Option<(Vec<(NodeIndex, OrderedFloat<f64>)>, Vec<(NodeIndex, OrderedFloat<f64>)>)>
+) -> (Vec<(NodeIndex, OrderedFloat<f64>)>, Vec<(NodeIndex, OrderedFloat<f64>)>)
 where
-    S: Clone + Eq + Hash + TensorConvertible,
+    S: Clone + Eq + Hash,
+    D: Fn(&S, &S) -> f64,
+{
+    let mut edges_from: Vec<(NodeIndex, OrderedFloat<f64>)> = Vec::new();
+    let mut edges_to: Vec<(NodeIndex, OrderedFloat<f64>)> = Vec::new();
+
+    for s2 in graph.node_weights() {
+        // no self edges
+        if s1 == s2 {
+            continue;
+        }
+
+        let d_out = d(s1, s2);
+        let d_in = d(s2, s1);
+
+        if d_out < maxdist && d_in < maxdist {
+            edges_to.push((indices[s2], OrderedFloat(d_out)));
+            edges_from.push((indices[s2], OrderedFloat(d_in)));
+        }
+    }
+    (edges_from, edges_to)
+}
+
+/// Returns the edges to add to the graph if s1 is TWC-consistent.
+#[allow(clippy::type_complexity)]
+pub fn is_two_consistent<S, D>(
+    graph: &StableGraph<S, OrderedFloat<f64>, Directed>,
+    s1: &S,
+    d: D,
+    tau: f64,
+) -> bool
+where
+    S: Clone + Eq + Hash,
     D: Fn(&S, &S) -> f64,
 {
     // check if new node is TWC consistent
-    let is_twc_consistent = graph
+    graph
         .node_weights()
         .all(|s2| {
             let c_out = *graph.node_weights().map(|w|
@@ -84,39 +114,16 @@ where
             ).max().unwrap();
 
             c_out >= tau && c_in >= tau
-        });
-
-    let mut edges_from: Vec<(NodeIndex, OrderedFloat<f64>)> = Vec::new();
-    let mut edges_to: Vec<(NodeIndex, OrderedFloat<f64>)> = Vec::new();
-
-    if is_twc_consistent {
-        for s2 in graph.node_weights() {
-            // no self edges
-            if s1 == s2 {
-                continue;
-            }
-
-            let d_out = d(s1, s2);
-            let d_in = d(s2, s1);
-
-            if d_out < maxdist && d_in < maxdist {
-                edges_to.push((indices[s2], OrderedFloat(d_out)));
-                edges_from.push((indices[s2], OrderedFloat(d_in)));
-            }
-        }
-        Some((edges_from, edges_to))
-    } else {
-        None
-    }
+        })
 }
 
-/// Actually add the node to the graph.
+/// Add the node and its edges to the graph.
 pub fn add_node_to_graph<S>(
     graph: &mut StableGraph<S, OrderedFloat<f64>, Directed>,
     indices: &mut HashMap<S, NodeIndex>,
     s1: &S,
     edges_from: Vec<(NodeIndex, OrderedFloat<f64>)>,
-    edges_to: Vec<(NodeIndex, OrderedFloat<f64>)>,
+    edges_to: Vec<(NodeIndex, OrderedFloat<f64>)>
 )
 where
     S: Clone + Eq + Hash
@@ -132,6 +139,42 @@ where
     for (i2, weight) in edges_to {
         graph.add_edge(i1, i2, weight);
     }
+}
+
+/// Replenish edges of graph.
+pub fn edges_to_replenish<S, D>(
+    graph: &StableGraph<S, OrderedFloat<f64>, Directed>,
+    indices: &HashMap<S, NodeIndex>,
+    d: D,
+    maxdist: f64,
+) -> Vec<(NodeIndex, NodeIndex, OrderedFloat<f64>)>
+where
+    S: Clone + Eq + Hash,
+    D: Fn(&S, &S) -> f64,
+{
+    let mut edges_list = Vec::new();
+
+    for s1 in graph.node_weights() {
+        let (edges_from, edges_to) = get_edges(graph, indices, s1, &d, maxdist);
+        edges_list.push((indices[s1], edges_from, edges_to));
+    }
+
+    let mut edges_to_replenish = Vec::new();
+
+    for (i1, edges_from, edges_to) in edges_list {
+
+        for (i2, weight) in edges_from {
+            if !graph.contains_edge(i2, i1) {
+                edges_to_replenish.push((i2, i1, weight));
+            }
+        }
+        for (i2, weight) in edges_to {
+            if !graph.contains_edge(i1, i2) {
+                edges_to_replenish.push((i1, i2, weight));
+            }
+        }
+    }
+    edges_to_replenish
 }
 
 impl ReplayBuffer {
@@ -167,19 +210,8 @@ impl ReplayBuffer {
         // iterate over the set of nodes in the buffer
         for s1 in self.all_states::<S>().iter() {
 
-            // always accept the first node
-            if graph.node_count() == 0 {
-                let i1 = graph.add_node(s1.clone());
-                indices.insert(s1.clone(), i1);
-            } else if let Some((edges_from, edges_to)) = test_adding_node(
-                &graph,
-                &indices,
-                s1,
-                &d,
-                maxdist,
-                tau,
-            ) {
-                info!("Adding node to graph with edges from: {:#?}", edges_from);
+            if is_two_consistent(&graph, s1, &d, tau) {
+                let (edges_from, edges_to) = get_edges(&graph, &indices, s1, &d, maxdist);
                 add_node_to_graph(&mut graph, &mut indices, s1, edges_from, edges_to);
             }
         }

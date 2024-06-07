@@ -18,8 +18,10 @@ use {
             ReplayBuffer,
             sgm::{
                 DistanceMode,
-                test_adding_node,
+                is_two_consistent,
+                get_edges,
                 add_node_to_graph,
+                edges_to_replenish,
             },
         },
         configs::DDPG_HGB_Config,
@@ -68,6 +70,7 @@ where
     eps_counter: usize,
 
     dist_mode: DistanceMode,
+    sgm_replenish_freq: usize,
     sgm_reconstruct_freq: usize,
     sgm_max_tries: usize,
     sgm_close_enough: f64,
@@ -213,6 +216,7 @@ where
             eps_counter: 0,
 
             dist_mode: config.distance_mode,
+            sgm_replenish_freq: config.sgm_replenish_freq,
             sgm_reconstruct_freq: config.sgm_reconstruct_freq,
             sgm_max_tries: config.sgm_max_tries,
             sgm_close_enough: config.sgm_close_enough,
@@ -242,7 +246,7 @@ where
         config: &Self::Config,
     ) {
         self.dist_mode = config.distance_mode;
-        self.sgm_reconstruct_freq = config.sgm_reconstruct_freq;
+        self.sgm_replenish_freq = config.sgm_replenish_freq;
         self.sgm_max_tries = config.sgm_max_tries;
         self.sgm_close_enough = config.sgm_close_enough;
         self.sgm_waypoint_reward = config.sgm_waypoint_reward;
@@ -250,6 +254,7 @@ where
         self.sgm_tau = config.sgm_tau;
 
         self.config.distance_mode = config.distance_mode;
+        self.config.sgm_replenish_freq = config.sgm_replenish_freq;
         self.config.sgm_reconstruct_freq = config.sgm_reconstruct_freq;
         self.config.sgm_max_tries = config.sgm_max_tries;
         self.config.sgm_close_enough = config.sgm_close_enough;
@@ -281,6 +286,7 @@ where
             last_waypoint: None,
 
             dist_mode: config.distance_mode,
+            sgm_replenish_freq: config.sgm_replenish_freq,
             sgm_reconstruct_freq: config.sgm_reconstruct_freq,
             sgm_max_tries: config.sgm_max_tries,
             sgm_close_enough: config.sgm_close_enough,
@@ -299,13 +305,34 @@ where
     ) -> Result<Tensor> {
         let curr_obs = <Env::Observation>::from_tensor(state.clone());
 
+        // if self.goal_obs.is_none() {
+        //     info!("No goal so far, first episode!");
+        //     self.goal_obs = Some(curr_obs.clone());
+
+        // } else if curr_obs.desired_goal() != self.goal_obs.as_ref().unwrap().desired_goal() {
+        //     info!("Goal has changed, incrementing episode count and replanning");
+        //     self.goal_obs = Some(curr_obs.clone());
+        //     self.plan = Vec::new();
+        //     self.last_waypoint = None;
+        //     self.eps_counter += 1;
+
+        //     if self.sgm_replenish_freq > 0 && mode == RunMode::Train && (self.eps_counter % self.sgm_replenish_freq == 0) {
+        //         info!("Reconstructing graph after episode {}", self.eps_counter);
+        //         self.construct_graph();
+        //     }
+        // }
+
         // IF the goal has changed (we are in a new episode) AND we are in RunMode::Train
-        //      reconstruct the graph every 10 episodes
+        //      reconstruct the graph every n episodes
 
         if let RunMode::Train = mode {
-            if self.sgm_reconstruct_freq > 0 && self.goal_obs.is_some() && curr_obs.desired_goal() != self.goal_obs.as_ref().unwrap().desired_goal() {
+            if self.goal_obs.is_some() && curr_obs.desired_goal() != self.goal_obs.as_ref().unwrap().desired_goal() {
                 self.eps_counter += 1;
-                if self.eps_counter % self.sgm_reconstruct_freq == 0 {
+                if (self.sgm_replenish_freq > 0) && (self.eps_counter % self.sgm_replenish_freq == 0) {
+                    info!("Replenishing graph");
+                    self.replenish_graph();
+                }
+                if (self.sgm_reconstruct_freq > 0) && (self.eps_counter % self.sgm_reconstruct_freq == 0) {
                     info!("Reconstructing graph");
                     self.construct_graph();
                 }
@@ -323,9 +350,8 @@ where
         }
 
         // try adding curr_obs to the graph
-        if let Some((edges_from, edges_to)) = test_adding_node(
+        if is_two_consistent(
             &self.sgm,
-            &self.indices,
             &curr_obs,
             |s1: &Env::Observation, s2: &Env::Observation| {
                 self.distance(
@@ -334,9 +360,22 @@ where
                     s1.observation(),
                 )
             },
-            self.sgm_maxdist,
             self.sgm_tau,
         ) {
+            let (edges_from, edges_to) = get_edges(
+                &self.sgm,
+                &self.indices,
+                &curr_obs,
+                |s1: &Env::Observation, s2: &Env::Observation| {
+                    self.distance(
+                        s1.achieved_goal(),
+                        s2.achieved_goal(),
+                        s1.observation(),
+                    )
+                },
+                self.sgm_maxdist,
+            );
+
             add_node_to_graph(
                 &mut self.sgm,
                 &mut self.indices,
@@ -521,6 +560,25 @@ where
                 self.sgm_maxdist,
                 self.sgm_tau,
             );
+    }
+
+    fn replenish_graph(&mut self) {
+        let edges_to_replenish = edges_to_replenish(
+            &self.sgm,
+            &self.indices,
+            |s1: &Env::Observation, s2: &Env::Observation| {
+                self.distance(
+                    s1.achieved_goal(),
+                    s2.achieved_goal(),
+                    s1.observation(),
+                )
+            },
+            self.sgm_maxdist,
+        );
+
+        for (i1, i2, weight) in edges_to_replenish {
+            self.sgm.add_edge(i1, i2, weight);
+        }
     }
 }
 
