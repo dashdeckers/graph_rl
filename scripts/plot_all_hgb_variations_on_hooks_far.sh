@@ -23,14 +23,15 @@ plot_hgb_on_hooks () {
 
 declare -a hooks_variations=(
     # "far"
-    # "far-double-tries"
-    # "far-double-tries-no-reconstruct"
-    "far-loaded-model"
-    "far-loaded-model-no-reconstruct"
-    # "far-no-reconstruct"
+    "far-double-tries"
+    "far-double-tries-no-reconstruct"
+    # "far-loaded-model"
+    # "far-loaded-model-no-reconstruct"
+    "far-no-reconstruct"
+    "far-reconstruct-150"
     # "far-replenish"
     # "far-replenish-100-double-tries"
-    "far-replenish-100-loaded-model"
+    # "far-replenish-100-loaded-model"
     # "far-replenish-loaded-model"
 );
 plot_hgb_on_hooks "${hooks_variations[@]}";

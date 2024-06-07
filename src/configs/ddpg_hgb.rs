@@ -26,6 +26,7 @@ pub struct DDPG_HGB_Config {
     pub distance_mode: DistanceMode,
     // Sparse Graphical Memory parameters
     pub sgm_replenish_freq: usize,
+    pub sgm_reconstruct_freq: usize,
     pub sgm_max_tries: usize,
     pub sgm_close_enough: f64,
     pub sgm_waypoint_reward: f64,
@@ -38,6 +39,7 @@ impl Default for DDPG_HGB_Config {
             ddpg: DDPG_Config::default(),
             distance_mode: DistanceMode::True,
             sgm_replenish_freq: 50,
+            sgm_reconstruct_freq: 0,
             sgm_max_tries: 5,
             sgm_close_enough: 0.5,
             sgm_waypoint_reward: 1.0,
@@ -52,6 +54,7 @@ impl DDPG_HGB_Config {
         ddpg: DDPG_Config,
         distance_mode: DistanceMode,
         sgm_replenish_freq: usize,
+        sgm_reconstruct_freq: usize,
         sgm_max_tries: usize,
         sgm_close_enough: f64,
         sgm_waypoint_reward: f64,
@@ -62,6 +65,7 @@ impl DDPG_HGB_Config {
             ddpg,
             distance_mode,
             sgm_replenish_freq,
+            sgm_reconstruct_freq,
             sgm_max_tries,
             sgm_close_enough,
             sgm_waypoint_reward,
@@ -80,6 +84,7 @@ impl RenderableConfig for DDPG_HGB_Config {
 
         let dist_mode = self.distance_mode;
         let sgm_replenish_freq = self.sgm_replenish_freq;
+        let sgm_reconstruct_freq = self.sgm_reconstruct_freq;
         let sgm_max_tries = self.sgm_max_tries;
         let close_enough = self.sgm_close_enough;
         let waypoint_reward = self.sgm_waypoint_reward;
@@ -89,7 +94,8 @@ impl RenderableConfig for DDPG_HGB_Config {
         ui.separator();
         ui.label("SGM Options");
         ui.add(Label::new(format!("Distance mode: {dist_mode}")));
-        ui.add(Label::new(format!("Reconstruct freq: {sgm_replenish_freq}")));
+        ui.add(Label::new(format!("Replenish freq: {sgm_replenish_freq}")));
+        ui.add(Label::new(format!("Reconstruct freq: {sgm_reconstruct_freq}")));
         ui.add(Label::new(format!("Max tries: {sgm_max_tries}")));
         ui.add(Label::new(format!("Close enough: {close_enough:#.2}")));
         ui.add(Label::new(format!("Waypoint reward: {waypoint_reward:#.2}")));
@@ -117,6 +123,10 @@ impl RenderableConfig for DDPG_HGB_Config {
         };
         ui.add(
             Slider::new(&mut self.sgm_replenish_freq, 0..=100)
+                .text("Replenish freq"),
+        );
+        ui.add(
+            Slider::new(&mut self.sgm_reconstruct_freq, 0..=100)
                 .text("Reconstruct freq"),
         );
         ui.add(
@@ -143,6 +153,5 @@ impl RenderableConfig for DDPG_HGB_Config {
                 .step_by(0.01)
                 .text("Tau"),
         );
-
     }
 }

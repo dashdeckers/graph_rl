@@ -71,6 +71,7 @@ where
 
     dist_mode: DistanceMode,
     sgm_replenish_freq: usize,
+    sgm_reconstruct_freq: usize,
     sgm_max_tries: usize,
     sgm_close_enough: f64,
     sgm_waypoint_reward: f64,
@@ -216,6 +217,7 @@ where
 
             dist_mode: config.distance_mode,
             sgm_replenish_freq: config.sgm_replenish_freq,
+            sgm_reconstruct_freq: config.sgm_reconstruct_freq,
             sgm_max_tries: config.sgm_max_tries,
             sgm_close_enough: config.sgm_close_enough,
             sgm_waypoint_reward: config.sgm_waypoint_reward,
@@ -253,6 +255,7 @@ where
 
         self.config.distance_mode = config.distance_mode;
         self.config.sgm_replenish_freq = config.sgm_replenish_freq;
+        self.config.sgm_reconstruct_freq = config.sgm_reconstruct_freq;
         self.config.sgm_max_tries = config.sgm_max_tries;
         self.config.sgm_close_enough = config.sgm_close_enough;
         self.config.sgm_waypoint_reward = config.sgm_waypoint_reward;
@@ -284,6 +287,7 @@ where
 
             dist_mode: config.distance_mode,
             sgm_replenish_freq: config.sgm_replenish_freq,
+            sgm_reconstruct_freq: config.sgm_reconstruct_freq,
             sgm_max_tries: config.sgm_max_tries,
             sgm_close_enough: config.sgm_close_enough,
             sgm_waypoint_reward: config.sgm_waypoint_reward,
@@ -322,11 +326,15 @@ where
         //      reconstruct the graph every n episodes
 
         if let RunMode::Train = mode {
-            if self.sgm_replenish_freq > 0 && self.goal_obs.is_some() && curr_obs.desired_goal() != self.goal_obs.as_ref().unwrap().desired_goal() {
+            if self.goal_obs.is_some() && curr_obs.desired_goal() != self.goal_obs.as_ref().unwrap().desired_goal() {
                 self.eps_counter += 1;
-                if self.eps_counter % self.sgm_replenish_freq == 0 {
+                if (self.sgm_replenish_freq > 0) && (self.eps_counter % self.sgm_replenish_freq == 0) {
                     info!("Replenishing graph");
                     self.replenish_graph();
+                }
+                if (self.sgm_reconstruct_freq > 0) && (self.eps_counter % self.sgm_reconstruct_freq == 0) {
+                    info!("Reconstructing graph");
+                    self.construct_graph();
                 }
             }
         }

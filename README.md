@@ -52,7 +52,7 @@ ENV="pointenv"; \
 ENV_V1="hooks"; \
 ENV_V2="far"; \
 EXAMPLE="${ENV}_${ALG}"; \
-NAME="${ALG}_${ENV}_${ENV_V1}_${ENV_V2}-replenish-100-loaded-model"; \
+NAME="${ALG}_${ENV}_${ENV_V1}_${ENV_V2}"; \
 ALG_CONFIG="${ALG}.ron"; \
 TRAIN_CONFIG="${ENV}_training.ron"; \
 ENV_CONFIG="${ENV}_${ENV_V1}_${ENV_V2}.ron"; \
@@ -73,7 +73,6 @@ cargo run \
     --alg-config "./examples/configs/${ALG_CONFIG}" \
     --device cuda \
     --n-repetitions ${REPS} \
-    --load-model "./data" "decent-ddpg-pointenv" \
     &
 ```
 ```bash

@@ -14,6 +14,7 @@
     ),
     distance_mode: True,
     sgm_replenish_freq: 50,
+    sgm_reconstruct_freq: 0,
     sgm_max_tries: 5,
     sgm_close_enough: 0.5,
     sgm_waypoint_reward: 0.0,

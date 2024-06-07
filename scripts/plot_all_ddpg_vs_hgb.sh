@@ -8,7 +8,7 @@ plot_ddpg_vs_hgb () {
         for env in "${envs[@]}"; do
             for env_v1 in "${env_v1s[@]}"; do
                 for env_v2 in "${env_v2s[@]}"; do
-                    files+=("./data/${alg}_${env}_${env_v1}_${env_v2}");
+                    files+=("./data/${alg}_${env}_${env_v1}_${env_v2}${SUFFIX}");
                 done;
             done;
         done;
@@ -16,13 +16,16 @@ plot_ddpg_vs_hgb () {
     python \
         "./scripts/viz_data.py" \
         -d "${files[@]}" \
-        -o "plot-ddpg-vs-hgb-${env_v1s[0]}-${env_v2s[0]}.png" \
+        -o "plot-pretrained-ddpg-vs-hgb-${env_v1s[0]}-${env_v2s[0]}.png" \
         -t "H-DDPG vs HGB-DDPG on PointEnv-${env_v1s[0]}-${env_v2s[0]}" \
         -s
 }
 
-declare -a env_v1s=("empty" "oneline" "hooks");
-declare -a env_v2s=("close" "mid" "far");
+
+SUFFIX="-out-of-dist";
+
+declare -a env_v1s=("oneline" "hooks");
+declare -a env_v2s=("mid" "far");
 
 for env_v1 in "${env_v1s[@]}"; do
     for env_v2 in "${env_v2s[@]}"; do
