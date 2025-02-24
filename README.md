@@ -1,5 +1,6 @@
 # On Combining the Fields of Graph-Based Planning and Deep Reinforcement Learning
 
+[Paper](https://github.com/dashdeckers/graph_rl_thesis/blob/thesis/Thesis.pdf) / [Slides](https://github.com/dashdeckers/graph_rl_thesis/blob/thesis/Slides.pdf)
 
 # Run Experiments
 
